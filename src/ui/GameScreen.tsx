@@ -113,17 +113,14 @@ export function GameScreen({ initialPlayer }: Props) {
       e.preventDefault(); pressed.add(e.code); sendDir();
     };
     const up = (e: KeyboardEvent) => { if (pressed.delete(e.code)) sendDir(); };
-    const blur = () => { pressed.clear(); sendDir(); conn.send({ type: 'focus', focused: false }); };
-    const focus = () => conn.send({ type: 'focus', focused: true });
+    const blur = () => { pressed.clear(); sendDir(); }; // 창을 벗어나면 누르던 방향키를 놓은 것으로 본다
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
-    window.addEventListener('focus', focus);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
-      window.removeEventListener('focus', focus);
       canvas.removeEventListener('pointerdown', pointerDown);
       if (pending !== null) clearTimeout(pending);
       if (movePending !== null) clearTimeout(movePending);
