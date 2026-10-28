@@ -76,6 +76,31 @@ export function GameScreen({ initialPlayer }: Props) {
       if (now - lastSent >= MOVE_INTERVAL_MS) fire();
       else if (pending === null) pending = window.setTimeout(() => { pending = null; sendDir(); }, MOVE_INTERVAL_MS - (now - lastSent));
     };
+    // 빈 바닥 클릭(탭): 그 지점으로 이동(4.2). 이동 중에 다시 찍으면 이전 목표를 버리고 새 지점으로 바로 바꾼다.
+    // 서버에는 초당 5회까지만 보내되, 그 사이에 찍은 지점은 버리지 않고 마지막 지점을 이어서 보낸다.
+    let moveTarget: { x: number; y: number } | null = null;
+    let lastMoveSent = 0, movePending: number | null = null;
+    const sendMove = () => {
+      if (!moveTarget) return;
+      const now = performance.now();
+      if (now - lastMoveSent >= MOVE_INTERVAL_MS) {
+        lastMoveSent = now;
+        conn.send({ type: 'move', x: moveTarget.x, y: moveTarget.y });
+      } else if (movePending === null) {
+        movePending = window.setTimeout(() => { movePending = null; sendMove(); }, MOVE_INTERVAL_MS - (now - lastMoveSent));
+      }
+    };
+    const canvas = canvasRef.current!;
+    const pointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return; // 왼쪽 버튼(터치·펜도 0)
+      const p = arena.screenToWorld(e.clientX, e.clientY);
+      pressed.clear(); // 방향키 이동 중이었다면 목표 이동으로 바꾼다(서버도 목표를 받으면 방향 입력을 지운다)
+      arena.setTarget(p.x, p.y);
+      moveTarget = p;
+      sendMove();
+    };
+    canvas.addEventListener('pointerdown', pointerDown);
+
     const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     const down = (e: KeyboardEvent) => {
       if (typing(e)) return;
@@ -99,7 +124,9 @@ export function GameScreen({ initialPlayer }: Props) {
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
       window.removeEventListener('focus', focus);
+      canvas.removeEventListener('pointerdown', pointerDown);
       if (pending !== null) clearTimeout(pending);
+      if (movePending !== null) clearTimeout(movePending);
       conn.stop();
       arena.stop();
     };
@@ -110,15 +137,6 @@ export function GameScreen({ initialPlayer }: Props) {
     saveMinimapPref(showMinimap);
   }, [showMinimap]);
 
-  /** 빈 바닥 더블클릭(더블탭): 그 지점으로 이동(4.2). */
-  function onDoubleClick(e: React.MouseEvent) {
-    const arena = arenaRef.current;
-    if (!arena) return;
-    const p = arena.screenToWorld(e.clientX, e.clientY);
-    arena.setTarget(p.x, p.y);
-    connRef.current?.send({ type: 'move', x: p.x, y: p.y });
-  }
-
   const onPlused = useCallback((gained: number, p: PlayerSummary) => {
     setPlayer(p);
     if (gained > 0) arenaRef.current?.floatText(`+${gained.toFixed(1)}`);
@@ -127,8 +145,8 @@ export function GameScreen({ initialPlayer }: Props) {
   return (
     <div className="game">
       <div className={showMinimap ? 'arena-wrap with-minimap' : 'arena-wrap'}>
-        <canvas ref={canvasRef} className="arena" onDoubleClick={onDoubleClick}
-                aria-label="아레나. 방향키나 WASD로 이동하고 빈 바닥을 더블클릭하면 그곳으로 이동해요" />
+        <canvas ref={canvasRef} className="arena"
+                aria-label="아레나. 방향키나 WASD로 이동하고 빈 바닥을 클릭하면 그곳으로 이동해요" />
         <div className="hud">
           <span>현재 접속 {online}명</span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}

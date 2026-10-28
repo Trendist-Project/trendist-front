@@ -64,8 +64,10 @@ export class Arena {
     this.names = new Map(players.map((p) => [p.e, { nickname: p.nickname, level: p.level }]));
   }
   setInput(dx: number, dy: number) { this.input = { dx, dy }; if (dx || dy) this.target = null; }
+  /** 새 목표가 이전 목표와 방향키 입력을 모두 대신한다(서버 Room.setTarget과 같게). */
   setTarget(x: number, y: number) {
     this.target = { x, y };
+    this.input = { dx: 0, dy: 0 };
     this.ripples.push({ x, y, at: performance.now() });
     if (this.ripples.length > 6) this.ripples.shift(); // 연타해도 쌓이지 않게
   }
@@ -92,7 +94,7 @@ export class Arena {
     for (const id of [...this.entities.keys()]) if (!seen.has(id)) this.entities.delete(id);
   }
 
-  /** 화면 좌표 → 월드 좌표(더블클릭 이동). */
+  /** 화면 좌표 → 월드 좌표(클릭 이동). */
   screenToWorld(px: number, py: number) {
     const rect = this.canvas.getBoundingClientRect();
     return {

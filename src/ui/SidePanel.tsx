@@ -107,7 +107,7 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
               </div>
             </div>
           )}
-          <p className="muted small hint">방향키·WASD로 움직이고, 빈 바닥을 더블클릭하면 그곳으로 가요. M으로 미니맵을 켜고 꺼요.</p>
+          <p className="muted small hint">방향키·WASD로 움직이고, 빈 바닥을 클릭하면 그곳으로 가요(다시 찍으면 목표가 바로 바뀌어요). M으로 미니맵을 켜고 꺼요.</p>
         </div>
       )}
 
