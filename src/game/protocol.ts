@@ -57,4 +57,5 @@ export type ServerMessage =
   | ({ type: 'tuning' } & Tuning)
   | { type: 'roster'; players: { e: number; nickname: string; level: number }[] }
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
-  | { type: 'lost'; keyword: string; by: string };
+  | { type: 'lost'; keyword: string; by: string }
+  | { type: 'pong'; t: number };

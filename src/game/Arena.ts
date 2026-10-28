@@ -3,6 +3,18 @@ import type { EntityState, MinimapEntry, Snapshot, Tuning } from './protocol';
 interface Interp { prev: EntityState; cur: EntityState; at: number }
 
 const SNAPSHOT_INTERVAL = 100; // 서버 스냅샷 10Hz
+const SERVER_TICK = 0.05;      // 서버 틱 50ms. 서버는 틱마다 목표 속도와의 차이를 절반씩 줄인다(Room.move)
+
+/**
+ * 내 아이콘 보정(떨림 방지). 서버 위치는 항상 조금 늦은 과거 위치라서, 매 스냅샷마다 당기면 움직이는 동안 계속 뒤로 끌려 떨린다.
+ * 그래서 예측과 서버가 실제로 어긋났을 때만 맞추고, 화면 위치는 순간 이동 없이 부드럽게 따라가게 한다.
+ */
+const CORRECT_WHEN_STOPPED = 1;   // 둘 다 멈춰 있을 때 허용 오차(px)
+// 움직이는 중에는 최대 속도로 (이 시간 + 왕복 시간)만큼 간 거리까지는 지연으로 보고 그대로 둔다.
+// 서버 위치는 왕복 시간만큼 늦게 도착하므로, 왕복 시간을 넣지 않으면 먼 곳에서 접속할수록 보정이 잦아진다.
+const MOVING_TOLERANCE_SEC = 0.25;
+const SNAP_DISTANCE = 300;        // 이보다 멀면(입장·순간 이동) 바로 맞춘다
+const SMOOTH_TAU = 0.12;          // 화면 위치가 보정된 위치로 따라가는 시간 상수(초)
 const GRID_SMALL = 50;
 const GRID_BIG = 250;
 
@@ -30,7 +42,14 @@ export class Arena {
   private names = new Map<number, { nickname: string; level: number }>();
   private half = 1500;
   private tuning: Tuning | null = null;
-  private me = { e: -1, x: 0, y: 0, r: 16, initialized: false };
+  private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
+  /** 보정 때 생긴 화면 오프셋. 화면에는 me + offset을 그리고, offset은 0으로 줄어든다. */
+  private offset = { x: 0, y: 0 };
+  /** 카메라 중심 = 화면에 그리는 내 위치. */
+  private view = { x: 0, y: 0 };
+  private lastServerMe: { x: number; y: number } | null = null;
+  /** 서버와의 왕복 시간(초). ping으로 재고 부드럽게 갱신한다. */
+  private rtt = 0.1;
   private input = { dx: 0, dy: 0 };
   private target: { x: number; y: number } | null = null;
   private zoom = 1;
@@ -59,21 +78,32 @@ export class Arena {
   stop() { cancelAnimationFrame(this.raf); }
 
   setTuning(t: Tuning) { this.tuning = t; }
-  setMe(entityNo: number, x: number, y: number) { this.me = { ...this.me, e: entityNo, x, y, initialized: true }; }
+  setMe(entityNo: number, x: number, y: number) { this.resetMe(entityNo, x, y); }
   setRoster(players: { e: number; nickname: string; level: number }[]) {
     this.names = new Map(players.map((p) => [p.e, { nickname: p.nickname, level: p.level }]));
   }
+  /**
+   * 예측에 쓰는 입력. 서버로 보내는 순간에 같이 불러야 예측과 서버가 같은 입력으로 움직인다(서버 Room.setInput과 같게).
+   */
   setInput(dx: number, dy: number) { this.input = { dx, dy }; if (dx || dy) this.target = null; }
-  /** 새 목표가 이전 목표와 방향키 입력을 모두 대신한다(서버 Room.setTarget과 같게). */
+  /** 새 목표가 이전 목표와 방향키 입력을 모두 대신한다(서버 Room.setTarget과 같게). 서버로 보낼 때 부른다. */
   setTarget(x: number, y: number) {
     this.target = { x, y };
     this.input = { dx: 0, dy: 0 };
+  }
+  /** 클릭한 지점의 물결 효과. 서버 전송과 관계없이 클릭하는 즉시 보여 준다. */
+  showRipple(x: number, y: number) {
     this.ripples.push({ x, y, at: performance.now() });
     if (this.ripples.length > 6) this.ripples.shift(); // 연타해도 쌓이지 않게
   }
   floatText(text: string) { this.floatTexts.push({ text, at: performance.now() }); }
   setMinimap(entries: MinimapEntry[]) { this.minimap = entries; }
   setMinimapVisible(visible: boolean) { this.minimapVisible = visible; }
+  /** ping 왕복 시간(ms)을 반영한다. 튀는 값에 흔들리지 않게 조금씩 따라간다. */
+  updateRtt(ms: number) {
+    if (!Number.isFinite(ms) || ms < 0 || ms > 5000) return;
+    this.rtt += (ms / 1000 - this.rtt) * 0.2;
+  }
 
   applySnapshot(s: Snapshot) {
     this.half = s.half;
@@ -82,25 +112,45 @@ export class Arena {
       seen.add(e.e);
       const old = this.entities.get(e.e);
       this.entities.set(e.e, { prev: old ? this.current(old, s.receivedAt) : e, cur: e, at: s.receivedAt });
-      if (e.me) {
-        if (this.me.e !== e.e || !this.me.initialized) this.me = { e: e.e, x: e.x, y: e.y, r: e.r, initialized: true };
-        this.me.r = e.r;
-        // 서버 위치로 보정: 많이 어긋나면 바로 맞추고, 조금이면 30%씩 당긴다
-        const dx = e.x - this.me.x, dy = e.y - this.me.y;
-        if (Math.hypot(dx, dy) > 300) { this.me.x = e.x; this.me.y = e.y; }
-        else { this.me.x += dx * 0.3; this.me.y += dy * 0.3; }
-      }
+      if (e.me) this.reconcileMe(e);
     }
     for (const id of [...this.entities.keys()]) if (!seen.has(id)) this.entities.delete(id);
   }
 
-  /** 화면 좌표 → 월드 좌표(클릭 이동). */
+  /** 화면 좌표 → 월드 좌표(클릭 이동). 화면에 보이는 위치 기준이다. */
   screenToWorld(px: number, py: number) {
     const rect = this.canvas.getBoundingClientRect();
     return {
-      x: this.me.x + (px - rect.left - rect.width / 2) / this.zoom,
-      y: this.me.y + (py - rect.top - rect.height / 2) / this.zoom,
+      x: this.view.x + (px - rect.left - rect.width / 2) / this.zoom,
+      y: this.view.y + (py - rect.top - rect.height / 2) / this.zoom,
     };
+  }
+
+  private resetMe(entityNo: number, x: number, y: number) {
+    this.me = { ...this.me, e: entityNo, x, y, vx: 0, vy: 0, initialized: true };
+    this.offset = { x: 0, y: 0 };
+    this.view = { x, y };
+    this.lastServerMe = null;
+  }
+
+  /** 서버가 보낸 내 위치와 예측을 맞춘다. 실제로 어긋났을 때만, 화면은 튀지 않게 고친다. */
+  private reconcileMe(e: EntityState) {
+    if (this.me.e !== e.e || !this.me.initialized) this.resetMe(e.e, e.x, e.y);
+    this.me.r = e.r;
+    const ex = e.x - this.me.x, ey = e.y - this.me.y, err = Math.hypot(ex, ey);
+    const prev = this.lastServerMe;
+    this.lastServerMe = { x: e.x, y: e.y };
+    const serverMoving = prev !== null && Math.hypot(e.x - prev.x, e.y - prev.y) > 0.5;
+    const meMoving = this.target !== null || this.input.dx !== 0 || this.input.dy !== 0 || Math.hypot(this.me.vx, this.me.vy) > 1;
+    const speed = this.tuning?.maxSpeed ?? 240;
+    const tolerance = serverMoving || meMoving ? speed * (MOVING_TOLERANCE_SEC + this.rtt) : CORRECT_WHEN_STOPPED;
+    if (err > SNAP_DISTANCE) {
+      this.resetMe(e.e, e.x, e.y);
+    } else if (err > tolerance) {
+      // 예측 위치는 서버 위치로 옮기고, 화면에 그리는 위치는 그대로 둔 채 오프셋으로 천천히 따라간다
+      this.me.x = e.x; this.me.y = e.y;
+      this.offset.x -= ex; this.offset.y -= ey;
+    }
   }
 
   private current(i: Interp, now: number): EntityState {
@@ -113,18 +163,23 @@ export class Arena {
     };
   }
 
+  /** 서버 Room.move와 같은 규칙으로 내 위치를 미리 움직인다(속도·감속·가속이 같아야 보정이 생기지 않는다). */
   private predictMe(dt: number) {
     const speed = this.tuning?.maxSpeed ?? 240; // 크기와 관계없이 같다
-    let vx = 0, vy = 0;
+    let wantX = 0, wantY = 0;
     if (this.input.dx || this.input.dy) {
       const len = Math.hypot(this.input.dx, this.input.dy);
-      vx = (this.input.dx / len) * speed; vy = (this.input.dy / len) * speed;
+      const k = len > 1 ? 1 / len : 1;
+      wantX = this.input.dx * k * speed; wantY = this.input.dy * k * speed;
     } else if (this.target) {
       const dx = this.target.x - this.me.x, dy = this.target.y - this.me.y, d = Math.hypot(dx, dy);
       if (d < 4) this.target = null;
-      else { const s = speed * Math.min(1, d / 120); vx = (dx / d) * s; vy = (dy / d) * s; }
+      else { const s = speed * Math.min(1, d / 120); wantX = (dx / d) * s; wantY = (dy / d) * s; }
     }
-    this.me.x += vx * dt; this.me.y += vy * dt;
+    // 서버는 50ms마다 목표 속도와의 차이를 절반으로 줄인다. 프레임 간격과 관계없이 같은 곡선이 되게 맞춘다
+    const a = 1 - Math.pow(0.5, dt / SERVER_TICK);
+    this.me.vx += (wantX - this.me.vx) * a; this.me.vy += (wantY - this.me.vy) * a;
+    this.me.x += this.me.vx * dt; this.me.y += this.me.vy * dt;
     const lim = this.half - this.me.r;
     this.me.x = Math.max(-lim, Math.min(lim, this.me.x));
     this.me.y = Math.max(-lim, Math.min(lim, this.me.y));
@@ -134,6 +189,9 @@ export class Arena {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     if (this.me.initialized) this.predictMe(dt);
+    const decay = Math.exp(-dt / SMOOTH_TAU);
+    this.offset.x *= decay; this.offset.y *= decay;
+    this.view = { x: this.me.x + this.offset.x, y: this.me.y + this.offset.y };
 
     const dpr = window.devicePixelRatio || 1;
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
@@ -154,7 +212,7 @@ export class Arena {
     ctx.save();
     ctx.translate(w / 2, h / 2);
     ctx.scale(this.zoom, this.zoom);
-    ctx.translate(-this.me.x, -this.me.y);
+    ctx.translate(-this.view.x, -this.view.y);
 
     const half = this.half;
     ctx.fillStyle = '#1f2a37'; // 짙은 회청색 바닥
@@ -169,11 +227,11 @@ export class Arena {
     // 작은 아이콘을 위에 그리려고 큰 것부터
     const list = [...this.entities.values()].map((i) => {
       const s = this.current(i, now);
-      return s.me ? { ...s, x: this.me.x, y: this.me.y } : s;
+      return s.me ? { ...s, x: this.view.x, y: this.view.y } : s;
     }).sort((a, b) => b.r - a.r);
     const viewHalfW = w / 2 / this.zoom, viewHalfH = h / 2 / this.zoom;
     for (const e of list) {
-      if (Math.abs(e.x - this.me.x) > viewHalfW + e.r || Math.abs(e.y - this.me.y) > viewHalfH + e.r) continue; // 화면 밖은 그리지 않는다
+      if (Math.abs(e.x - this.view.x) > viewHalfW + e.r || Math.abs(e.y - this.view.y) > viewHalfH + e.r) continue; // 화면 밖은 그리지 않는다
       this.drawEntity(ctx, e);
     }
     ctx.restore();
@@ -200,7 +258,7 @@ export class Arena {
     // 지금 화면에 보이는 범위
     const vw = (w / this.zoom) * s, vh = (h / this.zoom) * s;
     ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.strokeRect(toX(this.me.x) - vw / 2, toY(this.me.y) - vh / 2, vw, vh);
+    ctx.strokeRect(toX(this.view.x) - vw / 2, toY(this.view.y) - vh / 2, vw, vh);
 
     ctx.fillStyle = 'rgba(200,215,235,0.75)';
     for (const m of this.minimap) {
@@ -210,7 +268,7 @@ export class Arena {
     ctx.fillStyle = '#3fb68b';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(toX(this.me.x), toY(this.me.y), Math.max(3, this.me.r * s), 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(toX(this.view.x), toY(this.view.y), Math.max(3, this.me.r * s), 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
     ctx.restore();
   }
@@ -218,8 +276,8 @@ export class Arena {
   private drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
     const half = this.half;
     const vw = w / 2 / this.zoom, vh = h / 2 / this.zoom;
-    const x0 = Math.max(-half, this.me.x - vw), x1 = Math.min(half, this.me.x + vw);
-    const y0 = Math.max(-half, this.me.y - vh), y1 = Math.min(half, this.me.y + vh);
+    const x0 = Math.max(-half, this.view.x - vw), x1 = Math.min(half, this.view.x + vw);
+    const y0 = Math.max(-half, this.view.y - vh), y1 = Math.min(half, this.view.y + vh);
     for (const [step, width] of [[GRID_SMALL, 1], [GRID_BIG, 2]] as const) {
       if (step * this.zoom < 6) continue; // 너무 촘촘하면 생략
       ctx.strokeStyle = 'rgba(220,230,255,0.15)';

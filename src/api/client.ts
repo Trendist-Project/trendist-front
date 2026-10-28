@@ -1,4 +1,6 @@
-import type { Me, MyKeyword, PlayerSummary, PlusResult, RankingEntry, SearchResult, TokenResponse } from './types';
+import type {
+  GuideArticle, GuideCategory, Me, MyKeyword, Notice, PlayerSummary, PlusResult, RankingEntry, SearchResult, TokenResponse,
+} from './types';
 
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -57,4 +59,7 @@ export const api = {
   plus: (text: string) => request<PlusResult>('POST', '/api/keywords/plus', { text }),
   myKeywords: () => request<MyKeyword[]>('GET', '/api/me/keywords'),
   rankings: () => request<RankingEntry[]>('GET', '/api/rankings?country=KR'),
+  notices: () => request<Notice[]>('GET', '/api/notices'),
+  guideCategories: () => request<GuideCategory[]>('GET', '/api/guide/categories'),
+  guideArticles: (code: string) => request<GuideArticle[]>('GET', `/api/guide/categories/${encodeURIComponent(code)}/articles`),
 };

@@ -107,13 +107,12 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
               </div>
             </div>
           )}
-          <p className="muted small hint">방향키·WASD로 움직이고, 빈 바닥을 클릭하면 그곳으로 가요(다시 찍으면 목표가 바로 바뀌어요). M으로 미니맵을 켜고 꺼요.</p>
         </div>
       )}
 
       {tab === 'mine' && (
         <div className="tab-body">
-          {mine.length === 0 ? <p className="muted">아직 +한 키워드가 없어요</p> : (
+          {mine.length === 0 ? <p className="muted">아직 추가한 키워드가 없어요</p> : (
             <ul className="list">
               {mine.map((k) => (
                 <li key={k.keywordId}>
