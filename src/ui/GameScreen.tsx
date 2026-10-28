@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PlayerSummary } from '../api/types';
 import { Arena } from '../game/Arena';
 import { GameConnection } from '../game/connection';
-import type { ServerMessage } from '../game/protocol';
+import type { OrbResult, ServerMessage } from '../game/protocol';
 import { GuideModal } from './GuideModal';
 import { NoticeModal } from './NoticeModal';
 import { ProfileModal } from './ProfileModal';
+import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
 
 interface Props { initialPlayer: PlayerSummary }
@@ -14,8 +15,9 @@ const KEYS: Record<string, [number, number]> = {
   ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
   ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
 };
-const KEY_INTERVAL_MS = 200;   // 방향키 입력은 초당 5회까지(4.2)
+const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 보낸다. 한 프레임(16ms) 안의 변화만 하나로 합친다(4.2)
 const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
+const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
 
 /** 미니맵 켜짐 여부는 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
 const MINIMAP_KEY = 'trendist.minimap';
@@ -47,6 +49,7 @@ export function GameScreen({ initialPlayer }: Props) {
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
+  const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -57,19 +60,44 @@ export function GameScreen({ initialPlayer }: Props) {
     const arena = new Arena(canvasRef.current!);
     arenaRef.current = arena;
     arena.start();
+    // 서버 방에 들어간 뒤(welcome)부터 끊길 때까지만 이동 입력이 서버에 닿는다. 그 밖의 입력은 예측에도 넣지 않는다
+    let ready = false;
+    let resyncDir = () => {};
     const conn = new GameConnection({
       onSnapshot: (s) => arena.applySnapshot(s),
       onMinimap: (entries) => arena.setMinimap(entries),
-      onStatus: setStatus,
+      onStatus: (s) => {
+        if (s !== 'open') { ready = false; arena.clearControl(); }
+        setStatus(s);
+      },
       onMessage: (m: ServerMessage) => {
         switch (m.type) {
-          case 'welcome': arena.setMe(m.entityNo, m.x, m.y); conn.send({ type: 'ping', t: performance.now() }); break;
+          case 'welcome':
+            arena.setMe(m.entityNo, m.x, m.y);
+            ready = true;
+            resyncDir(); // 다시 연결됐을 때 아직 누르고 있는 방향키가 있으면 서버와 예측에 함께 다시 넣는다
+            conn.send({ type: 'ping', t: performance.now() });
+            break;
           case 'tuning': arena.setTuning(m); break;
           case 'roster': arena.setRoster(m.players); setOnline(m.players.length); break;
           case 'score':
             setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));
             break;
           case 'pong': arena.updateRtt(performance.now() - m.t); break;
+          case 'orbs': arena.setOrbs(m.orbs); break;
+          case 'orbSpawn': arena.addOrb(m.id, m.x, m.y); break;
+          case 'orbEaten': arena.eatOrb(m.id, m.e); break;
+          case 'orbResult': {
+            // 구슬이 원 안으로 빨려 들어간 뒤에 결과 카드를 띄운다
+            const key = performance.now();
+            window.setTimeout(() => setOrbReveal({ result: m, key }), 250);
+            window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), 250 + ORB_REVEAL_MS);
+            if (m.status === 'GAINED') {
+              arena.floatText(`+${Number(m.gained ?? 0).toFixed(1)}`);
+              setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
+            }
+            break;
+          }
           case 'lost':
             showToast(`${m.by}와 부딪혀 '${m.keyword}'을(를) 잃었어요`);
             setRefreshKey((k) => k + 1);
@@ -85,15 +113,27 @@ export function GameScreen({ initialPlayer }: Props) {
     // 방향키·WASD 입력. 입력창에 쓰는 중이면 무시한다.
     const pressed = new Set<string>();
     let lastSent = 0, pending: number | null = null;
-    const sendDir = () => {
+    const currentDir = () => {
       let dx = 0, dy = 0;
       pressed.forEach((k) => { dx += KEYS[k][0]; dy += KEYS[k][1]; });
+      return { dx, dy };
+    };
+    // 예측(arena)에는 서버로 실제로 보낸 입력만 넣는다. 그래야 둘이 같은 입력으로 움직인다(떨림·혼자 움직임 방지)
+    const fire = () => {
+      lastSent = performance.now();
+      const { dx, dy } = currentDir();
+      if (ready && conn.send({ type: 'input', dx, dy })) arena.setInput(dx, dy);
+    };
+    const sendDir = () => {
       const now = performance.now();
-      // 예측(arena)에도 서버로 보내는 순간에 반영해야 둘이 같은 입력으로 움직인다(떨림 방지)
-      const fire = () => { lastSent = performance.now(); pending = null; arena.setInput(dx, dy); conn.send({ type: 'input', dx, dy }); };
       if (now - lastSent >= KEY_INTERVAL_MS) fire();
       else if (pending === null) pending = window.setTimeout(() => { pending = null; sendDir(); }, KEY_INTERVAL_MS - (now - lastSent));
     };
+    resyncDir = () => { if (pressed.size > 0) fire(); };
+    // 누르고 있는 동안에는 1초마다 지금 방향을 다시 보낸다. 중간에 메시지 하나가 빠져도 서버가 곧 같은 상태로 돌아온다
+    const resyncTimer = window.setInterval(() => { if (pressed.size > 0 && pending === null) fire(); }, INPUT_RESYNC_MS);
+    // 떼는 신호(keyup)를 못 받는 경우(창 전환, 보조키 조합, 입력창으로 포커스 이동)에는 모두 뗀 것으로 본다
+    const releaseAll = () => { if (pressed.size === 0) return; pressed.clear(); sendDir(); };
     // 빈 바닥 클릭(탭): 그 지점으로 이동(4.2). 이동 중에 다시 찍으면 이전 목표를 버리고 새 지점으로 바로 바꾼다.
     // 서버에는 초당 10회까지만 보내되, 그 사이에 찍은 지점은 버리지 않고 마지막 지점을 이어서 보낸다.
     // 내 원의 예측 이동도 서버로 보내는 순간에 새 목표를 쓴다. 연타해도 예측과 서버의 목표가 같아서 떨리지 않는다.
@@ -104,15 +144,14 @@ export function GameScreen({ initialPlayer }: Props) {
       const now = performance.now();
       if (now - lastMoveSent >= CLICK_INTERVAL_MS) {
         lastMoveSent = now;
-        arena.setTarget(moveTarget.x, moveTarget.y);
-        conn.send({ type: 'move', x: moveTarget.x, y: moveTarget.y });
+        if (ready && conn.send({ type: 'move', x: moveTarget.x, y: moveTarget.y })) arena.setTarget(moveTarget.x, moveTarget.y);
       } else if (movePending === null) {
         movePending = window.setTimeout(() => { movePending = null; sendMove(); }, CLICK_INTERVAL_MS - (now - lastMoveSent));
       }
     };
     const canvas = canvasRef.current!;
     const pointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return; // 왼쪽 버튼(터치·펜도 0)
+      if (e.button !== 0 || !ready) return; // 왼쪽 버튼(터치·펜도 0)
       const p = arena.screenToWorld(e.clientX, e.clientY);
       pressed.clear(); // 방향키 이동 중이었다면 목표 이동으로 바꾼다(서버도 목표를 받으면 방향 입력을 지운다)
       arena.showRipple(p.x, p.y); // 물결은 클릭하는 즉시
@@ -129,18 +168,31 @@ export function GameScreen({ initialPlayer }: Props) {
         setShowMinimap((v) => !v);
         return;
       }
-      if (!(e.code in KEYS) || pressed.has(e.code)) return;
-      e.preventDefault(); pressed.add(e.code); sendDir();
+      if (!(e.code in KEYS)) return;
+      // Ctrl·Alt·Cmd와 함께 누른 키는 단축키다. 이때는 떼는 신호가 오지 않는 브라우저가 있어 이동으로 쓰지 않는다
+      if (e.ctrlKey || e.metaKey || e.altKey) { releaseAll(); return; }
+      e.preventDefault();
+      if (pressed.has(e.code)) return; // 길게 눌러 반복되는 신호
+      pressed.add(e.code); sendDir();
     };
-    const up = (e: KeyboardEvent) => { if (pressed.delete(e.code)) sendDir(); };
-    const blur = () => { pressed.clear(); sendDir(); }; // 창을 벗어나면 누르던 방향키를 놓은 것으로 본다
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Meta' || e.key === 'Control' || e.key === 'Alt') { releaseAll(); return; }
+      if (pressed.delete(e.code)) sendDir();
+    };
+    const focusIn = (e: FocusEvent) => { if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) releaseAll(); };
+    const hidden = () => { if (document.hidden) releaseAll(); };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    window.addEventListener('blur', blur);
+    window.addEventListener('blur', releaseAll);
+    window.addEventListener('focusin', focusIn);
+    document.addEventListener('visibilitychange', hidden);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', blur);
+      window.removeEventListener('blur', releaseAll);
+      window.removeEventListener('focusin', focusIn);
+      document.removeEventListener('visibilitychange', hidden);
+      clearInterval(resyncTimer);
       canvas.removeEventListener('pointerdown', pointerDown);
       if (pending !== null) clearTimeout(pending);
       if (movePending !== null) clearTimeout(movePending);
@@ -207,6 +259,7 @@ export function GameScreen({ initialPlayer }: Props) {
           )}
         </div>
         {toast && <div className="toast" role="status">{toast}</div>}
+        {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
       </div>
       <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast} />
       {panel === 'notice' && <NoticeModal onClose={closePanel} />}

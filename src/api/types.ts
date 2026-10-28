@@ -25,7 +25,6 @@ export interface KeywordCard {
   text: string;
   state: KeywordState;
   trendValue: number;
-  score: number;
   holderCount: number;
   totalPlusCount: number;
   searchCount: number;
@@ -42,7 +41,6 @@ export interface MyKeyword {
   text: string;
   state: KeywordState;
   trendValue: number;
-  score: number;
   plusedAt: string;
   expiresAt: string;
 }

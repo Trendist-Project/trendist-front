@@ -58,4 +58,19 @@ export type ServerMessage =
   | { type: 'roster'; players: { e: number; nickname: string; level: number }[] }
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
   | { type: 'lost'; keyword: string; by: string }
-  | { type: 'pong'; t: number };
+  | { type: 'pong'; t: number }
+  | { type: 'orbs'; orbs: [number, number, number][] }
+  | { type: 'orbSpawn'; id: number; x: number; y: number }
+  | { type: 'orbEaten'; id: number; e: number }
+  | OrbResult;
+
+/** ? 구슬을 먹은 결과(4.20). GAINED: 새로 보관함에, DUPLICATE: 이미 가진 키워드(변화 없음), MISS: 꽝, NONE: 🔥 키워드가 없음 */
+export interface OrbResult {
+  type: 'orbResult';
+  status: 'GAINED' | 'DUPLICATE' | 'MISS' | 'NONE';
+  text?: string;
+  state?: string;
+  trendValue?: number;
+  holderCount?: number;
+  gained?: number;
+}

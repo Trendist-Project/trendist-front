@@ -26,8 +26,11 @@ export class GameConnection {
     this.ws?.close();
   }
 
-  send(msg: object) {
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+  /** 열려 있을 때만 보낸다. 보냈으면 true. */
+  send(msg: object): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    this.ws.send(JSON.stringify(msg));
+    return true;
   }
 
   private open() {
