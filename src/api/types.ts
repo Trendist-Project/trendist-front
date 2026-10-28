@@ -11,6 +11,8 @@ export interface PlayerSummary {
   holdCount: number;
   totalPlusCount: number;
   commentScore: number;
+  /** 다음에 닉네임을 바꿀 수 있는 시각. null이면 지금 바꿀 수 있다. */
+  nicknameChangeableAt: string | null;
 }
 
 export interface Me { userId: number; guest: boolean; player: PlayerSummary | null }

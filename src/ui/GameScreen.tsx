@@ -5,6 +5,7 @@ import { GameConnection } from '../game/connection';
 import type { ServerMessage } from '../game/protocol';
 import { GuideModal } from './GuideModal';
 import { NoticeModal } from './NoticeModal';
+import { ProfileModal } from './ProfileModal';
 import { SidePanel } from './SidePanel';
 
 interface Props { initialPlayer: PlayerSummary }
@@ -45,7 +46,7 @@ export function GameScreen({ initialPlayer }: Props) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
-  const [panel, setPanel] = useState<'notice' | 'guide' | null>(null);
+  const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -172,7 +173,7 @@ export function GameScreen({ initialPlayer }: Props) {
           {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}
         </div>
         <div className="hud-bottom">
-          <strong>{player.nickname}</strong>
+          <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
           <span>내 유행도 {Number(player.currentScore).toFixed(1)}</span>
           <span>🐢 {player.level}레벨</span>
           <span className="muted">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
@@ -180,6 +181,7 @@ export function GameScreen({ initialPlayer }: Props) {
         </div>
         <div className="arena-tools">
           <div className="tool-row">
+            <button onClick={() => setPanel('profile')}>👤 내 정보</button>
             <button onClick={() => setPanel('notice')}>📢 공지사항</button>
             <button onClick={() => setPanel('guide')}>📖 가이드·FAQ</button>
             <button className="minimap-toggle" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
@@ -209,6 +211,7 @@ export function GameScreen({ initialPlayer }: Props) {
       <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast} />
       {panel === 'notice' && <NoticeModal onClose={closePanel} />}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
+      {panel === 'profile' && <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} />}
     </div>
   );
 }

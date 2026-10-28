@@ -55,6 +55,7 @@ export const api = {
   },
   me: () => request<Me>('GET', '/api/me'),
   createPlayer: (nickname: string) => request<PlayerSummary>('POST', '/api/players', { nickname, countryCode: 'KR' }),
+  changeNickname: (nickname: string) => request<PlayerSummary>('PATCH', '/api/me/nickname', { nickname }),
   search: (q: string) => request<SearchResult>('GET', `/api/keywords/search?q=${encodeURIComponent(q)}`),
   plus: (text: string) => request<PlusResult>('POST', '/api/keywords/plus', { text }),
   myKeywords: () => request<MyKeyword[]>('GET', '/api/me/keywords'),

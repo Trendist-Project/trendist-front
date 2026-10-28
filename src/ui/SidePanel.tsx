@@ -90,19 +90,13 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
                 <strong className="kw">{card.text}</strong>
                 <span className="badge">{STATE_BADGE[card.state] ?? card.state}</span>
               </div>
-              {card.state === '활성' ? (
-                <p>트렌드 {Number(card.trendValue).toFixed(0)} · 👥 {card.holderCount.toLocaleString()}명</p>
-              ) : (
-                <p>💤 · 👥 {card.holderCount.toLocaleString()}명<br />
-                  <span className="muted small">3명이 모이거나 외부 트렌드에 잡히면 🔥활성이 돼요</span></p>
-              )}
-              <p className="muted small">누적 + {card.totalPlusCount.toLocaleString()} · 검색 {card.searchCount.toLocaleString()}</p>
+              <p>트렌드 {Number(card.trendValue).toFixed(0)} · 👥 {card.holderCount.toLocaleString()}명</p>
               <div className="card-foot">
-                {card.state === '활성' && <span>지금 +{Number(card.score).toFixed(1)}점</span>}
+                {card.state === '활성' && !card.plusedByMe && <span>지금 +{Number(card.score).toFixed(1)}점</span>}
                 {card.plusedByMe && card.myExpiresAt && <span className="muted small">{remaining(card.myExpiresAt)}</span>}
                 <button className="primary" onClick={plus} disabled={busy || card.plusedByMe}
-                        aria-label={card.plusedByMe ? '이미 +했어요' : `${card.text} +하기`}>
-                  {card.plusedByMe ? '+함' : '+'}
+                        aria-label={card.plusedByMe ? '이미 보유중이에요' : `${card.text} +하기`}>
+                  {card.plusedByMe ? '보유중' : '+'}
                 </button>
               </div>
             </div>
