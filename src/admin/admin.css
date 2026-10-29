@@ -1,0 +1,46 @@
+/* 관리자 페이지(13절). 게임 공통 색(styles.css의 --line, --accent 등)을 그대로 쓴다 */
+html, body, #root { height: auto; min-height: 100%; overflow: auto; }
+.admin { max-width: 1280px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 16px; }
+.admin h1 { margin: 0; font-size: 1.4rem; }
+.admin-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.admin-tabs { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.admin-tabs button.on, .admin-filters button.on { background: var(--accent); border-color: var(--accent); color: #062014; font-weight: 700; }
+.admin-panel { display: grid; gap: 12px; }
+.admin-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.admin-filters input:not([type]) { min-width: 200px; }
+.admin-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.admin-table th, .admin-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; vertical-align: top; }
+.admin-table th { position: sticky; top: 0; background: #151d2a; font-weight: 600; color: #9fb3c8; }
+.admin-table th.sortable { cursor: pointer; user-select: none; }
+.admin-table th.sortable:hover { color: #fff; }
+.admin-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.admin-table tr.banned td { opacity: 0.55; }
+.admin-table.settings td { white-space: normal; }
+.admin-table.settings td:first-child { min-width: 260px; }
+.admin-table tr.dirty { background: rgba(255,209,102,0.06); }
+.admin-pager { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.admin .confirm { display: inline-flex; gap: 4px; }
+.admin button.danger { border-color: #ff7a7a; color: #ff9a9a; }
+.admin-add { display: grid; gap: 8px; }
+.admin-add textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border-radius: 10px; background: #0f151f; color: inherit; border: 1px solid var(--line); }
+.admin-add button { justify-self: start; }
+.admin-confirm { border: 1px solid var(--accent); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+.admin-confirm p { margin: 0; }
+.admin-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-chips li { background: #1d2635; padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; }
+.admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.admin-results { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: 0.85rem; }
+.admin-results .ok { color: #9fe0c3; }
+.admin-results .fail { color: #ff9a9a; }
+.admin-reports { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.admin-reports > li { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.admin-reports p { margin: 0; }
+.admin-reports blockquote { margin: 0; padding: 8px 10px; background: #0f151f; border-left: 3px solid #ff7a7a; border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.report-status { margin-left: auto; font-size: 0.8rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+.report-status.RESOLVED { color: #ff9a9a; border-color: #ff7a7a; }
+.report-status.REJECTED { color: #9fe0c3; border-color: var(--accent); }
+.setting-edit { display: flex; gap: 6px; }
+.setting-edit input { width: 110px; }
+.admin .ok { color: #9fe0c3; }

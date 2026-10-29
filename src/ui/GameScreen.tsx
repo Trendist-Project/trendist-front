@@ -572,7 +572,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
                  onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} />
       {infoEntity !== null && (
         <PlayerInfoModal entityNo={infoEntity} bot={infoBot} onClose={() => setInfoEntity(null)}
-                         onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} />
+                         onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} onNotice={showToast} />
       )}
       {openKeyword !== null && (
         <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} onShare={shareKeyword} />

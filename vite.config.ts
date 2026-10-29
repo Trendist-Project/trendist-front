@@ -7,6 +7,12 @@ const BACKEND = 'localhost:8081';
 
 export default defineConfig({
   plugins: [react()],
+  // 게임(index.html)과 관리자 페이지(admin.html, 13절)를 따로 만든다. 관리자 페이지는 /admin.html로 연다
+  build: {
+    rollupOptions: {
+      input: { main: 'index.html', admin: 'admin.html' },
+    },
+  },
   server: {
     port: 8080,
     strictPort: true,

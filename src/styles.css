@@ -127,6 +127,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 /* 키워드 상세 창 제목 옆 [💬 공유]: 채팅에 #키워드로 보낸다 */
 .kw-share { flex: none; font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; }
 .kw-share:disabled { color: var(--accent); border-color: var(--accent); }
+.pi-report { flex: none; font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; color: #ff9a9a; border-color: rgba(255,122,122,0.5); }
 .modal-body { padding: 16px 18px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; } /* 안의 그래프·표가 창보다 넓어지지 않게 */
 .chip-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { padding: 6px 12px; border-radius: 999px; font-size: 0.88rem; color: var(--muted); }

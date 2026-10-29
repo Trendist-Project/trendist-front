@@ -80,7 +80,7 @@ export const api = {
   writeComment: (id: number, body: string) => request<CommentItem>('POST', `/api/keywords/${id}/comments`, { body }),
   editComment: (commentId: number, body: string) => request<CommentItem>('PATCH', `/api/comments/${commentId}`, { body }),
   deleteComment: (commentId: number) => request<void>('DELETE', `/api/comments/${commentId}`),
-  report: (target: 'COMMENT' | 'CHAT', targetId: number, reason: string) =>
+  report: (target: 'COMMENT' | 'CHAT' | 'PLAYER', targetId: number, reason: string) =>
     request<void>('POST', '/api/reports', { target, targetId, reason }),
   vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
   scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
@@ -90,4 +90,40 @@ export const api = {
   notices: () => request<Notice[]>('GET', '/api/notices'),
   guideCategories: () => request<GuideCategory[]>('GET', '/api/guide/categories'),
   guideArticles: (code: string) => request<GuideArticle[]>('GET', `/api/guide/categories/${encodeURIComponent(code)}/articles`),
+};
+
+// ---------------------------------------------------------------- 관리자(13): /api/admin/**는 ROLE_ADMIN만
+
+export interface AdminStatus { userId: number; admin: boolean }
+export interface AdminKeywordRow {
+  id: number; text: string; state: string; source: string; trendValue: number; holderCount: number;
+  totalPlusCount: number; searchCount: number; externalUntil: string | null; activatedAt: string | null;
+  bannedAt: string | null; createdAt: string;
+}
+export interface AdminKeywordPage { items: AdminKeywordRow[]; total: number; page: number; size: number }
+export interface AdminAdded { id: number; text: string; state: string; trendValue: number; holderCount: number; externalUntil: string; created: boolean }
+export interface AdminReport {
+  id: number; type: string; targetId: number; reason: string | null; status: string; createdAt: string; updatedAt: string;
+  reporterNickname: string; targetNickname: string | null; content: string | null; keywordText: string | null; sameTargetCount: number;
+}
+export interface AdminReportPage { items: AdminReport[]; total: number; page: number; size: number }
+export interface AdminSetting {
+  name: string; value: string; type: string; min: number | null; max: number | null; description: string | null;
+  defaultValue: string | null; updatedAt: string;
+}
+export interface AdminKeywordQuery { state?: string; source?: string; q?: string; sort: string; dir: 'asc' | 'desc'; page: number }
+
+const qs = (o: Record<string, string | number | undefined>) =>
+  new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString();
+
+export const adminApi = {
+  status: () => request<AdminStatus>('GET', '/api/me/admin'),
+  keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q })}`),
+  addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: 'KR' }),
+  ban: (id: number, banned: boolean) => request<AdminKeywordRow>('POST', `/api/admin/keywords/${id}/${banned ? 'ban' : 'unban'}`),
+  reports: (status: string, page: number) => request<AdminReportPage>('GET', `/api/admin/reports?${qs({ status, page })}`),
+  setReportStatus: (id: number, status: string, sameTarget: boolean) =>
+    request<{ changed: number }>('PATCH', `/api/admin/reports/${id}`, { status, sameTarget }),
+  settings: () => request<AdminSetting[]>('GET', '/api/admin/settings'),
+  updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),
 };

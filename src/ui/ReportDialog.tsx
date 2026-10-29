@@ -4,7 +4,7 @@ import { api, ApiFailure } from '../api/client';
 const REASONS = ['욕설·비방', '스팸·광고', '개인정보 노출', '음란·폭력', '기타'];
 
 interface Props {
-  target: 'COMMENT' | 'CHAT';
+  target: 'COMMENT' | 'CHAT' | 'PLAYER';
   targetId: number;
   /** 신고하는 글 미리보기(누가 뭐라고 썼는지) */
   preview: string;
@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * 댓글·채팅 신고(13.5). 사유를 하나 고르고 보낸다. 같은 글은 한 번만 신고할 수 있고, 관리자가 검토한다.
+ * 댓글·채팅·플레이어 신고(13.5). 사유를 하나 고르고 보낸다. 같은 글은 한 번만 신고할 수 있고, 관리자가 검토한다.
  * 키워드 창 위에 겹쳐 뜨므로 Esc는 이 창만 닫는다(캡처 단계에서 받아 아래 창으로 넘기지 않는다).
  */
 export function ReportDialog({ target, targetId, preview, onDone, onClose }: Props) {
