@@ -154,11 +154,15 @@ function summary(a: Activity, fmt: ReturnType<typeof formatters>) {
   return `${label} 검색 ${search.toLocaleString()}회, + ${plus.toLocaleString()}회, ${when} 가장 많았어요.`;
 }
 
-/** 축 최댓값을 보기 좋은 수로 올린다(1, 2, 5 × 10ⁿ). */
+/**
+ * 축 최댓값을 보기 좋은 수로 올린다. 눈금은 0, 절반, 최댓값이라 절반도 정수가 되도록 짝수 계열(2, 4, 6, 10 × 10ⁿ)만 쓴다.
+ * 1이나 5를 최댓값으로 쓰면 가운데 눈금이 0.5, 2.5가 되어 반올림하면 "1, 1"이나 "3"처럼 틀린 값이 나온다.
+ */
 function niceMax(v: number) {
   const exp = Math.pow(10, Math.floor(Math.log10(v)));
   const n = v / exp;
-  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * exp;
+  if (exp >= 10 && n <= 1) return exp; // 10, 100 …의 절반은 정수다
+  return (n <= 2 ? 2 : n <= 4 ? 4 : n <= 6 ? 6 : 10) * exp;
 }
 
 /** 단조 3차 보간(Fritsch–Carlson): 부드럽지만 값 사이에서 위아래로 넘치지 않는 곡선. */
