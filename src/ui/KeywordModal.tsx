@@ -69,7 +69,6 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
           <div className="kw-hero-main">
             <span className={`badge state-${card.state}`}>{STATE_BADGE[card.state] ?? card.state}</span>
             <div className="kw-score"><strong>{Number(card.trendValue).toFixed(0)}</strong><span>점</span></div>
-            {card.state !== '활성' && <p className="muted small">🔥활성이 되면 점수가 생겨요</p>}
           </div>
           <div className="kw-hero-side">
             <button className="primary kw-plus" onClick={plus} disabled={busy || card.plusedByMe}
