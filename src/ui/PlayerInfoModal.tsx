@@ -16,7 +16,7 @@ interface Props {
 
 /**
  * 다른 플레이어 정보 팝업(4.11). 아레나에서 다른 원을 누르면 열린다. 게임은 멈추지 않는다.
- * 아이콘·닉네임(관리자 배지)·활성 칭호, 현재 유행도·레벨·댓글 점수, 최근 7일 점수 추이, 보관함 중 점수 상위 3개(이름·상태만).
+ * 아이콘·닉네임(관리자 배지)·활성 칭호, 현재 유행도·레벨·댓글 점수, 최근 7일 점수 추이, 보관함의 🔥활성 키워드 중 무작위 3개(이름·상태만).
  */
 export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword }: Props) {
   const [card, setCard] = useState<PlayerCard | null>(null);
@@ -80,8 +80,8 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword }: Props
         </section>
 
         <section className="player-keywords" aria-label="가진 키워드">
-          <h3>가진 키워드 <span className="muted small">점수 상위 3개</span></h3>
-          {card.topKeywords.length === 0 ? <p className="muted small">지금 가진 키워드가 없어요</p> : (
+          <h3>가진 키워드 <span className="muted small">🔥활성 중 무작위 3개</span></h3>
+          {card.topKeywords.length === 0 ? <p className="muted small">지금 가진 🔥활성 키워드가 없어요</p> : (
             <ul>
               {card.topKeywords.map((k) => (
                 <li key={k.keywordId}>

@@ -189,8 +189,9 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
             break;
           case 'chatError': showToast(m.message); break;
           case 'lost':
-            // 어떤 키워드였는지는 숨기고 몇 점짜리였는지만 보여 준다(4.3)
-            showToast(m.stolen ? `${m.by}에게 ${m.score}점짜리 키워드를 빼앗겼어요` : `${m.by}와 부딪혀 ${m.score}점짜리 키워드를 잃었어요`);
+            // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
+            showToast(m.stolen ? `${m.by}에게 '${m.keyword}' ${m.score}점짜리 키워드를 빼앗겼어요`
+              : `${m.by}와 부딪혀 '${m.keyword}' ${m.score}점짜리 키워드를 잃었어요`);
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;

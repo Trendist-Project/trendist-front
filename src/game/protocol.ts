@@ -60,7 +60,7 @@ export type ServerMessage =
   | ({ type: 'tuning' } & Tuning)
   | { type: 'roster'; players: RosterEntry[] }
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
-  | { type: 'lost'; by: string; score: number; stolen?: boolean }    // 내가 잃음: 어떤 키워드인지는 숨기고 점수만(4.3). stolen이면 상대가 빼앗아 감
+  | { type: 'lost'; by: string; keyword: string; score: number; stolen?: boolean } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로
   | { type: 'hit'; target: string; keyword?: string; score: number; stolen?: 'ADDED' | 'RENEWED'; gained?: number }
