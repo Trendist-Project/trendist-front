@@ -1,4 +1,5 @@
 import type { EntityState, MinimapEntry, Snapshot, Tuning } from './protocol';
+import { drawTurtle, TURTLE_BASE } from './turtle';
 
 interface Interp { prev: EntityState; cur: EntityState; at: number }
 
@@ -377,17 +378,14 @@ export class Arena {
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.45)';
     ctx.shadowBlur = 8 / this.zoom;
-    ctx.fillStyle = '#3fb68b'; // 성장 캐릭터(거북이)의 정해진 바탕색. 그림은 다음 단계
+    ctx.fillStyle = TURTLE_BASE; // 성장 캐릭터(거북이)의 정해진 바탕색
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+    // 레벨이 오를수록 거북이 부위가 하나씩 생기고 선명해진다(4.9). 테두리를 그 위에 그려 가장자리를 깔끔하게 덮는다
+    drawTurtle(ctx, e.x, e.y, e.r, lvl);
     ctx.strokeStyle = '#11372a';
     ctx.lineWidth = Math.max(2, e.r * 0.08);
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke();
-    // 레벨이 오를수록 얼굴이 선명해진다(임시 표현: 눈의 진하기)
-    if (lvl >= 2) {
-      ctx.fillStyle = `rgba(10,30,20,${0.15 + lvl * 0.08})`;
-      for (const sx of [-0.3, 0.3]) { ctx.beginPath(); ctx.arc(e.x + e.r * sx, e.y - e.r * 0.15, e.r * 0.1, 0, Math.PI * 2); ctx.fill(); }
-    }
     if (e.me) {
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = Math.max(2, 3 / this.zoom);

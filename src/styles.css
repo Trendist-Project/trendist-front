@@ -314,3 +314,9 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .report-reasons label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .report-reasons input { width: auto; accent-color: #ff7a7a; }
 button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff; }
+
+/* 가이드: 레벨별 성장 아이콘(4.9) */
+.growth-icons { margin: 4px 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #1a2230; }
+.growth-icons ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 6px; }
+.growth-icons li { display: grid; justify-items: center; gap: 4px; font-size: 0.78rem; color: var(--muted); }
+.growth-icons canvas { display: block; }
