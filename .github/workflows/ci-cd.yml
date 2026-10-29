@@ -1,4 +1,4 @@
-name: Trendist Front Symlink Deploy
+name: Trendist Front Deploy
 
 on:
   push:
