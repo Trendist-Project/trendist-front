@@ -4,7 +4,7 @@
  * scope는 openid만 요청한다(이름·이메일은 받지 않는다). 돌아오면 public/oauth/google-callback.html이 ID 토큰을 탭 저장소에 두고 / 로 보낸다.
  */
 const CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)
-  ?? '241731311282-45is2ai9skpf33gmgljlv423r1f2j2vt.apps.googleusercontent.com';
+  ?? '754902354311-cmqprte41plivrf720bonpsdo6eh2m8i.apps.googleusercontent.com';
 const STATE_KEY = 'trendist.oauth.state';
 const NONCE_KEY = 'trendist.oauth.nonce';
 const RESULT_KEY = 'trendist.oauth.result';

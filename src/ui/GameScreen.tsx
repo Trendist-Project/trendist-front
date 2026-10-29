@@ -95,6 +95,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
   const [infoBot, setInfoBot] = useState<{ nickname: string; level: number; score: number } | null>(null);
   // 정보 보기 모드(모바일): 켜져 있으면 다음 탭은 이동이 아니라 그 원의 정보를 연다
   const [inspect, setInspect] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false); // 모바일 ☰ 메뉴
   const inspectRef = useRef(false);
   inspectRef.current = inspect;
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
@@ -188,6 +189,9 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     conn.start();
     // 서버 왕복 시간을 2초마다 잰다(내 원 보정 허용 오차에 쓴다)
     const pingTimer = window.setInterval(() => conn.send({ type: 'ping', t: performance.now() }), 2000);
+    // 페이지를 떠날 때(구글 로그인으로 이동, 새로고침, 탭 닫기) 서버에 알려 바로 방에서 빠진다. 닫힘 신호가 늦거나 안 와도 유령으로 남지 않게
+    const bye = () => conn.send({ type: 'bye' });
+    window.addEventListener('pagehide', bye);
 
     // 방향키·WASD 입력. 입력창에 쓰는 중이면 무시한다.
     const pressed = new Set<string>();
@@ -241,6 +245,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     const holdTimer = window.setInterval(followHold, CLICK_INTERVAL_MS);
     const pointerDown = (e: PointerEvent) => {
       if (e.button !== 0 || !ready) return; // 왼쪽 버튼(터치·펜도 0)
+      setMenuOpen(false); // 아레나를 누르면 열린 메뉴는 닫는다
       if (inspectRef.current) {
         // 정보 보기 모드: 이동하지 않고, 누른 원의 정보를 연다. 원이 아닌 곳을 누르면 모드만 끈다
         const hit = arena.entityAt(e.clientX, e.clientY);
@@ -328,6 +333,8 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
       if (pending !== null) clearTimeout(pending);
       if (movePending !== null) clearTimeout(movePending);
       clearInterval(pingTimer);
+      window.removeEventListener('pagehide', bye);
+      bye(); // 로그아웃 등으로 게임 화면을 나갈 때도
       conn.stop();
       arena.stop();
     };
@@ -366,7 +373,11 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
         <canvas ref={canvasRef} className="arena"
                 aria-label="아레나. 방향키나 WASD로 이동하고 빈 바닥을 클릭하면 그곳으로 이동해요" />
         <div className="hud">
-          <span>현재 접속 {online}명{bots > 0 && <span className="muted"> · 봇 {bots}</span>}</span>
+          {/* 모바일은 짧게(👥 3 · 🤖 7), PC는 글자로 */}
+          <span className="hud-online" aria-label={`현재 접속 ${online}명${bots > 0 ? `, 봇 ${bots}` : ''}`}>
+            <span className="hud-long">현재 접속 {online}명</span><span className="hud-short">👥 {online}</span>
+            {bots > 0 && <span className="muted"><span className="hud-long"> · 봇 {bots}</span><span className="hud-short"> · 🤖 {bots}</span></span>}
+          </span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}
         </div>
         <div className="hud-bottom">
@@ -404,7 +415,36 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
                     aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
+            {/* 모바일: 위 버튼들은 숨기고(🔍만 남김) 이 메뉴에 이름과 함께 모은다 */}
+            <button className="menu-toggle" aria-label="메뉴" aria-expanded={menuOpen} aria-controls="mobile-menu"
+                    onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}</button>
           </div>
+          {menuOpen && (
+            <nav id="mobile-menu" className="mobile-menu" aria-label="메뉴">
+              {([
+                ['👤', '내 정보', () => setPanel('profile')],
+                ['📢', '공지사항', () => setPanel('notice')],
+                ['📖', '가이드·FAQ', () => setPanel('guide')],
+              ] as const).map(([icon, label, act]) => (
+                <button key={label} onClick={() => { setMenuOpen(false); act(); }}><span aria-hidden="true">{icon}</span>{label}</button>
+              ))}
+              <div className="mobile-menu-sep" />
+              {([
+                ['🗺', '미니맵', showMinimap, () => setShowMinimap((v) => !v)],
+                ['🏆', '리더보드', showLeaderboard, () => setShowLeaderboard((v) => !v)],
+                ['💬', '채팅', chatView !== 'off', () => setChatView((v) => (v === 'off' ? 'open' : 'off'))],
+                ['❔', '조작 설명', showHelp, () => setShowHelp((v) => !v)],
+              ] as const).map(([icon, label, on, act]) => (
+                <button key={label} role="menuitemcheckbox" aria-checked={on} onClick={() => { setMenuOpen(false); act(); }}>
+                  <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? '켜짐' : '꺼짐'}</span>
+                </button>
+              ))}
+              <div className="mobile-menu-sep" />
+              {guest
+                ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
+                : <button onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>로그아웃</button>}
+            </nav>
+          )}
           {showLeaderboard && <Leaderboard myPlayerId={player.id} />}
           {showHelp && (
             <section id="controls-help" className="help-card" aria-label="조작 설명">

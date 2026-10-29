@@ -397,3 +397,28 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 /* 시작과 구글 버튼 사이 "또는" */
 .or-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; color: var(--muted); font-size: 0.8rem; }
 .or-divider::before, .or-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
+
+/* ---------------------------------------------------------------- 상단 정리: 접속 인원 표기와 모바일 ☰ 메뉴 */
+.hud-short { display: none; }
+.menu-toggle, .mobile-menu { display: none; }
+@media (max-width: 760px) {
+  .hud-long { display: none; }
+  .hud-short { display: inline; }
+  .hud { flex-direction: row; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 10px; }
+  /* 오른쪽 위에는 🔍(정보 보기)와 ☰(메뉴)만. 나머지는 메뉴 안에 이름과 함께 */
+  .arena-tools { max-width: none; }
+  .arena-tools .tool-row > :not(.inspect-toggle):not(.menu-toggle) { display: none; }
+  .arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
+  .arena-tools .tool-row .inspect-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.05rem; }
+  .arena-tools .tool-row { gap: 6px; }
+  .mobile-menu { display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
+    border-radius: 14px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+  .mobile-menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; border: 0; border-radius: 10px;
+    background: transparent; padding: 0 12px; font-size: 0.95rem; text-align: left; }
+  .mobile-menu button:active { background: rgba(255,255,255,0.06); }
+  .mobile-menu button > span[aria-hidden] { width: 22px; text-align: center; }
+  .menu-state { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
+  .menu-state.on { color: var(--accent); }
+  .mobile-menu-sep { height: 1px; background: var(--line); margin: 4px 6px; }
+  .menu-login { color: #f2b84b; }
+}
