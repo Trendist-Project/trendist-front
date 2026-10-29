@@ -34,10 +34,8 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .tagline { font-size: 1.15rem; margin: 0 0 6px; }
 .steps { list-style: none; padding: 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
 .steps li { background: #1d2635; padding: 6px 10px; border-radius: 999px; font-size: 0.9rem; }
-.main-howto { text-align: left; background: #151d2a; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 18px; }
-.main-howto h2 { font-size: 0.9rem; margin: 0 0 6px; color: #9fb3c8; }
-.main-howto h2 + ul + h2 { margin-top: 10px; }
-.main-howto ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 5px; font-size: 0.85rem; line-height: 1.45; }
+.main-howto { list-style: none; text-align: left; background: #151d2a; border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 14px; margin: 0 0 18px; display: grid; gap: 4px; font-size: 0.85rem; line-height: 1.4; }
 @media (max-width: 760px) { .main-card { padding: 22px 18px; } .main-howto { padding: 10px 12px; } }
 .main-bg { position: absolute; inset: 0; }
 .bubble { position: absolute; border-radius: 50%; background: rgba(63, 182, 139, 0.18); border: 2px solid rgba(63, 182, 139, 0.35); animation: drift1 8s ease-in-out infinite; will-change: transform; }

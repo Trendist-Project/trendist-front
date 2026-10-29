@@ -30,20 +30,12 @@ export function MainScreen({ onStart, error }: Props) {
           <li>➕ 먼저 추가하기</li>
           <li>⭕ 원이 커진다</li>
         </ol>
-        <section className="main-howto" aria-label="조작과 규칙">
-          <h2>이렇게 움직여요</h2>
-          <ul>
-            <li>📱 <strong>모바일</strong> 누른 자리에 생기는 <strong>조이스틱</strong>으로 움직여요. 메뉴의 [이동 방식]에서 누른 곳으로 가는 <strong>터치 이동</strong>으로 바꿀 수 있어요.</li>
-            <li>🖱 <strong>PC</strong> 클릭한 곳으로 가요. 방향키·WASD도 돼요.</li>
-          </ul>
-          <h2>규칙은 간단해요</h2>
-          <ul>
-            <li>⭕ 키워드를 추가할수록 원이 커지고, <strong>부딪히면 큰 원이 작은 원을 튕겨내요</strong>.</li>
-            <li>💥 부딪혔을 때 유행도가 낮은 쪽이 <strong>키워드 하나를 잃어요</strong>. 이긴 쪽은 상대가 잃은 키워드를 알 수 있어요.</li>
-            <li>🛡 키워드를 잃으면 <strong>3초 동안 무적</strong>이에요.</li>
-            <li>🟦 <strong>세이프존</strong>(가운데 파란 칸, 곳곳에 5분씩 생기는 연두색 칸) 안에서는 부딪히지 않아요. 처음 오면 가운데 세이프존에서 시작해요.</li>
-          </ul>
-        </section>
+        <ul className="main-howto" aria-label="조작과 규칙">
+          <li>🕹 모바일은 조이스틱, PC는 클릭·방향키로 이동</li>
+          <li>⭕ 큰 원이 작은 원을 튕겨내요</li>
+          <li>💥 지면 키워드 1개를 잃고, 이기면 그 키워드를 봐요</li>
+          <li>🛡 잃으면 3초 무적 · 세이프존 안은 안전</li>
+        </ul>
         <button className="primary big" onClick={onStart} autoFocus>시작</button>
         <div className="or-divider" aria-hidden="true"><span>또는</span></div>
         <GoogleButton />
