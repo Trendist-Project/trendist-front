@@ -41,6 +41,16 @@ function saveLeaderboardPref(visible: boolean) {
   try { localStorage.setItem(LEADERBOARD_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
 }
 
+/** 채팅 켜짐·접힘 여부도 이 브라우저에만 기억한다. 기본은 켜짐·펼침. */
+const CHAT_KEY = 'trendist.chat';
+type ChatView = 'open' | 'collapsed' | 'off';
+function loadChatView(): ChatView {
+  try { const v = localStorage.getItem(CHAT_KEY); return v === 'collapsed' || v === 'off' ? v : 'open'; } catch { return 'open'; }
+}
+function saveChatView(v: ChatView) {
+  try { localStorage.setItem(CHAT_KEY, v); } catch { /* 무시 */ }
+}
+
 /** 조작 설명은 처음 들어오면 펼쳐 두고, 접으면 이 브라우저에 기억해서 다음부터는 접힌 채로 시작한다. */
 const HELP_KEY = 'trendist.help';
 function loadHelpPref() {
@@ -67,6 +77,9 @@ export function GameScreen({ initialPlayer }: Props) {
   const [openKeyword, setOpenKeyword] = useState<number | null>(null);
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
   const [chatLines, setChatLines] = useState<ChatLine[]>([]);
+  const [chatView, setChatView] = useState<ChatView>(loadChatView);
+  const chatOnRef = useRef(chatView !== 'off');
+  chatOnRef.current = chatView !== 'off';
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -197,7 +210,7 @@ export function GameScreen({ initialPlayer }: Props) {
     const down = (e: KeyboardEvent) => {
       if (typing(e)) return;
       // Enter: 채팅 입력창으로(입력창에서 Esc를 누르면 다시 조작으로)
-      if (e.key === 'Enter' && !e.isComposing) {
+      if (e.key === 'Enter' && !e.isComposing && chatOnRef.current) {
         e.preventDefault();
         releaseAll();
         chatInputRef.current?.focus();
@@ -248,6 +261,10 @@ export function GameScreen({ initialPlayer }: Props) {
   }, [showMinimap]);
 
   useEffect(() => { saveLeaderboardPref(showLeaderboard); }, [showLeaderboard]);
+  useEffect(() => {
+    arenaRef.current?.setBubblesVisible(chatView !== 'off');
+    saveChatView(chatView);
+  }, [chatView]);
   useEffect(() => { saveHelpPref(showHelp); }, [showHelp]);
   const closePanel = useCallback(() => setPanel(null), []);
 
@@ -289,6 +306,8 @@ export function GameScreen({ initialPlayer }: Props) {
                     title="미니맵 켜기/끄기 (M)">🗺 미니맵 <kbd>M</kbd></button>
             <button className="leaderboard-toggle" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
                     title="리더보드 켜기/끄기 (L)">🏆 리더보드 <kbd>L</kbd></button>
+            <button className="chat-toggle" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
+                    title="채팅 켜기/끄기">💬 채팅</button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
                     aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
@@ -303,7 +322,7 @@ export function GameScreen({ initialPlayer }: Props) {
                 <li><strong>검색 → +</strong> 뜨는 키워드를 찾아 +하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
-                <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요.</li>
+                <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, [💬 채팅]으로 끌 수 있어요.</li>
               </ul>
               <div className="help-actions">
                 <button onClick={() => setPanel('guide')}>가이드 더 보기</button>
@@ -312,7 +331,11 @@ export function GameScreen({ initialPlayer }: Props) {
             </section>
           )}
         </div>
-        <ChatPanel ref={chatInputRef} lines={chatLines} disabled={status !== 'open'} onSend={sendChat} onKeyword={searchKeyword} onNotice={showToast} />
+        {chatView !== 'off' && (
+          <ChatPanel ref={chatInputRef} lines={chatLines} disabled={status !== 'open'} onSend={sendChat} onKeyword={searchKeyword}
+                     onNotice={showToast} collapsed={chatView === 'collapsed'}
+                     onToggleCollapsed={() => setChatView((v) => (v === 'collapsed' ? 'open' : 'collapsed'))} />
+        )}
         {toast && <div className="toast" role="status">{toast}</div>}
         {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
       </div>

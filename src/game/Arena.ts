@@ -81,6 +81,7 @@ export class Arena {
   private gulps = new Map<number, number>(); // 엔티티 번호 → 구슬을 먹은 시각
   private minimap: MinimapEntry[] = [];
   private minimapVisible = true;
+  private bubblesVisible = true;
   private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -149,9 +150,11 @@ export class Arena {
   floatText(text: string) { this.floatTexts.push({ text, at: performance.now() }); }
 
   /** 채팅 말풍선을 그 엔티티 위에 띄운다. 같은 사람이 또 말하면 새 말로 바꾼다. */
-  showBubble(e: number, text: string) { this.bubbles.set(e, { text, at: performance.now() }); }
+  showBubble(e: number, text: string) { if (this.bubblesVisible) this.bubbles.set(e, { text, at: performance.now() }); }
   setMinimap(entries: MinimapEntry[]) { this.minimap = entries; }
   setMinimapVisible(visible: boolean) { this.minimapVisible = visible; }
+  /** 채팅을 끄면 말풍선도 그리지 않는다. */
+  setBubblesVisible(visible: boolean) { this.bubblesVisible = visible; if (!visible) this.bubbles.clear(); }
   /** ping 왕복 시간(ms)을 반영한다. 튀는 값에 흔들리지 않게 조금씩 따라간다. */
   updateRtt(ms: number) {
     if (!Number.isFinite(ms) || ms < 0 || ms > 5000) return;

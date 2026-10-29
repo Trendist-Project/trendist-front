@@ -133,7 +133,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .rich-text { line-height: 1.6; }
 .rich-text p, .rich-text ul, .rich-text ol { margin: 8px 0 0; }
 .rich-text ul, .rich-text ol { padding-left: 20px; }
-.minimap-toggle[aria-pressed="false"], .leaderboard-toggle[aria-pressed="false"] { color: var(--muted); }
+.minimap-toggle[aria-pressed="false"], .leaderboard-toggle[aria-pressed="false"], .chat-toggle[aria-pressed="false"] { color: var(--muted); }
 kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
 .toast { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: #2b1b1b; border: 1px solid #ff7a7a; padding: 10px 16px; border-radius: 10px; }
 .side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
@@ -287,10 +287,21 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .chat-log li.mine strong { color: var(--accent); }
 .chat-tag { border: 0; background: transparent; padding: 0; color: #7cc4ff; font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .chat-input { border-top: 1px solid var(--line); }
+/* 접기 버튼: 오른쪽 위 모서리. 펼쳤을 때는 로그 위에 겹친다 */
+.chat-fold { position: absolute; top: 4px; right: 4px; z-index: 1; width: 24px; height: 22px; padding: 0; border-radius: 6px;
+  font-size: 0.75rem; line-height: 1; background: rgba(11,15,23,0.8); color: var(--muted); }
+.chat-fold:hover, .chat-fold:focus-visible { color: var(--text); }
+.chat:not(.collapsed) .chat-log { padding-right: 32px; }
+/* 접힘: 마지막 한 줄 + 입력창 */
+.chat.collapsed { height: auto; }
+.chat.collapsed .chat-log { overflow: hidden; padding-right: 34px; }
+.chat.collapsed .chat-log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 0; }
+.chat.collapsed .chat-report { display: none; }
 .chat-input input { border: 0; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 0.85rem; }
 .chat-input input:focus { outline: none; background: rgba(255,255,255,0.04); }
 @media (max-width: 760px) {
   .chat { height: 150px; width: min(300px, calc(100% - 24px)); }
+  .chat.collapsed { height: auto; }
   .kw-stats { grid-template-columns: 1fr 1fr 1fr; }
   .kw-score strong { font-size: 2rem; }
 }
