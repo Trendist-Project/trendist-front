@@ -94,7 +94,7 @@ export const api = {
 
 // ---------------------------------------------------------------- 관리자(13): /api/admin/**는 ROLE_ADMIN만
 
-export interface AdminStatus { userId: number; admin: boolean }
+export interface AdminStatus { admin: boolean }
 export interface AdminKeywordRow {
   id: number; text: string; state: string; source: string; trendValue: number; holderCount: number;
   totalPlusCount: number; searchCount: number; externalUntil: string | null; activatedAt: string | null;

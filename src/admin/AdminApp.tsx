@@ -7,7 +7,7 @@ import { STATE_BADGE } from '../ui/keywordFormat';
 
 /**
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
- * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받으므로 화면은 권한이 없을 때 안내만 한다.
+ * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
 type Tab = 'keywords' | 'add' | 'reports' | 'settings';
 const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['settings', '설정']];
@@ -27,20 +27,12 @@ export function AdminApp() {
   }, []);
 
   if (status === null) return <main className="admin"><p className="muted">확인하는 중…</p></main>;
-  if (status === 'nologin') {
+  // 로그인하지 않았거나 관리자가 아니면 이유나 방법을 알려 주지 않고 접근할 수 없다고만 보여 준다
+  if (status === 'nologin' || !status.admin) {
     return (
-      <main className="admin">
-        <h1>Trendist 관리자</h1>
-        <p>로그인이 필요해요. <a href="/">게임 화면</a>에서 Google로 로그인한 뒤 이 페이지를 다시 열어 주세요.</p>
-      </main>
-    );
-  }
-  if (!status.admin) {
-    return (
-      <main className="admin">
-        <h1>Trendist 관리자</h1>
-        <p>관리자 권한이 없는 계정이에요. 내 계정 번호: <strong>{status.userId}</strong></p>
-        <p className="muted small">운영자가 DB에서 <code>UPDATE users SET role = 'ADMIN' WHERE id = {status.userId};</code> 를 실행하면 30초 안에 들어올 수 있어요.</p>
+      <main className="admin admin-denied">
+        <h1>접근할 수 없는 페이지예요</h1>
+        <p><a href="/">게임으로 돌아가기</a></p>
       </main>
     );
   }

@@ -44,3 +44,4 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 .setting-edit { display: flex; gap: 6px; }
 .setting-edit input { width: 110px; }
 .admin .ok { color: #9fe0c3; }
+.admin-denied { min-height: 60vh; place-content: center; text-align: center; }
