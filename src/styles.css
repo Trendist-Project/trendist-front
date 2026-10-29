@@ -286,18 +286,17 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 @media (hover: none) { .chat-report { opacity: 0.7; } }
 .chat-log li.mine strong { color: var(--accent); }
 .chat-tag { border: 0; background: transparent; padding: 0; color: #7cc4ff; font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.chat-input { border-top: 1px solid var(--line); }
-/* 접기 버튼: 오른쪽 위 모서리. 펼쳤을 때는 로그 위에 겹친다 */
-.chat-fold { position: absolute; top: 4px; right: 4px; z-index: 1; width: 24px; height: 22px; padding: 0; border-radius: 6px;
-  font-size: 0.75rem; line-height: 1; background: rgba(11,15,23,0.8); color: var(--muted); }
-.chat-fold:hover, .chat-fold:focus-visible { color: var(--text); }
-.chat:not(.collapsed) .chat-log { padding-right: 32px; }
+.chat-input { border-top: 1px solid var(--line); display: flex; align-items: center; }
+/* 접기 버튼: 입력 줄 오른쪽 끝(메시지 목록·스크롤 막대와 겹치지 않게) */
+.chat-fold { flex: none; width: 28px; height: 24px; margin-right: 6px; padding: 0; border-radius: 6px;
+  font-size: 0.75rem; line-height: 1; background: transparent; color: var(--muted); }
+.chat-fold:hover, .chat-fold:focus-visible { color: var(--text); background: rgba(255,255,255,0.06); }
 /* 접힘: 마지막 한 줄 + 입력창 */
 .chat.collapsed { height: auto; }
-.chat.collapsed .chat-log { overflow: hidden; padding-right: 34px; }
+.chat.collapsed .chat-log { overflow: hidden; }
 .chat.collapsed .chat-log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 0; }
 .chat.collapsed .chat-report { display: none; }
-.chat-input input { border: 0; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 0.85rem; }
+.chat-input input { flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 0.85rem; }
 .chat-input input:focus { outline: none; background: rgba(255,255,255,0.04); }
 @media (max-width: 760px) {
   .chat { height: 150px; width: min(300px, calc(100% - 24px)); }

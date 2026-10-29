@@ -45,10 +45,6 @@ export const ChatPanel = forwardRef<HTMLInputElement, Props>(function ChatPanel(
 
   return (
     <section className={collapsed ? 'chat collapsed' : 'chat'} aria-label="채팅">
-      <button className="chat-fold" onClick={onToggleCollapsed} aria-expanded={!collapsed}
-              title={collapsed ? '채팅 펼치기' : '채팅 접기'} aria-label={collapsed ? '채팅 펼치기' : '채팅 접기'}>
-        {collapsed ? '▴' : '▾'}
-      </button>
       <ol className="chat-log" ref={logRef} aria-live="polite">
         {shown.length === 0 && <li className="muted small">{collapsed ? '아직 채팅이 없어요' : '첫 메시지를 남겨 보세요. #키워드 를 쓰면 누르는 사람이 바로 검색해요'}</li>}
         {shown.map((l) => (
@@ -67,6 +63,11 @@ export const ChatPanel = forwardRef<HTMLInputElement, Props>(function ChatPanel(
         <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX} disabled={disabled}
                placeholder={disabled ? '연결 중…' : 'Enter로 채팅 (#키워드 가능)'} aria-label="채팅 입력" autoComplete="off"
                onKeyDown={(e) => { if (e.key === 'Escape') e.currentTarget.blur(); }} />
+        {/* 접기 버튼은 입력 줄 오른쪽 끝에 둔다. 메시지 목록 위에 겹치면 스크롤 막대를 가린다 */}
+        <button type="button" className="chat-fold" onClick={onToggleCollapsed} aria-expanded={!collapsed}
+                title={collapsed ? '채팅 펼치기' : '채팅 접기'} aria-label={collapsed ? '채팅 펼치기' : '채팅 접기'}>
+          {collapsed ? '▴' : '▾'}
+        </button>
       </form>
       {reporting && (
         <ReportDialog target="CHAT" targetId={reporting.id} preview={`${reporting.nickname}: ${reporting.text}`}
