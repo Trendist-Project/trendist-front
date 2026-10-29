@@ -5,7 +5,7 @@ import { ago } from './keywordFormat';
 import { ReportDialog } from './ReportDialog';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
-const MIN = 5, MAX = 200;
+const MAX = 200; // 최소 글자 수 제한은 없다. 빈 댓글만 막는다
 
 interface Props { keywordId: number; onError(message: string): void }
 
@@ -132,9 +132,9 @@ export function Comments({ keywordId, onError }: Props) {
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={MAX} rows={2}
                   placeholder="이 키워드가 뭔지, 왜 뜨는지 알려 주세요" aria-label="댓글 쓰기" />
         <div className="comment-actions">
-          <span className={`muted small${length > 0 && length < MIN ? ' warn' : ''}`}>{length}/{MAX}</span>
+          <span className="muted small">{length}/{MAX}</span>
           <span className="spacer" />
-          <button className="primary" disabled={busy || length < MIN}>등록</button>
+          <button className="primary" disabled={busy || length === 0}>등록</button>
         </div>
       </form>
 
