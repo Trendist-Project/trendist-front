@@ -65,6 +65,7 @@ const VIEW_MIN_SCALE = 0.6;
 // 내 원의 지름이 화면 짧은 변에서 차지하는 비율 상한. 원이 커져도 주변이 보이고 움직이기 편하게 한다
 const ME_MAX_SHARE = 0.25;
 const MINIMAP_MIN = 110;
+const MINIMAP_INTERVAL = 1000; // 서버 미니맵 주기(1초)
 const MINIMAP_MAX = 180;
 const MINIMAP_MARGIN = 12;
 
@@ -108,6 +109,9 @@ export class Arena {
   private eatenOrbs: EatenOrb[] = [];
   private gulps = new Map<number, number>(); // 엔티티 번호 → 구슬을 먹은 시각
   private minimap: MinimapEntry[] = [];
+  /** 직전 미니맵 위치와 받은 시각. 스냅샷에 없는 원은 두 미니맵 사이(1초)를 이어 그린다 */
+  private minimapPrev = new Map<number, MinimapEntry>();
+  private minimapAt = 0;
   private minimapVisible = true;
   private bubblesVisible = true;
   private centerZone = 0;
@@ -200,7 +204,19 @@ export class Arena {
 
   /** 채팅 말풍선을 그 엔티티 위에 띄운다. 같은 사람이 또 말하면 새 말로 바꾼다. */
   showBubble(e: number, text: string) { if (this.bubblesVisible) this.bubbles.set(e, { text, at: performance.now() }); }
-  setMinimap(entries: MinimapEntry[]) { this.minimap = entries; }
+  setMinimap(entries: MinimapEntry[]) {
+    // 지금 그려지고 있던 위치를 직전 값으로 남겨 두어, 새 값으로 1초에 걸쳐 옮겨 가게 한다(순간 이동하지 않게)
+    const now = performance.now();
+    this.minimapPrev = new Map(this.minimap.map((m) => [m.e, this.minimapLerp(m, now)]));
+    this.minimap = entries;
+    this.minimapAt = now;
+  }
+  private minimapLerp(m: MinimapEntry, now: number): MinimapEntry {
+    const p = this.minimapPrev.get(m.e);
+    if (!p) return m;
+    const t = Math.min(1, (now - this.minimapAt) / MINIMAP_INTERVAL);
+    return { ...m, x: p.x + (m.x - p.x) * t, y: p.y + (m.y - p.y) * t, r: p.r + (m.r - p.r) * t };
+  }
   setMinimapVisible(visible: boolean) { this.minimapVisible = visible; }
   /** 채팅을 끄면 말풍선도 그리지 않는다. */
   setBubblesVisible(visible: boolean) { this.bubblesVisible = visible; if (!visible) this.bubbles.clear(); }
@@ -467,10 +483,14 @@ export class Arena {
       ctx.beginPath(); ctx.arc(toX(o.x), toY(o.y), 1.6, 0, Math.PI * 2); ctx.fill();
     }
     ctx.fillStyle = 'rgba(200,215,235,0.75)';
+    const now = performance.now();
     for (const m of this.minimap) {
       if (m.e === this.me.e) continue; // 나는 예측 위치로 따로 그린다
+      // 큰 화면과 같은 스냅샷(초당 10번, 보간)으로 그려서 부드럽게 움직인다. 스냅샷에 없는 원만 미니맵 값을 이어 그린다
+      const i = this.entities.get(m.e);
+      const p = i ? this.current(i, now) : this.minimapLerp(m, now);
       ctx.fillStyle = this.names.get(m.e)?.bot ? 'rgba(217,83,79,0.85)' : 'rgba(200,215,235,0.75)'; // 봇은 빨간 점
-      ctx.beginPath(); ctx.arc(toX(m.x), toY(m.y), Math.max(2, m.r * s), 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(p.x), toY(p.y), Math.max(2, p.r * s), 0, Math.PI * 2); ctx.fill();
     }
     ctx.fillStyle = '#3fb68b';
     ctx.strokeStyle = '#ffffff';
