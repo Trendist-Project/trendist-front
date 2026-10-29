@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { KeywordCard, MyKeyword, PlayerSummary } from '../api/types';
+import { remaining, STATE_BADGE } from './keywordFormat';
 
 type Tab = 'search' | 'mine';
 
@@ -8,9 +9,11 @@ interface Props {
   onPlused(gained: number, player: PlayerSummary): void;
   onError(message: string): void;
   refreshKey: number;
+  /** 키워드 이름을 누르면 상세 창(4.12)을 연다. */
+  onOpenKeyword(keywordId: number): void;
+  /** 채팅의 #키워드를 누르면 검색창에 넣고 검색한다(4.13). */
+  searchRequest: { text: string; key: number } | null;
 }
-
-const STATE_BADGE: Record<string, string> = { 활성: '🔥활성', 비활성: '💤비활성', 금지: '⛔금지' };
 
 /** 보관함 정렬 기준. 기본은 최신순(보관함에 넣은 시각). */
 type SortKey = 'recent' | 'text' | 'state' | 'trend' | 'remaining';
@@ -45,14 +48,8 @@ function sortMine(list: MyKeyword[], key: SortKey, dir: SortDir) {
   return [...list].sort((a, b) => sign * compare(a, b) || time(b.plusedAt) - time(a.plusedAt));
 }
 
-function remaining(iso: string) {
-  const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return '곧 삭제';
-  const h = Math.floor(ms / 3_600_000), m = Math.floor((ms % 3_600_000) / 60_000);
-  return h > 0 ? `${h}시간 ${m}분 남음` : `${m}분 남음`;
-}
 
-export function SidePanel({ onPlused, onError, refreshKey }: Props) {
+export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, searchRequest }: Props) {
   const [tab, setTab] = useState<Tab>('search');
   const [q, setQ] = useState('');
   const [card, setCard] = useState<KeywordCard | null>(null);
@@ -68,16 +65,29 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
 
   async function loadMine() { try { setMine(await api.myKeywords()); } catch { /* 다음에 다시 */ } }
 
+  // 채팅의 #키워드: 검색 탭으로 옮겨 그 단어로 검색한다
+  useEffect(() => {
+    if (!searchRequest) return;
+    setTab('search');
+    setQ(searchRequest.text);
+    runSearch(searchRequest.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchRequest]);
+
   useEffect(() => {
     if (tab === 'mine') loadMine();
   }, [tab, refreshKey]);
 
   async function search(e: FormEvent) {
     e.preventDefault();
-    if (!q.trim()) return;
+    await runSearch(q);
+  }
+
+  async function runSearch(text: string) {
+    if (!text.trim()) return;
     setBusy(true); setNotice(null); setCard(null);
     try {
-      const r = await api.search(q);
+      const r = await api.search(text);
       if (r.status === 'BANNED') setNotice('검색할 수 없는 키워드예요');
       else setCard(r.keyword);
     } catch (err) {
@@ -120,7 +130,9 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
           {card && (
             <div className="card">
               <div className="card-head">
-                <strong className="kw">{card.text}</strong>
+                {card.id !== null
+                  ? <button className="kw kw-link" onClick={() => onOpenKeyword(card.id!)} title="키워드 자세히 보기">{card.text} <span aria-hidden="true">›</span></button>
+                  : <strong className="kw">{card.text}</strong>}
                 <span className="badge">{STATE_BADGE[card.state] ?? card.state}</span>
               </div>
               <p>{Number(card.trendValue).toFixed(0)}점 · 👥 {card.holderCount.toLocaleString()}명</p>
@@ -159,12 +171,15 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
             </div>
             <ul className="list">
               {sortedMine.map((k) => (
-                <li key={k.keywordId}>
-                  <div><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></div>
-                  <div className="muted small">
-                    {Number(k.trendValue).toFixed(0)}점 ·{' '}
-                    <span className={new Date(k.expiresAt).getTime() - Date.now() < 3_600_000 ? 'warn' : ''}>{remaining(k.expiresAt)}</span>
-                  </div>
+                <li key={k.keywordId} className="mine-item">
+                  <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={`${k.text} 자세히 보기`}>
+                    <div><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></div>
+                    <div className="muted small">
+                      {Number(k.trendValue).toFixed(0)}점 ·{' '}
+                      <span className={new Date(k.expiresAt).getTime() - Date.now() < 3_600_000 ? 'warn' : ''}>{remaining(k.expiresAt)}</span>
+                    </div>
+                    <span className="mine-chevron" aria-hidden="true">›</span>
+                  </button>
                 </li>
               ))}
             </ul>

@@ -40,6 +40,7 @@ interface Orb { x: number; y: number; born: number; phase: number }
 interface EatenOrb { x: number; y: number; e: number; at: number }
 
 /** 미니맵: 오른쪽 아래, 화면 짧은 변의 24%(110~180px). */
+const BUBBLE_MS = 3000;
 const MINIMAP_MIN = 110;
 const MINIMAP_MAX = 180;
 const MINIMAP_MARGIN = 12;
@@ -72,6 +73,8 @@ export class Arena {
   /** 내 위치 예측이 계산된 시각(ms). 조작이 바뀌는 순간까지 먼저 움직여 두고 바꿔서, 프레임 경계로 반올림되지 않게 한다. */
   private predictedAt = performance.now();
   private floatTexts: { text: string; at: number }[] = [];
+  /** 채팅 말풍선(4.13): 보낸 사람 아이콘 위에 3초 */
+  private bubbles = new Map<number, { text: string; at: number }>();
   private ripples: Ripple[] = [];
   private orbs = new Map<number, Orb>();
   private eatenOrbs: EatenOrb[] = [];
@@ -144,6 +147,9 @@ export class Arena {
     this.gulps.set(e, now);
   }
   floatText(text: string) { this.floatTexts.push({ text, at: performance.now() }); }
+
+  /** 채팅 말풍선을 그 엔티티 위에 띄운다. 같은 사람이 또 말하면 새 말로 바꾼다. */
+  showBubble(e: number, text: string) { this.bubbles.set(e, { text, at: performance.now() }); }
   setMinimap(entries: MinimapEntry[]) { this.minimap = entries; }
   setMinimapVisible(visible: boolean) { this.minimapVisible = visible; }
   /** ping 왕복 시간(ms)을 반영한다. 튀는 값에 흔들리지 않게 조금씩 따라간다. */
@@ -302,6 +308,7 @@ export class Arena {
       this.drawEntity(ctx, e);
     }
     this.drawEatenOrbs(ctx, now);
+    this.drawBubbles(ctx, now);
     ctx.restore();
     this.drawFloatTexts(ctx, w, h, now);
     if (this.minimapVisible && this.me.initialized) this.drawMinimap(ctx, w, h);
@@ -452,6 +459,35 @@ export class Arena {
     return 1 + 0.12 * Math.sin(Math.PI * t);
   }
 
+  /** 채팅 말풍선: 아이콘 바로 위, 화면 기준 일정한 글자 크기. 3초 뒤 사라지고 마지막 0.4초에 옅어진다. */
+  private drawBubbles(ctx: CanvasRenderingContext2D, now: number) {
+    const z = this.zoom;
+    for (const [e, b] of this.bubbles) {
+      const age = now - b.at;
+      if (age > BUBBLE_MS) { this.bubbles.delete(e); continue; }
+      const pos = this.entityPos(e, now);
+      if (!pos) continue;
+      const lines = wrapText(b.text, 18, 3);
+      const fs = 13 / z, lh = fs * 1.35, padX = 9 / z, padY = 6 / z;
+      ctx.font = `500 ${fs}px "Noto Sans KR", system-ui, sans-serif`;
+      const tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      const bw = tw + padX * 2, bh = lines.length * lh + padY * 2;
+      const bx = pos.x - bw / 2, by = pos.y - pos.r - 10 / z - bh;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (BUBBLE_MS - age) / 400, age / 120);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, bh, 8 / z);
+      ctx.moveTo(pos.x - 6 / z, by + bh); ctx.lineTo(pos.x, by + bh + 7 / z); ctx.lineTo(pos.x + 6 / z, by + bh);
+      ctx.fill();
+      ctx.fillStyle = '#0b0f17';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      lines.forEach((l, i) => ctx.fillText(l, pos.x, by + padY + i * lh)); // 채팅은 항상 텍스트로만 그린다
+      ctx.restore();
+    }
+  }
+
   /** 지금 화면에 그려지는 엔티티 위치(나는 예측 위치). */
   private entityPos(e: number, now: number) {
     if (e === this.me.e) return { x: this.view.x, y: this.view.y, r: this.me.r };
@@ -543,4 +579,12 @@ export class Arena {
       ctx.globalAlpha = 1;
     }
   }
+}
+
+/** 말풍선 줄바꿈: 글자 수 기준으로 자르고 maxLines를 넘으면 말줄임표. */
+function wrapText(text: string, perLine: number, maxLines: number) {
+  const chars = [...text], lines: string[] = [];
+  for (let i = 0; i < chars.length && lines.length < maxLines; i += perLine) lines.push(chars.slice(i, i + perLine).join(''));
+  if (chars.length > perLine * maxLines) lines[maxLines - 1] = lines[maxLines - 1].slice(0, -1) + '…';
+  return lines;
 }

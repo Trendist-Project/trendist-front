@@ -1,5 +1,6 @@
 import type {
-  GuideArticle, GuideCategory, Me, MyKeyword, Notice, PlayerSummary, PlusResult, RankingEntry, SearchResult, TokenResponse,
+  Activity, ActivityRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
+  PlusResult, RankingEntry, SearchResult, TokenResponse, VoteResult,
 } from './types';
 
 export class ApiFailure extends Error {
@@ -59,6 +60,16 @@ export const api = {
   search: (q: string) => request<SearchResult>('GET', `/api/keywords/search?q=${encodeURIComponent(q)}`),
   plus: (text: string) => request<PlusResult>('POST', '/api/keywords/plus', { text }),
   myKeywords: () => request<MyKeyword[]>('GET', '/api/me/keywords'),
+  keyword: (id: number) => request<KeywordCard>('GET', `/api/keywords/${id}`),
+  activity: (id: number, range: ActivityRange) => request<Activity>('GET', `/api/keywords/${id}/activity?range=${range}`),
+  topComments: (id: number) => request<CommentItem[]>('GET', `/api/keywords/${id}/comments/top`),
+  comments: (id: number, page: number) => request<CommentPage>('GET', `/api/keywords/${id}/comments?page=${page}&size=20`),
+  writeComment: (id: number, body: string) => request<CommentItem>('POST', `/api/keywords/${id}/comments`, { body }),
+  editComment: (commentId: number, body: string) => request<CommentItem>('PATCH', `/api/comments/${commentId}`, { body }),
+  deleteComment: (commentId: number) => request<void>('DELETE', `/api/comments/${commentId}`),
+  report: (target: 'COMMENT' | 'CHAT', targetId: number, reason: string) =>
+    request<void>('POST', '/api/reports', { target, targetId, reason }),
+  vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
   rankings: () => request<RankingEntry[]>('GET', '/api/rankings?country=KR'),
   notices: () => request<Notice[]>('GET', '/api/notices'),
   guideCategories: () => request<GuideCategory[]>('GET', '/api/guide/categories'),

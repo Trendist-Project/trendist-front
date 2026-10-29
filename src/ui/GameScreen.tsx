@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PlayerSummary } from '../api/types';
 import { Arena } from '../game/Arena';
 import { GameConnection } from '../game/connection';
-import type { OrbResult, ServerMessage } from '../game/protocol';
+import type { ChatMessage, OrbResult, ServerMessage } from '../game/protocol';
+import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
+import { KeywordModal } from './KeywordModal';
 import { Leaderboard } from './Leaderboard';
 import { NoticeModal } from './NoticeModal';
 import { ProfileModal } from './ProfileModal';
@@ -19,6 +21,7 @@ const KEYS: Record<string, [number, number]> = {
 const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 보낸다. 한 프레임(16ms) 안의 변화만 하나로 합친다(4.2)
 const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
 const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
+const CHAT_KEEP = 200;         // 화면에 쌓아 두는 채팅 줄 수
 
 /** 미니맵 켜짐 여부는 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
 const MINIMAP_KEY = 'trendist.minimap';
@@ -61,6 +64,10 @@ export function GameScreen({ initialPlayer }: Props) {
   const [showHelp, setShowHelp] = useState(loadHelpPref);
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
   const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
+  const [openKeyword, setOpenKeyword] = useState<number | null>(null);
+  const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
+  const [chatLines, setChatLines] = useState<ChatLine[]>([]);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -74,6 +81,8 @@ export function GameScreen({ initialPlayer }: Props) {
     // 서버 방에 들어간 뒤(welcome)부터 끊길 때까지만 이동 입력이 서버에 닿는다. 그 밖의 입력은 예측에도 넣지 않는다
     let ready = false;
     let resyncDir = () => {};
+    let myEntity = -1;
+    const toLine = (m: ChatMessage): ChatLine => ({ id: m.id, e: m.e, nickname: m.nickname, text: m.text, at: m.at, mine: m.e === myEntity });
     const conn = new GameConnection({
       onSnapshot: (s) => arena.applySnapshot(s),
       onMinimap: (entries) => arena.setMinimap(entries),
@@ -85,6 +94,7 @@ export function GameScreen({ initialPlayer }: Props) {
         switch (m.type) {
           case 'welcome':
             arena.setMe(m.entityNo, m.x, m.y);
+            myEntity = m.entityNo;
             ready = true;
             resyncDir(); // 다시 연결됐을 때 아직 누르고 있는 방향키가 있으면 서버와 예측에 함께 다시 넣는다
             conn.send({ type: 'ping', t: performance.now() });
@@ -109,6 +119,18 @@ export function GameScreen({ initialPlayer }: Props) {
             }
             break;
           }
+          case 'chat':
+            arena.showBubble(m.e, m.text);
+            setChatLines((lines) => [...lines, toLine(m)].slice(-CHAT_KEEP));
+            break;
+          case 'chatHistory':
+            // 다시 연결되면 최근 채팅이 다시 오므로 번호로 합친다
+            setChatLines((lines) => {
+              const seen = new Set(lines.map((l) => l.id));
+              return [...lines, ...m.messages.filter((x) => !seen.has(x.id)).map(toLine)].sort((a, b) => a.id - b.id).slice(-CHAT_KEEP);
+            });
+            break;
+          case 'chatError': showToast(m.message); break;
           case 'lost':
             showToast(`${m.by}와 부딪혀 '${m.keyword}'을(를) 잃었어요`);
             setRefreshKey((k) => k + 1);
@@ -174,6 +196,13 @@ export function GameScreen({ initialPlayer }: Props) {
     const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     const down = (e: KeyboardEvent) => {
       if (typing(e)) return;
+      // Enter: 채팅 입력창으로(입력창에서 Esc를 누르면 다시 조작으로)
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        releaseAll();
+        chatInputRef.current?.focus();
+        return;
+      }
       // M: 미니맵, L: 리더보드 켜기/끄기. 한글 입력 상태(ㅡ, ㅣ)에서도 되도록 key가 아니라 code로 본다
       if ((e.code === 'KeyM' || e.code === 'KeyL') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
         (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
@@ -226,6 +255,14 @@ export function GameScreen({ initialPlayer }: Props) {
     setPlayer(p);
     if (gained > 0) arenaRef.current?.floatText(`+${gained.toFixed(1)}`);
   }, []);
+  // 키워드 상세 창에서 +하면 보관함도 새로 읽는다
+  const onPlusedInModal = useCallback((gained: number, p: PlayerSummary) => {
+    onPlused(gained, p);
+    setRefreshKey((k) => k + 1);
+  }, [onPlused]);
+  const sendChat = useCallback((text: string) => { connRef.current?.send({ type: 'chat', text }); }, []);
+  const searchKeyword = useCallback((text: string) => setSearchRequest({ text, key: performance.now() }), []);
+  const closeKeyword = useCallback(() => setOpenKeyword(null), []);
 
   return (
     <div className="game">
@@ -266,6 +303,7 @@ export function GameScreen({ initialPlayer }: Props) {
                 <li><strong>검색 → +</strong> 뜨는 키워드를 찾아 +하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
+                <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요.</li>
               </ul>
               <div className="help-actions">
                 <button onClick={() => setPanel('guide')}>가이드 더 보기</button>
@@ -274,10 +312,15 @@ export function GameScreen({ initialPlayer }: Props) {
             </section>
           )}
         </div>
+        <ChatPanel ref={chatInputRef} lines={chatLines} disabled={status !== 'open'} onSend={sendChat} onKeyword={searchKeyword} onNotice={showToast} />
         {toast && <div className="toast" role="status">{toast}</div>}
         {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
       </div>
-      <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast} />
+      <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast}
+                 onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} />
+      {openKeyword !== null && (
+        <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} />
+      )}
       {panel === 'notice' && <NoticeModal onClose={closePanel} />}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
       {panel === 'profile' && <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} />}
