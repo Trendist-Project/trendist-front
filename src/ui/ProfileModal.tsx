@@ -48,7 +48,7 @@ export function ProfileModal({ player, onChanged, onClose }: Props) {
         <div><dt>EXP</dt><dd>{player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</dd></div>
         <div><dt>내 유행도</dt><dd>{Number(player.currentScore).toFixed(1)}</dd></div>
         <div><dt>보유 키워드</dt><dd>{player.holdCount}개</dd></div>
-        <div><dt>누적 +</dt><dd>{player.totalPlusCount.toLocaleString()}회</dd></div>
+        <div><dt>누적 추가</dt><dd>{player.totalPlusCount.toLocaleString()}회</dd></div>
       </dl>
 
       <form className="profile-form" onSubmit={submit}>

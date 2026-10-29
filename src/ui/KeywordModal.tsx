@@ -81,7 +81,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
 
         <dl className="kw-stats">
           <div><dt>가진 사람</dt><dd>👥 {card.holderCount.toLocaleString()}명</dd></div>
-          <div><dt>누적 +</dt><dd>{card.totalPlusCount.toLocaleString()}</dd></div>
+          <div><dt>누적 추가</dt><dd>{card.totalPlusCount.toLocaleString()}</dd></div>
           <div><dt>누적 검색</dt><dd>{card.searchCount.toLocaleString()}</dd></div>
         </dl>
 
