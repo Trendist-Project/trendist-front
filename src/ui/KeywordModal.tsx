@@ -73,8 +73,8 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
           </div>
           <div className="kw-hero-side">
             <button className="primary kw-plus" onClick={plus} disabled={busy || card.plusedByMe}
-                    aria-label={card.plusedByMe ? '이미 보유중이에요' : `${card.text} +하기`}>
-              {card.plusedByMe ? '보유중' : '+ 하기'}
+                    aria-label={card.plusedByMe ? '이미 보유중이에요' : `${card.text} 추가하기`}>
+              {card.plusedByMe ? '보유중' : '추가'}
             </button>
             {card.plusedByMe && card.myExpiresAt && <span className="muted small">{remaining(card.myExpiresAt)}</span>}
           </div>
