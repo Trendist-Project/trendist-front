@@ -29,6 +29,9 @@ const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 �
 const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
 const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
 const CHAT_KEEP = 200;         // 화면에 쌓아 두는 채팅 줄 수
+const JOY_RADIUS = 56;         // 조이스틱 판 반지름(px). 이만큼 끌면 최대 속도
+const JOY_DEAD = 8;            // 이보다 덜 끌면 멈춘 것으로 본다(손가락 떨림)
+const JOY_INTERVAL_MS = 50;    // 조이스틱 방향은 초당 20회까지 보낸다(끄는 동안 계속 바뀌므로 방향키보다 넉넉하게 묶는다)
 
 /** 작은 화면(모바일). 저장된 선택이 없을 때의 기본값을 화면을 덜 가리는 쪽으로 정하는 데 쓴다. */
 function isSmallScreen() {
@@ -62,6 +65,19 @@ function loadChatView(): ChatView {
 }
 function saveChatView(v: ChatView) {
   try { localStorage.setItem(CHAT_KEY, v); } catch { /* 무시 */ }
+}
+
+/**
+ * 모바일(터치) 이동 방식(4.2). 조이스틱: 누른 자리에 조이스틱이 생기고 끄는 방향으로 움직인다(기본).
+ * 터치 이동: 누른 지점으로 가고 누르고 있으면 계속 따라간다(마우스 클릭과 같다). 이 브라우저에 기억한다.
+ */
+const TOUCH_CONTROL_KEY = 'trendist.touchControl';
+type TouchControl = 'joystick' | 'tap';
+function loadTouchControl(): TouchControl {
+  try { return localStorage.getItem(TOUCH_CONTROL_KEY) === 'tap' ? 'tap' : 'joystick'; } catch { return 'joystick'; }
+}
+function saveTouchControl(v: TouchControl) {
+  try { localStorage.setItem(TOUCH_CONTROL_KEY, v); } catch { /* 무시 */ }
 }
 
 /** 조작 설명은 처음 들어오면 펼쳐 두고, 접으면 이 브라우저에 기억해서 다음부터는 접힌 채로 시작한다. */
@@ -104,6 +120,10 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
   const chatOnRef = useRef(chatView !== 'off');
   chatOnRef.current = chatView !== 'off';
   const chatInputRef = useRef<HTMLInputElement>(null);
+  const [touchControl, setTouchControl] = useState<TouchControl>(loadTouchControl);
+  const touchControlRef = useRef(touchControl);
+  touchControlRef.current = touchControl;
+  const joyRef = useRef<HTMLDivElement>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -196,7 +216,10 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     // 방향키·WASD 입력. 입력창에 쓰는 중이면 무시한다.
     const pressed = new Set<string>();
     let lastSent = 0, pending: number | null = null;
+    // 터치 조이스틱(4.2): 누른 자리가 중심이고, 끈 방향·거리가 방향키처럼 서버로 가는 방향(-1~1)이 된다
+    let joy: { pointerId: number; ox: number; oy: number; dx: number; dy: number } | null = null;
     const currentDir = () => {
+      if (joy) return { dx: joy.dx, dy: joy.dy };
       let dx = 0, dy = 0;
       pressed.forEach((k) => { dx += KEYS[k][0]; dy += KEYS[k][1]; });
       return { dx, dy };
@@ -209,14 +232,34 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     };
     const sendDir = () => {
       const now = performance.now();
-      if (now - lastSent >= KEY_INTERVAL_MS) fire();
-      else if (pending === null) pending = window.setTimeout(() => { pending = null; sendDir(); }, KEY_INTERVAL_MS - (now - lastSent));
+      const interval = joy ? JOY_INTERVAL_MS : KEY_INTERVAL_MS;
+      if (now - lastSent >= interval) fire();
+      else if (pending === null) pending = window.setTimeout(() => { pending = null; sendDir(); }, interval - (now - lastSent));
     };
-    resyncDir = () => { if (pressed.size > 0) fire(); };
+    const steering = () => pressed.size > 0 || joy !== null;
+    resyncDir = () => { if (steering()) fire(); };
     // 누르고 있는 동안에는 1초마다 지금 방향을 다시 보낸다. 중간에 메시지 하나가 빠져도 서버가 곧 같은 상태로 돌아온다
-    const resyncTimer = window.setInterval(() => { if (pressed.size > 0 && pending === null) fire(); }, INPUT_RESYNC_MS);
+    const resyncTimer = window.setInterval(() => { if (steering() && pending === null) fire(); }, INPUT_RESYNC_MS);
+    // 조이스틱 그림은 React state 대신 직접 옮긴다(끄는 동안 매 프레임 바뀌어서)
+    const drawJoy = () => {
+      const el = joyRef.current;
+      if (!el) return;
+      if (!joy) { el.hidden = true; return; }
+      const rect = canvas.getBoundingClientRect();
+      el.hidden = false;
+      el.style.left = `${joy.ox - rect.left}px`;
+      el.style.top = `${joy.oy - rect.top}px`;
+      el.style.setProperty('--kx', `${joy.dx * JOY_RADIUS}px`);
+      el.style.setProperty('--ky', `${joy.dy * JOY_RADIUS}px`);
+    };
+    const endJoy = () => { joy = null; drawJoy(); };
     // 떼는 신호(keyup)를 못 받는 경우(창 전환, 보조키 조합, 입력창으로 포커스 이동)에는 모두 뗀 것으로 본다
-    const releaseAll = () => { if (pressed.size === 0) return; pressed.clear(); sendDir(); };
+    const releaseAll = () => {
+      if (!steering()) return;
+      pressed.clear();
+      if (joy) endJoy();
+      sendDir();
+    };
     // 빈 바닥 클릭(탭): 그 지점으로 이동(4.2). 이동 중에 다시 찍으면 이전 목표를 버리고 새 지점으로 바로 바꾼다.
     // 서버에는 초당 10회까지만 보내되, 그 사이에 찍은 지점은 버리지 않고 마지막 지점을 이어서 보낸다.
     // 내 원의 예측 이동도 서버로 보내는 순간에 새 목표를 쓴다. 연타해도 예측과 서버의 목표가 같아서 떨리지 않는다.
@@ -253,8 +296,18 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
         setInspect(false);
         return;
       }
-      hold = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
       try { canvas.setPointerCapture(e.pointerId); } catch { /* 이미 뗐다 */ }
+      if (e.pointerType === 'touch' && touchControlRef.current === 'joystick') {
+        // 조이스틱: 누른 자리에 판이 생기고, 끌기 전까지는 움직이지 않는다. 두 번째 손가락은 무시한다
+        if (joy) return;
+        hold = null;
+        moveTarget = null;
+        pressed.clear();
+        joy = { pointerId: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 };
+        drawJoy();
+        return;
+      }
+      hold = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
       const p = arena.screenToWorld(e.clientX, e.clientY);
       pressed.clear(); // 방향키 이동 중이었다면 목표 이동으로 바꾼다(서버도 목표를 받으면 방향 입력을 지운다)
       arena.showRipple(p.x, p.y); // 물결은 클릭하는 즉시
@@ -263,9 +316,21 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     };
     canvas.addEventListener('pointerdown', pointerDown);
     const pointerMove = (e: PointerEvent) => {
+      if (joy && e.pointerId === joy.pointerId) {
+        const vx = e.clientX - joy.ox, vy = e.clientY - joy.oy, d = Math.hypot(vx, vy);
+        // 판 반지름만큼 끌면 최대 속도. 소수 둘째 자리로 묶어 같은 방향을 거듭 보내지 않는다
+        const k = d < JOY_DEAD ? 0 : Math.min(d, JOY_RADIUS) / JOY_RADIUS / d;
+        const dx = Math.round(vx * k * 100) / 100, dy = Math.round(vy * k * 100) / 100;
+        if (dx === joy.dx && dy === joy.dy) return;
+        joy.dx = dx; joy.dy = dy;
+        drawJoy();
+        sendDir();
+        return;
+      }
       if (hold && e.pointerId === hold.pointerId) { hold.x = e.clientX; hold.y = e.clientY; followHold(); }
     };
     const pointerEnd = (e: PointerEvent) => {
+      if (joy && e.pointerId === joy.pointerId) { endJoy(); sendDir(); return; } // 떼면 그 자리에서 감속해 멈춘다
       if (hold && e.pointerId === hold.pointerId) hold = null;
     };
     // 우클릭: 브라우저 메뉴 대신 그 자리 원의 정보. 모바일의 길게 누르기 메뉴도 막는다
@@ -351,6 +416,9 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     saveChatView(chatView);
   }, [chatView]);
   useEffect(() => { saveHelpPref(showHelp); }, [showHelp]);
+  useEffect(() => { saveTouchControl(touchControl); }, [touchControl]);
+  const toggleTouchControl = useCallback(() => setTouchControl((v) => (v === 'joystick' ? 'tap' : 'joystick')), []);
+  const touchControlLabel = touchControl === 'joystick' ? '조이스틱' : '터치 이동';
   const closePanel = useCallback(() => setPanel(null), []);
 
 
@@ -410,6 +478,8 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
                     title="리더보드 켜기/끄기 (L)">🏆 <span className="tool-label">리더보드</span> <kbd>L</kbd></button>
             <button className="inspect-toggle" aria-label="다른 플레이어 정보 보기" aria-pressed={inspect}
                     onClick={() => setInspect((v) => !v)} title="누른 뒤 원을 탭하면 그 사람 정보를 봐요">🔍</button>
+            <button className="control-toggle" aria-label={`이동 방식: ${touchControlLabel}`} onClick={toggleTouchControl}
+                    title="터치 이동 방식 바꾸기(조이스틱 / 터치 이동)">{touchControl === 'joystick' ? '🕹' : '👆'} <span className="tool-label">{touchControlLabel}</span></button>
             <button className="chat-toggle" aria-label="채팅" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
                     title="채팅 켜기/끄기 (C)">💬 <span className="tool-label">채팅</span> <kbd>C</kbd></button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
@@ -439,6 +509,9 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
                   <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? '켜짐' : '꺼짐'}</span>
                 </button>
               ))}
+              <button onClick={() => { setMenuOpen(false); toggleTouchControl(); }}>
+                <span aria-hidden="true">{touchControl === 'joystick' ? '🕹' : '👆'}</span>이동 방식<span className="menu-state on">{touchControlLabel}</span>
+              </button>
               <div className="mobile-menu-sep" />
               {guest
                 ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
@@ -450,7 +523,8 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
             <section id="controls-help" className="help-card" aria-label="조작 설명">
               <h3>이렇게 놀아요</h3>
               <ul>
-                <li><strong>클릭·탭</strong> 빈 바닥을 누르면 그곳으로 가요. 누르고 있으면 계속 따라가요.</li>
+                <li><strong>클릭</strong> 빈 바닥을 누르면 그곳으로 가요. 누르고 있으면 계속 따라가요.</li>
+                <li><strong>모바일</strong> 누른 자리에 생기는 조이스틱을 끌어서 움직여요. 메뉴의 [이동 방식]에서 누른 곳으로 가는 터치 이동으로 바꿀 수 있어요.</li>
                 <li><strong>다른 사람 정보</strong> PC는 그 원을 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭해요. </li>
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
@@ -470,6 +544,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
                      onNotice={showToast} collapsed={chatView === 'collapsed'}
                      onToggleCollapsed={() => setChatView((v) => (v === 'collapsed' ? 'open' : 'collapsed'))} />
         )}
+        <div ref={joyRef} className="joystick" hidden aria-hidden="true"><div className="joystick-knob" /></div>
         {inspect && <div className="inspect-hint" role="status">정보를 볼 원을 누르세요 · 빈 곳을 누르면 취소</div>}
         {toast && <div className="toast" role="status">{toast}</div>}
         {hit && <div key={hit.key} className="toast hit-toast" role="status">🎯 {hit.text}</div>}

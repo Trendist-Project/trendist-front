@@ -380,6 +380,15 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 /* 정보 보기 모드(4.11): 버튼은 터치 기기에서만(PC는 우클릭), 켜져 있으면 위쪽에 안내 */
 .inspect-toggle { display: none; }
 @media (pointer: coarse) { .arena-tools .tool-row .inspect-toggle { display: inline-grid; } }
+.control-toggle { display: none; }
+@media (pointer: coarse) { .arena-tools .tool-row .control-toggle { display: inline-flex; } }
+
+/* 터치 조이스틱(4.2): 누른 자리에 생기는 판과 손잡이. 위치는 GameScreen이 직접 옮긴다 */
+.joystick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.28); box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+  pointer-events: none; z-index: 5; --kx: 0px; --ky: 0px; }
+.joystick-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: rgba(124,211,255,0.55); border: 2px solid rgba(255,255,255,0.7); transform: translate(var(--kx), var(--ky)); }
 .inspect-toggle[aria-pressed="true"] { border-color: #7cd3ff; color: #7cd3ff; box-shadow: 0 0 0 2px rgba(124,211,255,0.35); }
 .inspect-hint { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(20,40,55,0.95); border: 1px solid #7cd3ff;
   color: #d8f1ff; padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; white-space: nowrap; pointer-events: none; }
