@@ -52,12 +52,18 @@ export interface Tuning {
   worldSize: number;
 }
 
+/** 방에 있는 엔티티의 이름표. bot이면 NPC 봇(4.21): 키워드가 없고 점수는 서버 메모리에만 있다. */
+export interface RosterEntry { e: number; nickname: string; level: number; bot?: boolean }
+
 export type ServerMessage =
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
-  | { type: 'roster'; players: { e: number; nickname: string; level: number }[] }
+  | { type: 'roster'; players: RosterEntry[] }
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
-  | { type: 'lost'; keyword: string; by: string }
+  | { type: 'lost'; by: string; score: number }                       // 내가 잃음: 어떤 키워드인지는 숨기고 점수만(4.3)
+  | { type: 'hit'; target: string; keyword?: string; score: number }  // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음)
+  | { type: 'shield'; e: number; ms: number }                         // 키워드를 잃은 원의 무적 시간(카운트다운)
+  | { type: 'knock'; dx: number; dy: number; ms: number }             // 내 원이 튕김: 전체 밀려날 거리와 시간
   | { type: 'pong'; t: number }
   | { type: 'orbs'; orbs: [number, number, number][] }
   | { type: 'orbSpawn'; id: number; x: number; y: number }

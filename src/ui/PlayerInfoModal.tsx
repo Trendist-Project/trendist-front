@@ -8,6 +8,8 @@ import { ScoreChart } from './ScoreChart';
 
 interface Props {
   entityNo: number;
+  /** NPC 봇이면 서버에 묻지 않고 이 값으로 간단한 카드만 보여 준다(4.21) */
+  bot?: { nickname: string; level: number; score: number } | null;
   onClose(): void;
   onOpenKeyword(keywordId: number): void;
 }
@@ -16,19 +18,39 @@ interface Props {
  * 다른 플레이어 정보 팝업(4.11). 아레나에서 다른 원을 누르면 열린다. 게임은 멈추지 않는다.
  * 아이콘·닉네임(관리자 배지)·활성 칭호, 현재 유행도·레벨·댓글 점수, 최근 7일 점수 추이, 보관함 중 점수 상위 3개(이름·상태만).
  */
-export function PlayerInfoModal({ entityNo, onClose, onOpenKeyword }: Props) {
+export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword }: Props) {
   const [card, setCard] = useState<PlayerCard | null>(null);
   const [history, setHistory] = useState<ScoreHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (bot) return; // 봇은 서버에 기록이 없다
     let alive = true;
     api.roomPlayer(entityNo)
       .then((c) => { if (alive) setCard(c); })
       .catch((e) => { if (alive) setError(e instanceof ApiFailure ? e.message : '정보를 불러오지 못했어요'); });
     api.roomPlayerHistory(entityNo).then((h) => { if (alive) setHistory(h); }).catch(() => { /* 그래프만 빠진다 */ });
     return () => { alive = false; };
-  }, [entityNo]);
+  }, [entityNo, bot]);
+
+  if (bot) {
+    return (
+      <Modal title={bot.nickname} onClose={onClose} className="player-modal">
+        <section className="player-hero">
+          <TurtleIcon level={bot.level} size={64} />
+          <div className="player-hero-main">
+            <div className="player-name"><strong>{bot.nickname}</strong><span className="badge bot">BOT</span></div>
+            <span className="muted small">아레나를 함께 돌아다니는 봇이에요. 사람과 같은 규칙으로 커지고 작아지고, 부딪히면 이기고 져요.</span>
+          </div>
+        </section>
+        <dl className="kw-stats">
+          <div><dt>현재 유행도</dt><dd>{bot.score.toLocaleString()}</dd></div>
+          <div><dt>레벨</dt><dd>🐢 {bot.level}</dd></div>
+          <div><dt>순위</dt><dd className="muted">집계 안 함</dd></div>
+        </dl>
+      </Modal>
+    );
+  }
 
   return (
     <Modal title={card?.nickname ?? '플레이어'} onClose={onClose} className="player-modal">

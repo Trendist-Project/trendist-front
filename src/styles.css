@@ -17,7 +17,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 button:focus-visible, input:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #062014; font-weight: 700; }
 button.secondary { background: #fff; color: #222; }
-button.big { width: 100%; padding: 14px; font-size: 1.05rem; margin-top: 10px; }
+button.big { width: 100%; height: 52px; padding: 0 14px; font-size: 1.05rem; margin-top: 10px; border-radius: 12px; }
 input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0f151f; color: var(--text); width: 100%; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
@@ -136,6 +136,10 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .minimap-toggle[aria-pressed="false"], .leaderboard-toggle[aria-pressed="false"], .chat-toggle[aria-pressed="false"] { color: var(--muted); }
 kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
 .toast { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: #2b1b1b; border: 1px solid #ff7a7a; padding: 10px 16px; border-radius: 10px; }
+/* 공격 성공(4.3): 위쪽 가운데, 잃었다는 알림보다 한 줄 아래 */
+.toast.hit-toast { top: 108px; background: #13281f; border-color: var(--accent); font-weight: 700; animation: hit-pop 0.35s ease-out; max-width: calc(100% - 32px); text-align: center; }
+@keyframes hit-pop { from { transform: translateX(-50%) scale(0.85); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .toast.hit-toast { animation: none; } }
 .side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .tabs { display: flex; border-bottom: 1px solid var(--line); }
 .tabs button { flex: 1; border: 0; border-radius: 0; background: transparent; padding: 12px 6px; font-size: 0.9rem; color: var(--muted); }
@@ -328,10 +332,11 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .tabs .sheet-toggle { display: block; flex: none; width: 48px; color: var(--muted); font-size: 1rem; }
 
   /* 오른쪽 위 도구: 아이콘만, 손가락으로 누르기 좋은 크기 */
-  .arena-tools { top: 8px; right: 8px; gap: 6px; max-width: calc(100% - 96px); }
+  .arena-tools { top: 8px; right: 8px; gap: 6px; max-width: calc(100% - 84px); }
   .arena-tools .tool-row { gap: 4px; flex-wrap: nowrap; }
   .tool-label, .arena-tools kbd { display: none; }
-  .arena-tools .tool-row button { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; font-size: 0.95rem; flex: none; }
+  .arena-tools .tool-row button { width: 30px; height: 30px; padding: 0; display: inline-grid; place-items: center; font-size: 0.85rem; flex: none; } /* 게스트는 9개, 한 줄에 들어가게 */
+  .arena-tools .tool-row { gap: 3px; }
   .hud { top: 8px; left: 8px; padding: 5px 8px; font-size: 0.72rem; white-space: nowrap; flex-direction: column; align-items: flex-start; gap: 2px; }
   .leaderboard { width: min(200px, calc(100vw - 24px)); padding: 8px 10px; font-size: 0.8rem; }
   .leaderboard h3 { font-size: 0.85rem; }
@@ -366,7 +371,29 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 .player-name { display: flex; align-items: center; gap: 8px; }
 .player-name strong { font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .badge.admin { border: 1px solid #f2b84b; color: #f2b84b; }
+.badge.bot { background: #94a3b8; color: #0b0f17; font-weight: 700; }
 .player-keywords h3 { margin: 0 0 6px; font-size: 1rem; display: flex; align-items: baseline; gap: 6px; }
 .player-keywords ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .player-keywords li { border: 1px solid var(--line); border-radius: 10px; background: #0f151f; }
 .player-keywords p { margin: 0; }
+
+/* 정보 보기 모드(4.11): 버튼은 터치 기기에서만(PC는 우클릭), 켜져 있으면 위쪽에 안내 */
+.inspect-toggle { display: none; }
+@media (pointer: coarse) { .arena-tools .tool-row .inspect-toggle { display: inline-grid; } }
+.inspect-toggle[aria-pressed="true"] { border-color: #7cd3ff; color: #7cd3ff; box-shadow: 0 0 0 2px rgba(124,211,255,0.35); }
+.inspect-hint { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(20,40,55,0.95); border: 1px solid #7cd3ff;
+  color: #d8f1ff; padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; white-space: nowrap; pointer-events: none; }
+
+/* 구글 로그인(9.3) */
+.account-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #0f151f; display: grid; gap: 8px; justify-items: start; }
+.account-box p { margin: 0; }
+.arena-tools .login-toggle { border-color: #f2b84b; color: #f2b84b; }
+
+/* 구글 로그인 버튼: 시작 버튼과 같은 크기·모서리(52px, 12px), 구글 브랜드 모양(흰 바탕, G 로고) */
+.google-btn { width: 100%; height: 52px; border-radius: 12px; background: #fff; color: #1f1f1f; border: 1px solid #dadce0;
+  font-size: 1.05rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.15s, box-shadow 0.15s; }
+.google-btn:hover { background: #f7f8f8; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+.google-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(66,133,244,0.45); }
+/* 시작과 구글 버튼 사이 "또는" */
+.or-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; color: var(--muted); font-size: 0.8rem; }
+.or-divider::before, .or-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }

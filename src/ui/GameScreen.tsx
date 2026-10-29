@@ -6,6 +6,7 @@ import type { ChatMessage, OrbResult, ServerMessage } from '../game/protocol';
 import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
+import { startGoogleLogin } from '../googleAuth';
 import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
 import { NoticeModal } from './NoticeModal';
@@ -13,7 +14,12 @@ import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
 
-interface Props { initialPlayer: PlayerSummary }
+interface Props {
+  initialPlayer: PlayerSummary;
+  /** 구글이 연결되지 않은 게스트인지(4.1) */
+  guest: boolean;
+  onLogout(): void;
+}
 
 const KEYS: Record<string, [number, number]> = {
   ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
@@ -23,8 +29,6 @@ const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 �
 const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
 const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
 const CHAT_KEEP = 200;         // 화면에 쌓아 두는 채팅 줄 수
-const LONG_PRESS_MS = 500;     // 다른 원을 이만큼 누르고 있으면 정보 팝업(4.11). 짧게 누르면 그냥 이동
-const LONG_PRESS_SLOP = 12;    // 누른 채 이만큼(px) 넘게 움직이면 길게 누르기를 취소한다
 
 /** 작은 화면(모바일). 저장된 선택이 없을 때의 기본값을 화면을 덜 가리는 쪽으로 정하는 데 쓴다. */
 function isSmallScreen() {
@@ -70,14 +74,16 @@ function saveHelpPref(open: boolean) {
   try { localStorage.setItem(HELP_KEY, open ? '1' : '0'); } catch { /* 무시 */ }
 }
 
-export function GameScreen({ initialPlayer }: Props) {
+export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const arenaRef = useRef<Arena | null>(null);
   const connRef = useRef<GameConnection | null>(null);
   const [player, setPlayer] = useState(initialPlayer);
   const [online, setOnline] = useState(0);
+  const [bots, setBots] = useState(0);
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
+  const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
@@ -86,6 +92,11 @@ export function GameScreen({ initialPlayer }: Props) {
   const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
   const [openKeyword, setOpenKeyword] = useState<number | null>(null);
   const [infoEntity, setInfoEntity] = useState<number | null>(null);
+  const [infoBot, setInfoBot] = useState<{ nickname: string; level: number; score: number } | null>(null);
+  // 정보 보기 모드(모바일): 켜져 있으면 다음 탭은 이동이 아니라 그 원의 정보를 연다
+  const [inspect, setInspect] = useState(false);
+  const inspectRef = useRef(false);
+  inspectRef.current = inspect;
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
   const [chatLines, setChatLines] = useState<ChatLine[]>([]);
   const [chatView, setChatView] = useState<ChatView>(loadChatView);
@@ -124,7 +135,7 @@ export function GameScreen({ initialPlayer }: Props) {
             conn.send({ type: 'ping', t: performance.now() });
             break;
           case 'tuning': arena.setTuning(m); break;
-          case 'roster': arena.setRoster(m.players); setOnline(m.players.length); break;
+          case 'roster': arena.setRoster(m.players); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
           case 'score':
             setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));
             break;
@@ -156,9 +167,20 @@ export function GameScreen({ initialPlayer }: Props) {
             break;
           case 'chatError': showToast(m.message); break;
           case 'lost':
-            showToast(`${m.by}와 부딪혀 '${m.keyword}'을(를) 잃었어요`);
+            // 어떤 키워드였는지는 숨기고 몇 점짜리였는지만 보여 준다(4.3)
+            showToast(`${m.by}와 부딪혀 ${m.score}점짜리 키워드를 잃었어요`);
+            if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
+          case 'hit': {
+            // 공격 성공: 상대가 잃은 키워드와 점수를 내 화면에 보여 준다(봇의 키워드는 이름이 없다)
+            const key = performance.now();
+            setHit({ text: m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}의 ${m.score}점짜리 키워드를 떨어뜨렸어요!`, key });
+            window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3000);
+            break;
+          }
+          case 'shield': arena.showShield(m.e, m.ms); break;
+          case 'knock': arena.applyKnock(m.dx, m.dy, m.ms); break;
         }
       },
     });
@@ -207,23 +229,27 @@ export function GameScreen({ initialPlayer }: Props) {
       }
     };
     const canvas = canvasRef.current!;
-    // 다른 원을 길게 누르면(0.5초) 정보 팝업(4.11). 누르는 순간 이동은 그대로 해서, 상대를 쫓으며 연타하는 동작을 막지 않는다
-    let press: { pointerId: number; e: number; x: number; y: number; timer: number } | null = null;
-    const cancelPress = () => {
-      if (!press) return;
-      clearTimeout(press.timer);
-      press = null;
-      arena.setPressTarget(null);
+    // 다른 플레이어 정보(4.11): PC는 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭한다. 왼쪽 클릭·터치·드래그는 언제나 이동이라 겹치지 않는다
+    const openInfo = (hit: number) => { setInfoBot(arena.botInfo(hit)); setInfoEntity(hit); };
+    // 누르고 있는 동안에는 손가락·마우스가 있는 곳으로 계속 따라간다(4.2). 화면이 같이 움직이므로 가만히 누르고 있어도 주기적으로 다시 찍는다
+    let hold: { pointerId: number; x: number; y: number } | null = null;
+    const followHold = () => {
+      if (!hold || !ready) return;
+      moveTarget = arena.screenToWorld(hold.x, hold.y);
+      sendMove();
     };
+    const holdTimer = window.setInterval(followHold, CLICK_INTERVAL_MS);
     const pointerDown = (e: PointerEvent) => {
       if (e.button !== 0 || !ready) return; // 왼쪽 버튼(터치·펜도 0)
-      cancelPress();
-      const hit = arena.entityAt(e.clientX, e.clientY);
-      if (hit !== null) {
-        const timer = window.setTimeout(() => { cancelPress(); setInfoEntity(hit); }, LONG_PRESS_MS);
-        press = { pointerId: e.pointerId, e: hit, x: e.clientX, y: e.clientY, timer };
-        arena.setPressTarget(hit, LONG_PRESS_MS);
+      if (inspectRef.current) {
+        // 정보 보기 모드: 이동하지 않고, 누른 원의 정보를 연다. 원이 아닌 곳을 누르면 모드만 끈다
+        const hit = arena.entityAt(e.clientX, e.clientY);
+        if (hit !== null) openInfo(hit);
+        setInspect(false);
+        return;
       }
+      hold = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* 이미 뗐다 */ }
       const p = arena.screenToWorld(e.clientX, e.clientY);
       pressed.clear(); // 방향키 이동 중이었다면 목표 이동으로 바꾼다(서버도 목표를 받으면 방향 입력을 지운다)
       arena.showRipple(p.x, p.y); // 물결은 클릭하는 즉시
@@ -231,13 +257,19 @@ export function GameScreen({ initialPlayer }: Props) {
       sendMove();
     };
     canvas.addEventListener('pointerdown', pointerDown);
-    // 마우스가 다른 원 위에 있으면 누를 수 있다는 표시로 손가락 커서
     const pointerMove = (e: PointerEvent) => {
-      if (press && e.pointerId === press.pointerId && Math.hypot(e.clientX - press.x, e.clientY - press.y) > LONG_PRESS_SLOP) cancelPress();
+      if (hold && e.pointerId === hold.pointerId) { hold.x = e.clientX; hold.y = e.clientY; followHold(); }
     };
-    const pointerEnd = (e: PointerEvent) => { if (press && e.pointerId === press.pointerId) cancelPress(); };
-    // 길게 누를 때 브라우저 메뉴(우클릭·모바일 길게 누르기 메뉴)가 뜨지 않게
-    const noMenu = (e: Event) => e.preventDefault();
+    const pointerEnd = (e: PointerEvent) => {
+      if (hold && e.pointerId === hold.pointerId) hold = null;
+    };
+    // 우클릭: 브라우저 메뉴 대신 그 자리 원의 정보. 모바일의 길게 누르기 메뉴도 막는다
+    const noMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      if (!ready) return;
+      const hit = arena.entityAt(e.clientX, e.clientY);
+      if (hit !== null) openInfo(hit);
+    };
     canvas.addEventListener('pointermove', pointerMove);
     canvas.addEventListener('pointerup', pointerEnd);
     canvas.addEventListener('pointercancel', pointerEnd);
@@ -292,7 +324,7 @@ export function GameScreen({ initialPlayer }: Props) {
       canvas.removeEventListener('pointercancel', pointerEnd);
       canvas.removeEventListener('pointerleave', pointerEnd);
       canvas.removeEventListener('contextmenu', noMenu);
-      cancelPress();
+      clearInterval(holdTimer);
       if (pending !== null) clearTimeout(pending);
       if (movePending !== null) clearTimeout(movePending);
       clearInterval(pingTimer);
@@ -314,6 +346,7 @@ export function GameScreen({ initialPlayer }: Props) {
   useEffect(() => { saveHelpPref(showHelp); }, [showHelp]);
   const closePanel = useCallback(() => setPanel(null), []);
 
+
   const onPlused = useCallback((gained: number, p: PlayerSummary) => {
     setPlayer(p);
     if (gained > 0) arenaRef.current?.floatText(`+${gained}`);
@@ -333,7 +366,7 @@ export function GameScreen({ initialPlayer }: Props) {
         <canvas ref={canvasRef} className="arena"
                 aria-label="아레나. 방향키나 WASD로 이동하고 빈 바닥을 클릭하면 그곳으로 이동해요" />
         <div className="hud">
-          <span>현재 접속 {online}명</span>
+          <span>현재 접속 {online}명{bots > 0 && <span className="muted"> · 봇 {bots}</span>}</span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}
         </div>
         <div className="hud-bottom">
@@ -346,6 +379,17 @@ export function GameScreen({ initialPlayer }: Props) {
         <div className="arena-tools">
           <div className="tool-row">
             {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
+            {guest ? (
+              // 누르면 바로 구글 계정 선택 페이지로(매번 계정을 고른다). 돌아오면 지금 기록에 연결된 채로 다시 게임에 들어온다
+              <button className="login-toggle" onClick={startGoogleLogin} aria-label="Google로 로그인" title="Google로 로그인">
+                🔑 <span className="tool-label">로그인</span>
+              </button>
+            ) : (
+              // 로그아웃: 서버가 갱신 토큰과 JWT를 무효로 하고 시작 화면으로 돌아간다
+              <button className="logout-toggle" onClick={onLogout} aria-label="로그아웃" title="로그아웃">
+                🚪 <span className="tool-label">로그아웃</span>
+              </button>
+            )}
             <button onClick={() => setPanel('profile')} aria-label="내 정보">👤 <span className="tool-label">내 정보</span></button>
             <button onClick={() => setPanel('notice')} aria-label="공지사항">📢 <span className="tool-label">공지사항</span></button>
             <button onClick={() => setPanel('guide')} aria-label="가이드·FAQ">📖 <span className="tool-label">가이드·FAQ</span></button>
@@ -353,6 +397,8 @@ export function GameScreen({ initialPlayer }: Props) {
                     title="미니맵 켜기/끄기 (M)">🗺 <span className="tool-label">미니맵</span> <kbd>M</kbd></button>
             <button className="leaderboard-toggle" aria-label="리더보드" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
                     title="리더보드 켜기/끄기 (L)">🏆 <span className="tool-label">리더보드</span> <kbd>L</kbd></button>
+            <button className="inspect-toggle" aria-label="다른 플레이어 정보 보기" aria-pressed={inspect}
+                    onClick={() => setInspect((v) => !v)} title="누른 뒤 원을 탭하면 그 사람 정보를 봐요">🔍</button>
             <button className="chat-toggle" aria-label="채팅" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
                     title="채팅 켜기/끄기 (C)">💬 <span className="tool-label">채팅</span> <kbd>C</kbd></button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
@@ -364,7 +410,8 @@ export function GameScreen({ initialPlayer }: Props) {
             <section id="controls-help" className="help-card" aria-label="조작 설명">
               <h3>이렇게 놀아요</h3>
               <ul>
-                <li><strong>클릭·탭</strong> 빈 바닥을 누르면 그곳으로 가요. 다시 누르면 바로 방향을 바꿔요. 다른 원을 꾹(0.5초) 누르고 있으면 그 사람 정보를 봐요.</li>
+                <li><strong>클릭·탭</strong> 빈 바닥을 누르면 그곳으로 가요. 누르고 있으면 계속 따라가요.</li>
+                <li><strong>다른 사람 정보</strong> PC는 그 원을 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭해요. </li>
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
@@ -383,13 +430,15 @@ export function GameScreen({ initialPlayer }: Props) {
                      onNotice={showToast} collapsed={chatView === 'collapsed'}
                      onToggleCollapsed={() => setChatView((v) => (v === 'collapsed' ? 'open' : 'collapsed'))} />
         )}
+        {inspect && <div className="inspect-hint" role="status">정보를 볼 원을 누르세요 · 빈 곳을 누르면 취소</div>}
         {toast && <div className="toast" role="status">{toast}</div>}
+        {hit && <div key={hit.key} className="toast hit-toast" role="status">🎯 {hit.text}</div>}
         {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
       </div>
       <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast}
                  onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} />
       {infoEntity !== null && (
-        <PlayerInfoModal entityNo={infoEntity} onClose={() => setInfoEntity(null)}
+        <PlayerInfoModal entityNo={infoEntity} bot={infoBot} onClose={() => setInfoEntity(null)}
                          onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} />
       )}
       {openKeyword !== null && (
@@ -397,7 +446,11 @@ export function GameScreen({ initialPlayer }: Props) {
       )}
       {panel === 'notice' && <NoticeModal onClose={closePanel} />}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
-      {panel === 'profile' && <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} />}
+      {panel === 'profile' && (
+        <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
+                      onLogout={onLogout} />
+      )}
+
     </div>
   );
 }

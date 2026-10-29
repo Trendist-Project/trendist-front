@@ -39,7 +39,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 }
 
-/** 쿠키의 방문자 ID로 세션을 이어 간다. 없으면 false(메인 화면을 보여 준다). */
+/** 세션을 이어 간다: 계정은 갱신 토큰 쿠키(회전), 게스트는 방문자 ID 쿠키로. 둘 다 없으면 false(메인 화면을 보여 준다). */
 export async function resumeSession(): Promise<boolean> {
   try {
     accessToken = (await raw<TokenResponse>('POST', '/api/auth/session', undefined, false)).accessToken;
@@ -53,6 +53,19 @@ export async function resumeSession(): Promise<boolean> {
 export const api = {
   async startGuest() {
     accessToken = (await raw<TokenResponse>('POST', '/api/auth/guest', undefined, false)).accessToken;
+  },
+  /**
+   * 구글 로그인(9.3): 구글이 준 ID 토큰을 보내면 서버가 검증하고 이 사이트의 JWT를 준다(갱신 토큰은 HttpOnly 쿠키).
+   * result: LINKED(게스트 기록에 연결) / EXISTING(기존 계정으로 들어감) / CREATED(새 계정)
+   */
+  async googleLogin(idToken: string, nonce: string | null): Promise<'LINKED' | 'EXISTING' | 'CREATED'> {
+    const r = await raw<{ accessToken: string; expiresIn: number; result: 'LINKED' | 'EXISTING' | 'CREATED' }>('POST', '/api/auth/google', { idToken, nonce }, false);
+    accessToken = r.accessToken;
+    return r.result;
+  },
+  /** 로그아웃: 서버가 갱신 토큰을 폐기하고 지금까지 발급한 JWT도 바로 무효로 한다. 브라우저에 든 JWT도 지운다. */
+  async logout() {
+    try { await raw<void>('POST', '/api/auth/logout', undefined, true); } finally { accessToken = null; }
   },
   me: () => request<Me>('GET', '/api/me'),
   createPlayer: (nickname: string) => request<PlayerSummary>('POST', '/api/players', { nickname, countryCode: 'KR' }),

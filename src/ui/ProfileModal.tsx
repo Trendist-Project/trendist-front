@@ -1,17 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { PlayerSummary, ScoreHistory, ScoreRange } from '../api/types';
+import { GoogleButton } from './GoogleButton';
 import { Modal } from './Modal';
 import { ScoreChart } from './ScoreChart';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['all', '전체']];
 
-interface Props { player: PlayerSummary; onChanged(player: PlayerSummary): void; onClose(): void }
+interface Props {
+  player: PlayerSummary; onChanged(player: PlayerSummary): void; onClose(): void;
+  guest: boolean; onLogout(): void;
+}
 
 const timeFormat = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
 
 /** 내 정보(4.1): 지금 기록을 보여 주고 닉네임을 바꾼다. 변경 간격은 서버가 정하고, 화면은 다음 가능 시각만 안내한다. */
-export function ProfileModal({ player, onChanged, onClose }: Props) {
+export function ProfileModal({ player, onChanged, onClose, guest, onLogout }: Props) {
   const [nickname, setNickname] = useState(player.nickname);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -97,6 +101,16 @@ export function ProfileModal({ player, onChanged, onClose }: Props) {
         </p>
         {message && <p className={message.error ? 'error small' : 'small'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
       </form>
+      <section className="account-box" aria-label="계정">
+        <strong>계정</strong>
+        {guest ? (<>
+          <p className="muted small">게스트로 플레이 중이에요.</p>
+          <GoogleButton label="Google로 로그인" />
+        </>) : (<>
+          <p className="muted small">Google 계정으로 로그인했어요. 다른 기기에서도 이 기록으로 이어서 할 수 있어요.</p>
+          <button onClick={onLogout}>로그아웃</button>
+        </>)}
+      </section>
     </Modal>
   );
 }

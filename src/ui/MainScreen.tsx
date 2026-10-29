@@ -1,3 +1,5 @@
+import { GoogleButton } from './GoogleButton';
+
 interface Props { onStart(): void; error: string | null }
 
 /** 배경 원: [왼쪽 %, 위 %, 크기 px, 움직임 경로 1~3, 한 바퀴 초, 시작 지연 초]. 원마다 경로·속도를 달리해 따로 떠다니게 한다. */
@@ -29,8 +31,9 @@ export function MainScreen({ onStart, error }: Props) {
           <li>⭕ 원이 커진다</li>
         </ol>
         <button className="primary big" onClick={onStart} autoFocus>시작</button>
-        <button className="secondary big" disabled title="준비 중이에요">G&nbsp;&nbsp;Google로 계속하기</button>
-        <p className="muted small">로그인하면 다른 기기에서도 기록이 이어져요 (준비 중)</p>
+        <div className="or-divider" aria-hidden="true"><span>또는</span></div>
+        <GoogleButton />
+        <p className="muted small">로그인하면 다른 기기에서도 기록이 이어져요. 게스트로 하던 기록도 그대로 이어져요</p>
         {error && <p className="error" role="alert">{error}</p>}
       </section>
     </main>

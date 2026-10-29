@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>로그인 중…</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0f17;color:#e8edf5;font-family:system-ui,sans-serif}</style></head>
+<body>
+<p>로그인하는 중…</p>
+<script>
+// 구글 계정 선택을 마치고 돌아오는 곳(9.3). 주소 # 뒤의 ID 토큰을 꺼내 브라우저 탭 저장소에 잠깐 두고 게임으로 돌아간다.
+// state가 로그인을 시작할 때 만든 값과 다르면(다른 곳에서 꾸며 보낸 응답) 버린다. 토큰은 주소창·기록에 남지 않게 바로 지운다.
+(function () {
+  var p = new URLSearchParams(location.hash.slice(1));
+  var expected = sessionStorage.getItem('trendist.oauth.state');
+  var nonce = sessionStorage.getItem('trendist.oauth.nonce');
+  sessionStorage.removeItem('trendist.oauth.state');
+  sessionStorage.removeItem('trendist.oauth.nonce');
+  var result;
+  if (p.get('error')) result = { error: p.get('error') };
+  else if (!expected || p.get('state') !== expected || !p.get('id_token')) result = { error: 'invalid_state' };
+  else result = { idToken: p.get('id_token'), nonce: nonce };
+  sessionStorage.setItem('trendist.oauth.result', JSON.stringify(result));
+  location.replace('/');
+})();
+</script>
+</body>
+</html>

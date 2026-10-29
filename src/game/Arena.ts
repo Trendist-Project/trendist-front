@@ -1,4 +1,4 @@
-import type { EntityState, MinimapEntry, Snapshot, Tuning } from './protocol';
+import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
 import { drawTurtle, TURTLE_BASE } from './turtle';
 
 interface Interp { prev: EntityState; cur: EntityState; at: number }
@@ -42,6 +42,7 @@ interface EatenOrb { x: number; y: number; e: number; at: number }
 
 /** 미니맵: 오른쪽 아래, 화면 짧은 변의 24%(110~180px). */
 const BUBBLE_MS = 3000;
+const BOT_BASE = '#d9534f'; // NPC 봇 원의 바탕색(4.21)
 // 화면 크기 보정(모바일): 짧은 변이 이보다 작으면 그 비율만큼 더 넓게 보여 준다(최소 배율 아래로는 줄이지 않는다)
 const VIEW_REF_SHORT = 720;
 const VIEW_MIN_SCALE = 0.6;
@@ -58,7 +59,7 @@ const MINIMAP_MARGIN = 12;
 export class Arena {
   private ctx: CanvasRenderingContext2D;
   private entities = new Map<number, Interp>();
-  private names = new Map<number, { nickname: string; level: number }>();
+  private names = new Map<number, { nickname: string; level: number; bot: boolean }>();
   private half = 1500;
   private tuning: Tuning | null = null;
   private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
@@ -78,11 +79,14 @@ export class Arena {
   private last = performance.now();
   /** 내 위치 예측이 계산된 시각(ms). 조작이 바뀌는 순간까지 먼저 움직여 두고 바꿔서, 프레임 경계로 반올림되지 않게 한다. */
   private predictedAt = performance.now();
-  private floatTexts: { text: string; at: number }[] = [];
+  private floatTexts: { text: string; at: number; color: string }[] = [];
+  /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
+  private shields = new Map<number, number>();
   /** 채팅 말풍선(4.13): 보낸 사람 아이콘 위에 3초 */
   private bubbles = new Map<number, { text: string; at: number }>();
   /** 길게 누르는 중인 다른 원(정보 팝업, 4.11): 그 원 둘레에 링이 ms 동안 차오른다 */
-  private press: { e: number; at: number; ms: number } | null = null;
+  /** 서버가 알려 준 내 튕김(4.3): 전체 밀려날 거리와 남은 시간. 서버 Room.move와 같은 식으로 예측에 더한다 */
+  private knock: { dx: number; dy: number; total: number; left: number } | null = null;
   private ripples: Ripple[] = [];
   private orbs = new Map<number, Orb>();
   private eatenOrbs: EatenOrb[] = [];
@@ -116,8 +120,8 @@ export class Arena {
   }
   /** 입력·목표를 비운다. 연결이 끊기면 서버도 더 이상 움직이지 않으므로 예측도 멈춘다. */
   clearControl() { this.input = { dx: 0, dy: 0 }; this.target = null; }
-  setRoster(players: { e: number; nickname: string; level: number }[]) {
-    this.names = new Map(players.map((p) => [p.e, { nickname: p.nickname, level: p.level }]));
+  setRoster(players: RosterEntry[]) {
+    this.names = new Map(players.map((p) => [p.e, { nickname: p.nickname, level: p.level, bot: !!p.bot }]));
   }
   /**
    * 예측에 쓰는 입력. 서버로 보내는 순간에 같이 불러야 예측과 서버가 같은 입력으로 움직인다(서버 Room.setInput과 같게).
@@ -155,10 +159,16 @@ export class Arena {
     this.eatenOrbs.push({ x: o.x, y: o.y, e, at: now });
     this.gulps.set(e, now);
   }
-  floatText(text: string) { this.floatTexts.push({ text, at: performance.now() }); }
+  floatText(text: string, color = '#ffd166') { this.floatTexts.push({ text, at: performance.now(), color }); }
 
-  /** 길게 누르기 표시를 시작하거나(e) 끈다(null). */
-  setPressTarget(e: number | null, ms = 0) { this.press = e === null ? null : { e, at: performance.now(), ms }; }
+  /** e 원에 ms 동안 무적 표시(보호막 + 카운트다운)를 띄운다. */
+  showShield(e: number, ms: number) { this.shields.set(e, performance.now() + ms); }
+
+  /** 내 원이 부딪혀 튕겼다. 서버처럼 목표를 지우고, 같은 거리를 같은 감속으로 예측에도 밀어 준다(크게 밀려도 화면이 순간 이동하지 않게). */
+  applyKnock(dx: number, dy: number, ms: number) {
+    this.target = null;
+    this.knock = { dx, dy, total: ms / 1000, left: ms / 1000 };
+  }
 
   /** 채팅 말풍선을 그 엔티티 위에 띄운다. 같은 사람이 또 말하면 새 말로 바꾼다. */
   showBubble(e: number, text: string) { if (this.bubblesVisible) this.bubbles.set(e, { text, at: performance.now() }); }
@@ -198,6 +208,13 @@ export class Arena {
       if (Math.hypot(s.x - p.x, s.y - p.y) <= Math.max(s.r, minR) && (!best || s.r < best.r)) best = { e: s.e, r: s.r };
     }
     return best?.e ?? null;
+  }
+
+  /** 봇이면 정보 팝업에 보일 값(이름·레벨·지금 점수). 사람이면 null. */
+  botInfo(e: number): { nickname: string; level: number; score: number } | null {
+    const n = this.names.get(e), i = this.entities.get(e);
+    if (!n?.bot || !i) return null;
+    return { nickname: n.nickname, level: n.level, score: Math.round(i.cur.score) };
   }
 
   /** 화면 좌표 → 월드 좌표(클릭 이동). 화면에 보이는 위치 기준이다. */
@@ -269,6 +286,14 @@ export class Arena {
     const e = Math.exp(-ACCEL_RATE * dt), moved = (1 - e) / ACCEL_RATE;
     this.me.x += wantX * dt + (this.me.vx - wantX) * moved; this.me.y += wantY * dt + (this.me.vy - wantY) * moved;
     this.me.vx = wantX + (this.me.vx - wantX) * e; this.me.vy = wantY + (this.me.vy - wantY) * e;
+    if (this.knock) {
+      // 서버와 같은 식: 남은 거리 비율 (남은 시간/T)³, 처음에 빠르고 점점 느려진다
+      const k = this.knock, before = k.left / k.total, after = Math.max(0, k.left - dt) / k.total;
+      const share = before ** 3 - after ** 3;
+      this.me.x += k.dx * share; this.me.y += k.dy * share;
+      k.left -= dt;
+      if (k.left <= 0) this.knock = null;
+    }
     const lim = this.half - this.me.r;
     this.me.x = Math.max(-lim, Math.min(lim, this.me.x));
     this.me.y = Math.max(-lim, Math.min(lim, this.me.y));
@@ -343,7 +368,7 @@ export class Arena {
     }
     this.drawEatenOrbs(ctx, now);
     this.drawBubbles(ctx, now);
-    this.drawPressRing(ctx, now);
+    this.drawShields(ctx, now);
     ctx.restore();
     this.drawFloatTexts(ctx, w, h, now);
     if (this.minimapVisible && this.me.initialized) this.drawMinimap(ctx, w, h);
@@ -378,6 +403,7 @@ export class Arena {
     ctx.fillStyle = 'rgba(200,215,235,0.75)';
     for (const m of this.minimap) {
       if (m.e === this.me.e) continue; // 나는 예측 위치로 따로 그린다
+      ctx.fillStyle = this.names.get(m.e)?.bot ? 'rgba(217,83,79,0.85)' : 'rgba(200,215,235,0.75)'; // 봇은 빨간 점
       ctx.beginPath(); ctx.arc(toX(m.x), toY(m.y), Math.max(2, m.r * s), 0, Math.PI * 2); ctx.fill();
     }
     ctx.fillStyle = '#3fb68b';
@@ -409,7 +435,7 @@ export class Arena {
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.45)';
     ctx.shadowBlur = 8 / this.zoom;
-    ctx.fillStyle = TURTLE_BASE; // 성장 캐릭터(거북이)의 정해진 바탕색
+    ctx.fillStyle = this.names.get(e.e)?.bot ? BOT_BASE : TURTLE_BASE; // 성장 캐릭터의 바탕색, 봇은 빨간색(4.21)
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     // 레벨이 오를수록 거북이 부위가 하나씩 생기고 선명해진다(4.9). 테두리를 그 위에 그려 가장자리를 깔끔하게 덮는다
@@ -491,21 +517,39 @@ export class Arena {
     return 1 + 0.12 * Math.sin(Math.PI * t);
   }
 
-  /** 길게 누르는 원 둘레에 위에서부터 시계 방향으로 차오르는 링. 다 차면 정보 팝업이 열린다. */
-  private drawPressRing(ctx: CanvasRenderingContext2D, now: number) {
-    if (!this.press) return;
-    const pos = this.entityPos(this.press.e, now);
-    if (!pos) return;
-    const z = this.zoom, t = Math.min(1, (now - this.press.at) / this.press.ms);
-    const r = pos.r + 9 / z;
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 5 / z;
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = '#ffc84a';
-    ctx.beginPath(); ctx.arc(pos.x, pos.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t); ctx.stroke();
-    ctx.restore();
+  /** 무적인 원: 하늘색 보호막(천천히 도는 점선 고리)과 원 위의 남은 초(3, 2, 1). 모두에게 보인다(4.3). */
+  private drawShields(ctx: CanvasRenderingContext2D, now: number) {
+    const z = this.zoom;
+    for (const [e, until] of this.shields) {
+      const left = until - now;
+      if (left <= 0) { this.shields.delete(e); continue; }
+      const pos = this.entityPos(e, now);
+      if (!pos) continue;
+      const r = pos.r + 6 / z;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, left / 300) * 0.9; // 끝날 때 살짝 옅어진다
+      ctx.strokeStyle = '#7cd3ff';
+      ctx.lineWidth = 4 / z;
+      ctx.setLineDash([10 / z, 7 / z]);
+      ctx.lineDashOffset = -now / 40 / z;
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(124,211,255,0.10)';
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
+      // 남은 초: 원 바로 위, 화면 기준 일정한 크기
+      const fs = 20 / z;
+      ctx.globalAlpha = 1;
+      ctx.font = `800 ${fs}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.lineWidth = fs / 5;
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      const label = `🛡 ${Math.ceil(left / 1000)}`;
+      ctx.strokeText(label, pos.x, pos.y - r - 4 / z);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, pos.x, pos.y - r - 4 / z);
+      ctx.restore();
+    }
   }
 
   /** 채팅 말풍선: 아이콘 바로 위, 화면 기준 일정한 글자 크기. 3초 뒤 사라지고 마지막 0.4초에 옅어진다. */
@@ -623,7 +667,7 @@ export class Arena {
       ctx.globalAlpha = 1 - t;
       ctx.font = '700 22px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffd166';
+      ctx.fillStyle = f.color;
       ctx.fillText(f.text, w / 2, h / 2 - this.me.r * this.zoom - 20 - t * 40);
       ctx.globalAlpha = 1;
     }
