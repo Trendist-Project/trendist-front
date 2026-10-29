@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
-import type { KeywordCard, MyKeyword, PlayerSummary, RankingEntry } from '../api/types';
+import type { KeywordCard, MyKeyword, PlayerSummary } from '../api/types';
 
-type Tab = 'search' | 'mine' | 'ranking';
+type Tab = 'search' | 'mine';
 
 interface Props {
   onPlused(gained: number, player: PlayerSummary): void;
@@ -58,7 +58,6 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
   const [card, setCard] = useState<KeywordCard | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mine, setMine] = useState<MyKeyword[]>([]);
-  const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [sort, setSort] = useState(loadSort);
   const sortedMine = useMemo(() => sortMine(mine, sort.key, sort.dir), [mine, sort]);
@@ -68,14 +67,9 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
   }, [sort]);
 
   async function loadMine() { try { setMine(await api.myKeywords()); } catch { /* 다음에 다시 */ } }
-  async function loadRanking() { try { setRanking(await api.rankings()); } catch { /* 다음에 다시 */ } }
 
   useEffect(() => {
     if (tab === 'mine') loadMine();
-    if (tab === 'ranking') loadRanking();
-    if (tab !== 'ranking') return;
-    const t = window.setInterval(loadRanking, 5000);
-    return () => clearInterval(t);
   }, [tab, refreshKey]);
 
   async function search(e: FormEvent) {
@@ -110,7 +104,7 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
   return (
     <aside className="side">
       <nav className="tabs" role="tablist">
-        {([['search', '검색'], ['mine', '보관함'], ['ranking', '랭킹']] as const).map(([k, label]) => (
+        {([['search', '검색'], ['mine', '보관함']] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{label}</button>
         ))}
       </nav>
@@ -178,17 +172,6 @@ export function SidePanel({ onPlused, onError, refreshKey }: Props) {
         </div>
       )}
 
-      {tab === 'ranking' && (
-        <div className="tab-body">
-          <h3 className="small">현재 유행도 TOP 10</h3>
-          <ol className="list ranking">
-            {ranking.map((r) => (
-              <li key={r.playerId}><span className="rank">{r.rank}</span> <strong>{r.nickname}</strong>
-                <span className="muted small"> {r.level}레벨</span><span className="score">{Number(r.score).toFixed(1)}</span></li>
-            ))}
-          </ol>
-        </div>
-      )}
     </aside>
   );
 }

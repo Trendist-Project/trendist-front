@@ -133,7 +133,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .rich-text { line-height: 1.6; }
 .rich-text p, .rich-text ul, .rich-text ol { margin: 8px 0 0; }
 .rich-text ul, .rich-text ol { padding-left: 20px; }
-.minimap-toggle[aria-pressed="false"] { color: var(--muted); }
+.minimap-toggle[aria-pressed="false"], .leaderboard-toggle[aria-pressed="false"] { color: var(--muted); }
 kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
 .toast { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: #2b1b1b; border: 1px solid #ff7a7a; padding: 10px 16px; border-radius: 10px; }
 .side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
@@ -161,6 +161,14 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .list li { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
 .ranking li { display: flex; align-items: center; gap: 6px; }
+/* 리더보드(4.14): 아레나 오른쪽 위 도구 버튼 바로 아래 */
+.leaderboard { width: min(260px, calc(100vw - 48px)); background: rgba(20, 27, 38, 0.9); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font-size: 0.85rem; }
+.leaderboard h3 { margin: 0 0 6px; font-size: 0.95rem; display: flex; align-items: baseline; gap: 6px; }
+.leaderboard p { margin: 0; }
+.leaderboard .ranking { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.leaderboard .ranking strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.leaderboard .ranking li.me { color: var(--accent); }
+.leaderboard .ranking li { border: 0; padding: 2px 0; border-radius: 0; }
 .rank { width: 22px; color: var(--muted); }
 .score { margin-left: auto; font-weight: 700; }
 

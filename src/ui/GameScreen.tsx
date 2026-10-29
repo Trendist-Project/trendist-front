@@ -4,6 +4,7 @@ import { Arena } from '../game/Arena';
 import { GameConnection } from '../game/connection';
 import type { OrbResult, ServerMessage } from '../game/protocol';
 import { GuideModal } from './GuideModal';
+import { Leaderboard } from './Leaderboard';
 import { NoticeModal } from './NoticeModal';
 import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
@@ -28,6 +29,15 @@ function saveMinimapPref(visible: boolean) {
   try { localStorage.setItem(MINIMAP_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
 }
 
+/** 리더보드 켜짐 여부도 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
+const LEADERBOARD_KEY = 'trendist.leaderboard';
+function loadLeaderboardPref() {
+  try { return localStorage.getItem(LEADERBOARD_KEY) !== '0'; } catch { return true; }
+}
+function saveLeaderboardPref(visible: boolean) {
+  try { localStorage.setItem(LEADERBOARD_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
+}
+
 /** 조작 설명은 처음 들어오면 펼쳐 두고, 접으면 이 브라우저에 기억해서 다음부터는 접힌 채로 시작한다. */
 const HELP_KEY = 'trendist.help';
 function loadHelpPref() {
@@ -47,6 +57,7 @@ export function GameScreen({ initialPlayer }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
+  const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
   const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
@@ -163,9 +174,9 @@ export function GameScreen({ initialPlayer }: Props) {
     const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     const down = (e: KeyboardEvent) => {
       if (typing(e)) return;
-      // M: 미니맵 켜기/끄기. 한글 입력 상태(ㅡ)에서도 되도록 key가 아니라 code로 본다
-      if (e.code === 'KeyM' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        setShowMinimap((v) => !v);
+      // M: 미니맵, L: 리더보드 켜기/끄기. 한글 입력 상태(ㅡ, ㅣ)에서도 되도록 key가 아니라 code로 본다
+      if ((e.code === 'KeyM' || e.code === 'KeyL') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
         return;
       }
       if (!(e.code in KEYS)) return;
@@ -207,6 +218,7 @@ export function GameScreen({ initialPlayer }: Props) {
     saveMinimapPref(showMinimap);
   }, [showMinimap]);
 
+  useEffect(() => { saveLeaderboardPref(showLeaderboard); }, [showLeaderboard]);
   useEffect(() => { saveHelpPref(showHelp); }, [showHelp]);
   const closePanel = useCallback(() => setPanel(null), []);
 
@@ -238,10 +250,13 @@ export function GameScreen({ initialPlayer }: Props) {
             <button onClick={() => setPanel('guide')}>📖 가이드·FAQ</button>
             <button className="minimap-toggle" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
                     title="미니맵 켜기/끄기 (M)">🗺 미니맵 <kbd>M</kbd></button>
+            <button className="leaderboard-toggle" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
+                    title="리더보드 켜기/끄기 (L)">🏆 리더보드 <kbd>L</kbd></button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
                     aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
           </div>
+          {showLeaderboard && <Leaderboard myPlayerId={player.id} />}
           {showHelp && (
             <section id="controls-help" className="help-card" aria-label="조작 설명">
               <h3>이렇게 놀아요</h3>
@@ -250,6 +265,7 @@ export function GameScreen({ initialPlayer }: Props) {
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
                 <li><strong>검색 → +</strong> 뜨는 키워드를 찾아 +하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
+                <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
               </ul>
               <div className="help-actions">
                 <button onClick={() => setPanel('guide')}>가이드 더 보기</button>
