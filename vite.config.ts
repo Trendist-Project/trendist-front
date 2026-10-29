@@ -7,10 +7,10 @@ const BACKEND = 'localhost:8081';
 
 export default defineConfig({
   plugins: [react()],
-  // 게임(index.html)과 관리자 페이지(admin.html, 13절)를 따로 만든다. 관리자 페이지는 /admin.html로 연다
+  // 게임(index.html)과 관리자 페이지(admin/index.html, 13절)를 따로 만든다. 주소는 /admin/ (웹 서버가 폴더의 index.html을 연다)
   build: {
     rollupOptions: {
-      input: { main: 'index.html', admin: 'admin.html' },
+      input: { main: 'index.html', admin: 'admin/index.html' },
     },
   },
   server: {

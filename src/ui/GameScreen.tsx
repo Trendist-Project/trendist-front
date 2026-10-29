@@ -7,6 +7,7 @@ import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
 import { startGoogleLogin } from '../googleAuth';
+import { adminApi } from '../api/client';
 import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
 import { NoticeModal } from './NoticeModal';
@@ -124,6 +125,13 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
   const touchControlRef = useRef(touchControl);
   touchControlRef.current = touchControl;
   const joyRef = useRef<HTMLDivElement>(null);
+  // 관리자 계정이면 관리자 페이지(/admin/, 13절)로 가는 버튼을 보여 준다. 다른 사람에게는 버튼이 없다
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (guest) return;
+    adminApi.status().then((s) => setIsAdmin(s.admin)).catch(() => setIsAdmin(false));
+  }, [guest]);
+  const openAdmin = useCallback(() => { window.open('/admin/', '_blank', 'noopener'); }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -487,6 +495,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
               </button>
             )}
             <button onClick={() => setPanel('profile')} aria-label="내 정보">👤 <span className="tool-label">내 정보</span></button>
+            {isAdmin && <button onClick={openAdmin} aria-label="관리자 페이지" title="관리자 페이지(새 탭)">🛠 <span className="tool-label">관리자</span></button>}
             <button onClick={() => setPanel('notice')} aria-label="공지사항">📢 <span className="tool-label">공지사항</span></button>
             <button onClick={() => setPanel('guide')} aria-label="가이드·FAQ">📖 <span className="tool-label">가이드·FAQ</span></button>
             <button className="minimap-toggle" aria-label="미니맵" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
@@ -529,6 +538,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
               <button onClick={() => { setMenuOpen(false); toggleTouchControl(); }}>
                 <span aria-hidden="true">{touchControl === 'joystick' ? '🕹' : '👆'}</span>이동 방식<span className="menu-state on">{touchControlLabel}</span>
               </button>
+              {isAdmin && <button onClick={() => { setMenuOpen(false); openAdmin(); }}><span aria-hidden="true">🛠</span>관리자 페이지</button>}
               <div className="mobile-menu-sep" />
               {guest
                 ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>

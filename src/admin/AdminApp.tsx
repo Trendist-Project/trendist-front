@@ -6,7 +6,7 @@ import {
 import { STATE_BADGE } from '../ui/keywordFormat';
 
 /**
- * 관리자 페이지(13절, /admin.html). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
+ * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받으므로 화면은 권한이 없을 때 안내만 한다.
  */
 type Tab = 'keywords' | 'add' | 'reports' | 'settings';
