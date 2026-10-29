@@ -68,6 +68,7 @@ export type ServerMessage =
   | { type: 'orbs'; orbs: [number, number, number][] }
   | { type: 'orbSpawn'; id: number; x: number; y: number }
   | { type: 'orbEaten'; id: number; e: number }
+  | { type: 'safeZones'; center: number; zones: [number, number, number, number, number][] } // 세이프존(4.22): 가운데 한 변, [번호, x, y, 한 변, 남은 ms]
   | ChatMessage
   | { type: 'chatHistory'; messages: ChatMessage[] }
   | { type: 'chatError'; code: string; message: string }
