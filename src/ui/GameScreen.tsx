@@ -190,14 +190,22 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
           case 'chatError': showToast(m.message); break;
           case 'lost':
             // 어떤 키워드였는지는 숨기고 몇 점짜리였는지만 보여 준다(4.3)
-            showToast(`${m.by}와 부딪혀 ${m.score}점짜리 키워드를 잃었어요`);
+            showToast(m.stolen ? `${m.by}에게 ${m.score}점짜리 키워드를 빼앗겼어요` : `${m.by}와 부딪혀 ${m.score}점짜리 키워드를 잃었어요`);
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
           case 'hit': {
-            // 공격 성공: 상대가 잃은 키워드와 점수를 내 화면에 보여 준다(봇의 키워드는 이름이 없다)
+            // 공격 성공: 상대가 잃은 키워드와 점수를 내 화면에 보여 준다(봇의 키워드는 이름이 없다).
+            // 사람에게서 이기면 그 키워드를 빼앗는다: 없던 키워드는 보관함에 추가, 이미 있던 키워드는 남은 시간 갱신(4.3)
             const key = performance.now();
-            setHit({ text: m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}의 ${m.score}점짜리 키워드를 떨어뜨렸어요!`, key });
+            const text = m.stolen === 'ADDED' ? `${m.target}의 '${m.keyword}' ${m.score}점을 빼앗아 보관함에 넣었어요!`
+              : m.stolen === 'RENEWED' ? `${m.target}의 '${m.keyword}'를 빼앗아 남은 시간을 24시간으로 늘렸어요!`
+              : m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}의 ${m.score}점짜리 키워드를 떨어뜨렸어요!`;
+            setHit({ text, key });
+            if (m.stolen) {
+              if (m.gained) arena.floatText(`+${m.gained}`);
+              setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
+            }
             window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3000);
             break;
           }
