@@ -68,7 +68,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
         <section className="kw-hero">
           <div className="kw-hero-main">
             <span className={`badge state-${card.state}`}>{STATE_BADGE[card.state] ?? card.state}</span>
-            <div className="kw-score"><strong>{Number(card.trendValue).toFixed(0)}</strong><span>점</span></div>
+            <div className="kw-score"><strong>{card.trendValue}</strong><span>점</span></div>
           </div>
           <div className="kw-hero-side">
             <button className="primary kw-plus" onClick={plus} disabled={busy || card.plusedByMe}

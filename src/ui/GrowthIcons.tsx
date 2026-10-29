@@ -11,7 +11,7 @@ export function GrowthIcons() {
       <ol>
         {LEVELS.map((lv) => (
           <li key={lv}>
-            <Icon level={lv} />
+            <TurtleIcon level={lv} />
             <span>{lv}레벨</span>
           </li>
         ))}
@@ -20,15 +20,16 @@ export function GrowthIcons() {
   );
 }
 
-function Icon({ level }: { level: number }) {
+/** 성장 아이콘 한 개(아레나와 같은 그림). 가이드와 정보 팝업이 쓴다. */
+export function TurtleIcon({ level, size = SIZE }: { level: number; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current!;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = SIZE * dpr; canvas.height = SIZE * dpr;
+    canvas.width = size * dpr; canvas.height = size * dpr;
     const ctx = canvas.getContext('2d')!;
     ctx.scale(dpr, dpr);
-    const c = SIZE / 2, r = SIZE / 2 - 3;
+    const c = size / 2, r = size / 2 - 3;
     // 아레나의 아이콘과 같은 순서: 바탕 원 → 거북이 → 테두리
     ctx.fillStyle = TURTLE_BASE;
     ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.fill();
@@ -36,6 +37,6 @@ function Icon({ level }: { level: number }) {
     ctx.strokeStyle = '#11372a';
     ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.stroke();
-  }, [level]);
-  return <canvas ref={ref} style={{ width: SIZE, height: SIZE }} aria-hidden="true" />;
+  }, [level, size]);
+  return <canvas ref={ref} style={{ width: size, height: size, flex: 'none' }} aria-hidden="true" />;
 }

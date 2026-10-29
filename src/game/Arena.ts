@@ -42,6 +42,11 @@ interface EatenOrb { x: number; y: number; e: number; at: number }
 
 /** 미니맵: 오른쪽 아래, 화면 짧은 변의 24%(110~180px). */
 const BUBBLE_MS = 3000;
+// 화면 크기 보정(모바일): 짧은 변이 이보다 작으면 그 비율만큼 더 넓게 보여 준다(최소 배율 아래로는 줄이지 않는다)
+const VIEW_REF_SHORT = 720;
+const VIEW_MIN_SCALE = 0.6;
+// 내 원의 지름이 화면 짧은 변에서 차지하는 비율 상한. 원이 커져도 주변이 보이고 움직이기 편하게 한다
+const ME_MAX_SHARE = 0.25;
 const MINIMAP_MIN = 110;
 const MINIMAP_MAX = 180;
 const MINIMAP_MARGIN = 12;
@@ -76,6 +81,8 @@ export class Arena {
   private floatTexts: { text: string; at: number }[] = [];
   /** 채팅 말풍선(4.13): 보낸 사람 아이콘 위에 3초 */
   private bubbles = new Map<number, { text: string; at: number }>();
+  /** 길게 누르는 중인 다른 원(정보 팝업, 4.11): 그 원 둘레에 링이 ms 동안 차오른다 */
+  private press: { e: number; at: number; ms: number } | null = null;
   private ripples: Ripple[] = [];
   private orbs = new Map<number, Orb>();
   private eatenOrbs: EatenOrb[] = [];
@@ -150,6 +157,9 @@ export class Arena {
   }
   floatText(text: string) { this.floatTexts.push({ text, at: performance.now() }); }
 
+  /** 길게 누르기 표시를 시작하거나(e) 끈다(null). */
+  setPressTarget(e: number | null, ms = 0) { this.press = e === null ? null : { e, at: performance.now(), ms }; }
+
   /** 채팅 말풍선을 그 엔티티 위에 띄운다. 같은 사람이 또 말하면 새 말로 바꾼다. */
   showBubble(e: number, text: string) { if (this.bubblesVisible) this.bubbles.set(e, { text, at: performance.now() }); }
   setMinimap(entries: MinimapEntry[]) { this.minimap = entries; }
@@ -172,6 +182,22 @@ export class Arena {
       if (e.me) this.reconcileMe(e);
     }
     for (const id of [...this.entities.keys()]) if (!seen.has(id)) this.entities.delete(id);
+  }
+
+  /**
+   * 화면 좌표에 그려진 다른 플레이어의 엔티티 번호(정보 팝업, 4.11). 겹치면 위에 그려지는 작은 원을 고른다.
+   * 손가락으로도 누르기 쉽게 화면에서 최소 반지름 14px만큼은 맞은 것으로 본다. 내 원은 고르지 않는다.
+   */
+  entityAt(px: number, py: number): number | null {
+    const p = this.screenToWorld(px, py), now = performance.now();
+    const minR = 14 / this.zoom;
+    let best: { e: number; r: number } | null = null;
+    for (const i of this.entities.values()) {
+      const s = this.current(i, now);
+      if (s.e === this.me.e) continue;
+      if (Math.hypot(s.x - p.x, s.y - p.y) <= Math.max(s.r, minR) && (!best || s.r < best.r)) best = { e: s.e, r: s.r };
+    }
+    return best?.e ?? null;
   }
 
   /** 화면 좌표 → 월드 좌표(클릭 이동). 화면에 보이는 위치 기준이다. */
@@ -276,9 +302,13 @@ export class Arena {
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // 줌: 1 / (1 + (r − 16) / 계수), 0.5초에 걸쳐 부드럽게(4.2)
+    // 줌: 1 / (1 + (r − 16) / 계수), 0.5초에 걸쳐 부드럽게(4.2).
+    // 작은 화면(모바일)은 짧은 변 비율만큼 더 줌아웃하고, 내 원이 짧은 변의 25%를 넘지 않게 한다
     const minR = this.tuning?.minRadius ?? 16;
-    const targetZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 170));
+    const short = Math.min(w, h);
+    const viewScale = Math.max(VIEW_MIN_SCALE, Math.min(1, short / VIEW_REF_SHORT));
+    const radiusZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 170));
+    const targetZoom = Math.min(radiusZoom * viewScale, (short * ME_MAX_SHARE) / (2 * Math.max(this.me.r, 1)));
     this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * 6);
 
     // 아레나 바깥은 어둡게
@@ -313,6 +343,7 @@ export class Arena {
     }
     this.drawEatenOrbs(ctx, now);
     this.drawBubbles(ctx, now);
+    this.drawPressRing(ctx, now);
     ctx.restore();
     this.drawFloatTexts(ctx, w, h, now);
     if (this.minimapVisible && this.me.initialized) this.drawMinimap(ctx, w, h);
@@ -458,6 +489,23 @@ export class Arena {
     if (t >= 1) { this.gulps.delete(e); return 1; }
     if (t <= 0 || this.reducedMotion) return 1;
     return 1 + 0.12 * Math.sin(Math.PI * t);
+  }
+
+  /** 길게 누르는 원 둘레에 위에서부터 시계 방향으로 차오르는 링. 다 차면 정보 팝업이 열린다. */
+  private drawPressRing(ctx: CanvasRenderingContext2D, now: number) {
+    if (!this.press) return;
+    const pos = this.entityPos(this.press.e, now);
+    if (!pos) return;
+    const z = this.zoom, t = Math.min(1, (now - this.press.at) / this.press.ms);
+    const r = pos.r + 9 / z;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 5 / z;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#ffc84a';
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * t); ctx.stroke();
+    ctx.restore();
   }
 
   /** 채팅 말풍선: 아이콘 바로 위, 화면 기준 일정한 글자 크기. 3초 뒤 사라지고 마지막 0.4초에 옅어진다. */

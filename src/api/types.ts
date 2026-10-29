@@ -11,6 +11,8 @@ export interface PlayerSummary {
   holdCount: number;
   totalPlusCount: number;
   commentScore: number;
+  /** 누적 검색 횟수 */
+  searchCount: number;
   /** 다음에 닉네임을 바꿀 수 있는 시각. null이면 지금 바꿀 수 있다. */
   nicknameChangeableAt: string | null;
 }
@@ -34,6 +36,7 @@ export interface KeywordCard {
 
 export interface SearchResult { status: 'FOUND' | 'NEW' | 'BANNED'; keyword: KeywordCard | null }
 
+/** gained: 이번 추가로 오른 유행도(정수). */
 export interface PlusResult { keyword: KeywordCard; gained: number; player: PlayerSummary }
 
 export interface MyKeyword {
@@ -57,6 +60,18 @@ export interface CommentItem {
 }
 export interface CommentPage { items: CommentItem[]; page: number; totalPages: number; total: number }
 export interface VoteResult { myVote: 'LIKE' | 'DISLIKE' | null; likeCount: number; dislikeCount: number }
+
+/** 내 점수 추이(4.15). 기록이 없는 칸은 직전 값, 마지막 점(live)은 지금 값. */
+export type ScoreRange = '24h' | '7d' | '30d' | 'all';
+export interface ScorePoint { t: string; score: number; live: boolean }
+export interface ScoreHistory { range: ScoreRange; timezone: string; points: ScorePoint[] }
+
+/** 같은 방 다른 플레이어 정보(4.11). entityNo는 방 안에서만 쓰는 번호, 키워드는 이름과 상태만. */
+export interface KeywordTag { keywordId: number; text: string; state: KeywordState }
+export interface PlayerCard {
+  entityNo: number; nickname: string; admin: boolean; title: string | null;
+  level: number; score: number; commentScore: number; topKeywords: KeywordTag[];
+}
 
 export interface RankingEntry { rank: number; playerId: number; nickname: string; level: number; score: number }
 

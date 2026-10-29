@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
-import type { PlayerSummary } from '../api/types';
+import type { PlayerSummary, ScoreHistory, ScoreRange } from '../api/types';
 import { Modal } from './Modal';
+import { ScoreChart } from './ScoreChart';
+
+const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['all', '전체']];
 
 interface Props { player: PlayerSummary; onChanged(player: PlayerSummary): void; onClose(): void }
 
@@ -13,6 +16,21 @@ export function ProfileModal({ player, onChanged, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [range, setRange] = useState<ScoreRange>('24h');
+  const [history, setHistory] = useState<ScoreHistory | null>(null);
+
+  // 열 때 최신 기록(누적 검색 등)으로 한 번 다시 읽는다. 검색은 화면의 플레이어 요약을 바꾸지 않는다
+  useEffect(() => {
+    api.me().then((m) => { if (m.player) onChanged(m.player); }).catch(() => { /* 가진 값으로 보여 준다 */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 점수 추이(4.15): 기간을 바꾸면 다시 읽는다
+  useEffect(() => {
+    let alive = true;
+    api.scoreHistory(range).then((h) => { if (alive) setHistory(h); }).catch(() => { if (alive) setHistory(null); });
+    return () => { alive = false; };
+  }, [range]);
 
   // 다음 변경 가능 시각이 지나면 버튼이 바로 풀리도록 30초마다 시계를 갱신한다
   useEffect(() => {
@@ -46,10 +64,24 @@ export function ProfileModal({ player, onChanged, onClose }: Props) {
         <div><dt>닉네임</dt><dd>{player.nickname}</dd></div>
         <div><dt>레벨</dt><dd>🐢 {player.level}레벨</dd></div>
         <div><dt>EXP</dt><dd>{player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</dd></div>
-        <div><dt>내 유행도</dt><dd>{Number(player.currentScore).toFixed(1)}</dd></div>
+        <div><dt>내 유행도</dt><dd>{Number(player.currentScore).toLocaleString()}</dd></div>
         <div><dt>보유 키워드</dt><dd>{player.holdCount}개</dd></div>
         <div><dt>누적 추가</dt><dd>{player.totalPlusCount.toLocaleString()}회</dd></div>
+        <div><dt>누적 검색</dt><dd>{(player.searchCount ?? 0).toLocaleString()}회</dd></div>
       </dl>
+
+      <section className="kw-activity" aria-label="점수 추이">
+        <div className="kw-activity-head">
+          <h3>점수 추이</h3>
+          <div className="chip-row" role="group" aria-label="기간">
+            {SCORE_RANGES.map(([r, label]) => (
+              <button key={r} className={range === r ? 'chip active' : 'chip'} aria-pressed={range === r} onClick={() => setRange(r)}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {history && history.range === range ? <ScoreChart history={history} />
+          : <div className="chart-placeholder muted small">그래프를 불러오는 중…</div>}
+      </section>
 
       <form className="profile-form" onSubmit={submit}>
         <label htmlFor="nickname-input"><strong>닉네임 바꾸기</strong></label>

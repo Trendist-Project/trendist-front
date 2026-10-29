@@ -34,7 +34,7 @@ export function Leaderboard({ myPlayerId }: Props) {
               <li key={r.playerId} className={r.playerId === myPlayerId ? 'me' : undefined}>
                 <span className="rank">{r.rank}</span> <strong>{r.nickname}</strong>
                 <span className="muted small">{r.level}레벨</span>
-                <span className="score">{Number(r.score).toFixed(1)}</span>
+                <span className="score">{Number(r.score).toLocaleString()}</span>
               </li>
             ))}
           </ol>

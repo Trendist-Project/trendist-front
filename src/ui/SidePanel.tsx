@@ -56,6 +56,8 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   const [notice, setNotice] = useState<string | null>(null);
   const [mine, setMine] = useState<MyKeyword[]>([]);
   const [busy, setBusy] = useState(false);
+  // 모바일 하단 시트: 접혀 있으면 탭 줄만 보인다. 탭을 누르면 펼치고, 펼친 탭을 다시 누르면 접는다(데스크톱은 늘 펼침)
+  const [expanded, setExpanded] = useState(false);
   const [sort, setSort] = useState(loadSort);
   const sortedMine = useMemo(() => sortMine(mine, sort.key, sort.dir), [mine, sort]);
 
@@ -69,6 +71,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   useEffect(() => {
     if (!searchRequest) return;
     setTab('search');
+    setExpanded(true);
     setQ(searchRequest.text);
     runSearch(searchRequest.text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,11 +115,14 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   }
 
   return (
-    <aside className="side">
+    <aside className={expanded ? 'side expanded' : 'side'}>
       <nav className="tabs" role="tablist">
-        {([['search', '검색'], ['mine', '보관함']] as const).map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{label}</button>
+        {([['search', '🔍 검색'], ['mine', '📦 보관함']] as const).map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''}
+                  onClick={() => { if (tab === k && expanded) setExpanded(false); else { setTab(k); setExpanded(true); } }}>{label}</button>
         ))}
+        <button className="sheet-toggle" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}
+                aria-label={expanded ? '패널 접기' : '패널 펼치기'}>{expanded ? '▾' : '▴'}</button>
       </nav>
 
       {tab === 'search' && (
@@ -135,7 +141,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
                   : <strong className="kw">{card.text}</strong>}
                 <span className="badge">{STATE_BADGE[card.state] ?? card.state}</span>
               </div>
-              <p>{Number(card.trendValue).toFixed(0)}점 · 👥 {card.holderCount.toLocaleString()}명</p>
+              <p>{card.trendValue}점 · 👥 {card.holderCount.toLocaleString()}명</p>
               <div className="card-foot">
                 {card.plusedByMe && card.myExpiresAt && <span className="muted small">{remaining(card.myExpiresAt)}</span>}
                 <button className="primary" onClick={plus} disabled={busy || card.plusedByMe}
@@ -175,7 +181,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
                   <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={`${k.text} 자세히 보기`}>
                     <div><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></div>
                     <div className="muted small">
-                      {Number(k.trendValue).toFixed(0)}점 ·{' '}
+                      {k.trendValue}점 ·{' '}
                       <span className={new Date(k.expiresAt).getTime() - Date.now() < 3_600_000 ? 'warn' : ''}>{remaining(k.expiresAt)}</span>
                     </div>
                     <span className="mine-chevron" aria-hidden="true">›</span>

@@ -60,7 +60,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 /* 게임 화면 */
 .game { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
 .arena-wrap { position: relative; min-width: 0; }
-.arena { width: 100%; height: 100%; display: block; touch-action: none; }
+.arena { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; } /* 길게 누를 때 선택·메뉴가 뜨지 않게 */
 .hud, .hud-bottom { position: absolute; left: 12px; display: flex; gap: 14px; align-items: center; background: rgba(11, 15, 23, 0.7); padding: 6px 12px; border-radius: 10px; pointer-events: none; flex-wrap: wrap; }
 .hud { top: 12px; }
 .hud-bottom .hud-name { pointer-events: auto; background: transparent; border: 0; padding: 0; font-weight: 700; text-decoration: underline dotted; text-underline-offset: 3px; }
@@ -119,7 +119,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .modal { width: min(640px, 100%); max-height: min(80vh, 760px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .modal-head h2 { margin: 0; font-size: 1.15rem; }
-.modal-body { padding: 16px 18px; overflow: auto; display: grid; gap: 12px; align-content: start; }
+.modal-body { padding: 16px 18px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; } /* 안의 그래프·표가 창보다 넓어지지 않게 */
 .chip-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { padding: 6px 12px; border-radius: 999px; font-size: 0.88rem; color: var(--muted); }
 .chip.active { color: #062014; background: var(--accent); border-color: var(--accent); font-weight: 700; }
@@ -140,6 +140,7 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .tabs { display: flex; border-bottom: 1px solid var(--line); }
 .tabs button { flex: 1; border: 0; border-radius: 0; background: transparent; padding: 12px 6px; font-size: 0.9rem; color: var(--muted); }
 .tabs button.active { color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
+.tabs .sheet-toggle { display: none; } /* 모바일 하단 시트에서만 보인다 */
 .tab-body { padding: 14px; overflow: auto; display: grid; gap: 12px; align-content: start; }
 .search-row { display: flex; gap: 8px; }
 .search-row button { flex: none; }
@@ -172,10 +173,6 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .rank { width: 22px; color: var(--muted); }
 .score { margin-left: auto; font-weight: 700; }
 
-@media (max-width: 760px) {
-  .game { grid-template-columns: 1fr; grid-template-rows: 1fr 45%; }
-  .side { border-left: 0; border-top: 1px solid var(--line); }
-}
 
 /* ---------------------------------------------------------------- 키워드 상세 창(4.12) */
 .keyword-modal { width: min(760px, 100%); max-height: min(88vh, 900px); }
@@ -197,7 +194,7 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .kw-stats div { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #0f151f; }
 .kw-stats dt { font-size: 0.78rem; color: var(--muted); }
 .kw-stats dd { margin: 2px 0 0; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.kw-activity { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #0f151f; display: grid; gap: 8px; }
+.kw-activity { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #0f151f; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .kw-activity-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .kw-activity-head h3 { margin: 0; font-size: 1rem; margin-right: auto; }
 .chip-row { display: flex; gap: 4px; }
@@ -205,7 +202,7 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
 .toggle input { width: auto; accent-color: #f2b84b; }
 .chart-placeholder, .chart-empty { height: 200px; display: grid; place-items: center; margin: 0; }
-.activity-chart { position: relative; display: grid; gap: 6px; }
+.activity-chart { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
 .chart-svg { display: block; overflow: visible; touch-action: pan-y; }
 .chart-grid { stroke: rgba(148,163,184,0.14); stroke-width: 1; }
 .chart-axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -299,8 +296,6 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .chat-input input { flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 0.85rem; }
 .chat-input input:focus { outline: none; background: rgba(255,255,255,0.04); }
 @media (max-width: 760px) {
-  .chat { height: 150px; width: min(300px, calc(100% - 24px)); }
-  .chat.collapsed { height: auto; }
   .kw-stats { grid-template-columns: 1fr 1fr 1fr; }
   .kw-score strong { font-size: 2rem; }
 }
@@ -320,3 +315,58 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 .growth-icons ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 6px; }
 .growth-icons li { display: grid; justify-items: center; gap: 4px; font-size: 0.78rem; color: var(--muted); }
 .growth-icons canvas { display: block; }
+
+/* ---------------------------------------------------------------- 모바일(작은 화면) 배치 */
+@media (max-width: 760px) {
+  /* 아레나가 화면 대부분을 쓰고, 검색·보관함은 접히는 하단 시트 */
+  .game { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; height: 100dvh; }
+  .side { border-left: 0; border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -6px 20px rgba(0,0,0,0.35);
+    padding-bottom: env(safe-area-inset-bottom); }
+  .side:not(.expanded) .tab-body { display: none; }
+  .side.expanded { height: min(52dvh, 460px); }
+  .tabs button { padding: 10px 6px; }
+  .tabs .sheet-toggle { display: block; flex: none; width: 48px; color: var(--muted); font-size: 1rem; }
+
+  /* 오른쪽 위 도구: 아이콘만, 손가락으로 누르기 좋은 크기 */
+  .arena-tools { top: 8px; right: 8px; gap: 6px; max-width: calc(100% - 96px); }
+  .arena-tools .tool-row { gap: 4px; flex-wrap: nowrap; }
+  .tool-label, .arena-tools kbd { display: none; }
+  .arena-tools .tool-row button { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; font-size: 0.95rem; flex: none; }
+  .hud { top: 8px; left: 8px; padding: 5px 8px; font-size: 0.72rem; white-space: nowrap; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .leaderboard { width: min(200px, calc(100vw - 24px)); padding: 8px 10px; font-size: 0.8rem; }
+  .leaderboard h3 { font-size: 0.85rem; }
+  .help-card { width: min(300px, calc(100vw - 24px)); font-size: 0.85rem; }
+
+  /* 아래쪽 내 정보 줄: 한 줄로, 꼭 필요한 값만 */
+  .hud-bottom { left: 8px; bottom: 8px; gap: 10px; padding: 5px 9px; font-size: 0.8rem; flex-wrap: nowrap; white-space: nowrap; max-width: calc(100% - 140px); overflow: hidden; }
+  .arena-wrap.with-minimap .hud-bottom { max-width: calc(100% - 140px); }
+  .hud-extra { display: none; }
+
+  /* 채팅: 미니맵(오른쪽 아래)을 피해 왼쪽 아래 좁게 */
+  .chat { left: 8px; bottom: 44px; width: min(280px, calc(100% - 140px)); height: 130px; }
+  .chat.collapsed { height: auto; }
+  .chat-log { font-size: 0.8rem; }
+
+  /* 창(공지·가이드·키워드 상세·신고)은 아래에서 올라오는 전체 폭 시트 */
+  .modal-backdrop { align-items: end; padding: 0; }
+  .modal, .keyword-modal, .report-dialog { width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .modal-body { padding: 12px 14px; }
+  .kw-hero { padding: 12px 14px; }
+  .kw-stats dd { font-size: 0.95rem; }
+  .kw-activity-head { gap: 6px; }
+
+  /* iOS는 16px보다 작은 입력창을 누르면 화면을 확대한다 */
+  input, textarea, .chat-input input { font-size: 16px; }
+}
+
+/* 다른 플레이어 정보 팝업(4.11) */
+.player-modal { width: min(520px, 100%); }
+.player-hero { display: flex; align-items: center; gap: 14px; }
+.player-hero-main { display: grid; gap: 2px; min-width: 0; }
+.player-name { display: flex; align-items: center; gap: 8px; }
+.player-name strong { font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge.admin { border: 1px solid #f2b84b; color: #f2b84b; }
+.player-keywords h3 { margin: 0 0 6px; font-size: 1rem; display: flex; align-items: baseline; gap: 6px; }
+.player-keywords ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.player-keywords li { border: 1px solid var(--line); border-radius: 10px; background: #0f151f; }
+.player-keywords p { margin: 0; }

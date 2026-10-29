@@ -30,8 +30,8 @@ export function OrbReveal({ result }: { result: OrbResult }) {
         <strong>{result.text}</strong>
         {result.state && <span className="badge">{STATE_BADGE[result.state] ?? result.state}</span>}
       </p>
-      <p className="small">{Number(result.trendValue ?? 0).toFixed(0)}점 · 👥 {(result.holderCount ?? 0).toLocaleString()}명</p>
-      {gained && <p className="orb-gain">내 유행도 +{Number(result.gained ?? 0).toFixed(1)}</p>}
+      <p className="small">{result.trendValue ?? 0}점 · 👥 {(result.holderCount ?? 0).toLocaleString()}명</p>
+      {gained && <p className="orb-gain">내 유행도 +{result.gained ?? 0}</p>}
       <span className="orb-timer" style={{ animationDuration: `${ORB_REVEAL_MS}ms` }} />
     </div>
   );

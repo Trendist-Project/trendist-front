@@ -6,6 +6,7 @@ import type { ChatMessage, OrbResult, ServerMessage } from '../game/protocol';
 import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
+import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
 import { NoticeModal } from './NoticeModal';
 import { ProfileModal } from './ProfileModal';
@@ -22,6 +23,13 @@ const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 �
 const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
 const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
 const CHAT_KEEP = 200;         // 화면에 쌓아 두는 채팅 줄 수
+const LONG_PRESS_MS = 500;     // 다른 원을 이만큼 누르고 있으면 정보 팝업(4.11). 짧게 누르면 그냥 이동
+const LONG_PRESS_SLOP = 12;    // 누른 채 이만큼(px) 넘게 움직이면 길게 누르기를 취소한다
+
+/** 작은 화면(모바일). 저장된 선택이 없을 때의 기본값을 화면을 덜 가리는 쪽으로 정하는 데 쓴다. */
+function isSmallScreen() {
+  try { return window.matchMedia('(max-width: 760px)').matches; } catch { return false; }
+}
 
 /** 미니맵 켜짐 여부는 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
 const MINIMAP_KEY = 'trendist.minimap';
@@ -32,10 +40,10 @@ function saveMinimapPref(visible: boolean) {
   try { localStorage.setItem(MINIMAP_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
 }
 
-/** 리더보드 켜짐 여부도 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
+/** 리더보드 켜짐 여부도 이 브라우저에만 기억한다. 기본값은 켜짐, 모바일은 화면을 가리지 않게 꺼짐. */
 const LEADERBOARD_KEY = 'trendist.leaderboard';
 function loadLeaderboardPref() {
-  try { return localStorage.getItem(LEADERBOARD_KEY) !== '0'; } catch { return true; }
+  try { const v = localStorage.getItem(LEADERBOARD_KEY); return v === null ? !isSmallScreen() : v !== '0'; } catch { return !isSmallScreen(); }
 }
 function saveLeaderboardPref(visible: boolean) {
   try { localStorage.setItem(LEADERBOARD_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
@@ -45,7 +53,8 @@ function saveLeaderboardPref(visible: boolean) {
 const CHAT_KEY = 'trendist.chat';
 type ChatView = 'open' | 'collapsed' | 'off';
 function loadChatView(): ChatView {
-  try { const v = localStorage.getItem(CHAT_KEY); return v === 'collapsed' || v === 'off' ? v : 'open'; } catch { return 'open'; }
+  const fallback: ChatView = isSmallScreen() ? 'collapsed' : 'open'; // 모바일은 처음에 접힌 채로(한 줄 + 입력창)
+  try { const v = localStorage.getItem(CHAT_KEY); return v === 'open' || v === 'collapsed' || v === 'off' ? v : fallback; } catch { return fallback; }
 }
 function saveChatView(v: ChatView) {
   try { localStorage.setItem(CHAT_KEY, v); } catch { /* 무시 */ }
@@ -54,7 +63,8 @@ function saveChatView(v: ChatView) {
 /** 조작 설명은 처음 들어오면 펼쳐 두고, 접으면 이 브라우저에 기억해서 다음부터는 접힌 채로 시작한다. */
 const HELP_KEY = 'trendist.help';
 function loadHelpPref() {
-  try { return localStorage.getItem(HELP_KEY) !== '0'; } catch { return true; }
+  // 모바일은 조작 설명 카드가 화면을 많이 가려서 처음에도 접어 둔다([?]로 펼친다)
+  try { const v = localStorage.getItem(HELP_KEY); return v === null ? !isSmallScreen() : v !== '0'; } catch { return !isSmallScreen(); }
 }
 function saveHelpPref(open: boolean) {
   try { localStorage.setItem(HELP_KEY, open ? '1' : '0'); } catch { /* 무시 */ }
@@ -75,6 +85,7 @@ export function GameScreen({ initialPlayer }: Props) {
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
   const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
   const [openKeyword, setOpenKeyword] = useState<number | null>(null);
+  const [infoEntity, setInfoEntity] = useState<number | null>(null);
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
   const [chatLines, setChatLines] = useState<ChatLine[]>([]);
   const [chatView, setChatView] = useState<ChatView>(loadChatView);
@@ -127,7 +138,7 @@ export function GameScreen({ initialPlayer }: Props) {
             window.setTimeout(() => setOrbReveal({ result: m, key }), 250);
             window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), 250 + ORB_REVEAL_MS);
             if (m.status === 'GAINED') {
-              arena.floatText(`+${Number(m.gained ?? 0).toFixed(1)}`);
+              arena.floatText(`+${m.gained ?? 0}`);
               setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
             }
             break;
@@ -196,8 +207,23 @@ export function GameScreen({ initialPlayer }: Props) {
       }
     };
     const canvas = canvasRef.current!;
+    // 다른 원을 길게 누르면(0.5초) 정보 팝업(4.11). 누르는 순간 이동은 그대로 해서, 상대를 쫓으며 연타하는 동작을 막지 않는다
+    let press: { pointerId: number; e: number; x: number; y: number; timer: number } | null = null;
+    const cancelPress = () => {
+      if (!press) return;
+      clearTimeout(press.timer);
+      press = null;
+      arena.setPressTarget(null);
+    };
     const pointerDown = (e: PointerEvent) => {
       if (e.button !== 0 || !ready) return; // 왼쪽 버튼(터치·펜도 0)
+      cancelPress();
+      const hit = arena.entityAt(e.clientX, e.clientY);
+      if (hit !== null) {
+        const timer = window.setTimeout(() => { cancelPress(); setInfoEntity(hit); }, LONG_PRESS_MS);
+        press = { pointerId: e.pointerId, e: hit, x: e.clientX, y: e.clientY, timer };
+        arena.setPressTarget(hit, LONG_PRESS_MS);
+      }
       const p = arena.screenToWorld(e.clientX, e.clientY);
       pressed.clear(); // 방향키 이동 중이었다면 목표 이동으로 바꾼다(서버도 목표를 받으면 방향 입력을 지운다)
       arena.showRipple(p.x, p.y); // 물결은 클릭하는 즉시
@@ -205,6 +231,18 @@ export function GameScreen({ initialPlayer }: Props) {
       sendMove();
     };
     canvas.addEventListener('pointerdown', pointerDown);
+    // 마우스가 다른 원 위에 있으면 누를 수 있다는 표시로 손가락 커서
+    const pointerMove = (e: PointerEvent) => {
+      if (press && e.pointerId === press.pointerId && Math.hypot(e.clientX - press.x, e.clientY - press.y) > LONG_PRESS_SLOP) cancelPress();
+    };
+    const pointerEnd = (e: PointerEvent) => { if (press && e.pointerId === press.pointerId) cancelPress(); };
+    // 길게 누를 때 브라우저 메뉴(우클릭·모바일 길게 누르기 메뉴)가 뜨지 않게
+    const noMenu = (e: Event) => e.preventDefault();
+    canvas.addEventListener('pointermove', pointerMove);
+    canvas.addEventListener('pointerup', pointerEnd);
+    canvas.addEventListener('pointercancel', pointerEnd);
+    canvas.addEventListener('pointerleave', pointerEnd);
+    canvas.addEventListener('contextmenu', noMenu);
 
     const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     const down = (e: KeyboardEvent) => {
@@ -249,6 +287,12 @@ export function GameScreen({ initialPlayer }: Props) {
       document.removeEventListener('visibilitychange', hidden);
       clearInterval(resyncTimer);
       canvas.removeEventListener('pointerdown', pointerDown);
+      canvas.removeEventListener('pointermove', pointerMove);
+      canvas.removeEventListener('pointerup', pointerEnd);
+      canvas.removeEventListener('pointercancel', pointerEnd);
+      canvas.removeEventListener('pointerleave', pointerEnd);
+      canvas.removeEventListener('contextmenu', noMenu);
+      cancelPress();
       if (pending !== null) clearTimeout(pending);
       if (movePending !== null) clearTimeout(movePending);
       clearInterval(pingTimer);
@@ -272,7 +316,7 @@ export function GameScreen({ initialPlayer }: Props) {
 
   const onPlused = useCallback((gained: number, p: PlayerSummary) => {
     setPlayer(p);
-    if (gained > 0) arenaRef.current?.floatText(`+${gained.toFixed(1)}`);
+    if (gained > 0) arenaRef.current?.floatText(`+${gained}`);
   }, []);
   // 키워드 상세 창에서 +하면 보관함도 새로 읽는다
   const onPlusedInModal = useCallback((gained: number, p: PlayerSummary) => {
@@ -294,22 +338,23 @@ export function GameScreen({ initialPlayer }: Props) {
         </div>
         <div className="hud-bottom">
           <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
-          <span>내 유행도 {Number(player.currentScore).toFixed(1)}</span>
+          <span>내 유행도 {Number(player.currentScore).toLocaleString()}</span>
           <span>🐢 {player.level}레벨</span>
-          <span className="muted">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
-          <span className="muted">키워드 {player.holdCount}개</span>
+          <span className="muted hud-extra">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
+          <span className="muted hud-extra">키워드 {player.holdCount}개</span>
         </div>
         <div className="arena-tools">
           <div className="tool-row">
-            <button onClick={() => setPanel('profile')}>👤 내 정보</button>
-            <button onClick={() => setPanel('notice')}>📢 공지사항</button>
-            <button onClick={() => setPanel('guide')}>📖 가이드·FAQ</button>
-            <button className="minimap-toggle" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
-                    title="미니맵 켜기/끄기 (M)">🗺 미니맵 <kbd>M</kbd></button>
-            <button className="leaderboard-toggle" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
-                    title="리더보드 켜기/끄기 (L)">🏆 리더보드 <kbd>L</kbd></button>
-            <button className="chat-toggle" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
-                    title="채팅 켜기/끄기 (C)">💬 채팅 <kbd>C</kbd></button>
+            {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
+            <button onClick={() => setPanel('profile')} aria-label="내 정보">👤 <span className="tool-label">내 정보</span></button>
+            <button onClick={() => setPanel('notice')} aria-label="공지사항">📢 <span className="tool-label">공지사항</span></button>
+            <button onClick={() => setPanel('guide')} aria-label="가이드·FAQ">📖 <span className="tool-label">가이드·FAQ</span></button>
+            <button className="minimap-toggle" aria-label="미니맵" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
+                    title="미니맵 켜기/끄기 (M)">🗺 <span className="tool-label">미니맵</span> <kbd>M</kbd></button>
+            <button className="leaderboard-toggle" aria-label="리더보드" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
+                    title="리더보드 켜기/끄기 (L)">🏆 <span className="tool-label">리더보드</span> <kbd>L</kbd></button>
+            <button className="chat-toggle" aria-label="채팅" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
+                    title="채팅 켜기/끄기 (C)">💬 <span className="tool-label">채팅</span> <kbd>C</kbd></button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
                     aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
@@ -319,7 +364,7 @@ export function GameScreen({ initialPlayer }: Props) {
             <section id="controls-help" className="help-card" aria-label="조작 설명">
               <h3>이렇게 놀아요</h3>
               <ul>
-                <li><strong>클릭·탭</strong> 빈 바닥을 누르면 그곳으로 가요. 다시 누르면 바로 방향을 바꿔요.</li>
+                <li><strong>클릭·탭</strong> 빈 바닥을 누르면 그곳으로 가요. 다시 누르면 바로 방향을 바꿔요. 다른 원을 꾹(0.5초) 누르고 있으면 그 사람 정보를 봐요.</li>
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
@@ -343,6 +388,10 @@ export function GameScreen({ initialPlayer }: Props) {
       </div>
       <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast}
                  onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} />
+      {infoEntity !== null && (
+        <PlayerInfoModal entityNo={infoEntity} onClose={() => setInfoEntity(null)}
+                         onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} />
+      )}
       {openKeyword !== null && (
         <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} />
       )}

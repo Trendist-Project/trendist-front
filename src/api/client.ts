@@ -1,5 +1,5 @@
 import type {
-  Activity, ActivityRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
+  Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
   PlusResult, RankingEntry, SearchResult, TokenResponse, VoteResult,
 } from './types';
 
@@ -70,6 +70,9 @@ export const api = {
   report: (target: 'COMMENT' | 'CHAT', targetId: number, reason: string) =>
     request<void>('POST', '/api/reports', { target, targetId, reason }),
   vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
+  scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
+  roomPlayer: (entityNo: number) => request<PlayerCard>('GET', `/api/room/players/${entityNo}`),
+  roomPlayerHistory: (entityNo: number) => request<ScoreHistory>('GET', `/api/room/players/${entityNo}/score-history?range=7d`),
   rankings: () => request<RankingEntry[]>('GET', '/api/rankings?country=KR'),
   notices: () => request<Notice[]>('GET', '/api/notices'),
   guideCategories: () => request<GuideCategory[]>('GET', '/api/guide/categories'),
