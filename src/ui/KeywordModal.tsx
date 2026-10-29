@@ -14,19 +14,22 @@ interface Props {
   onClose(): void;
   onPlused(gained: number, player: PlayerSummary): void;
   onError(message: string): void;
+  /** 채팅으로 #키워드 공유(없으면 버튼을 숨긴다) */
+  onShare?(text: string): void;
 }
 
 /**
  * 키워드 상세 카드(4.12). 키워드 이름이 보이는 곳(보관함, 검색 결과)에서 같은 창이 열린다.
  * 상태·트렌드 값·인원·누적 수, 활동 그래프, 댓글을 보여 주고 바로 추가할 수 있다.
  */
-export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
+export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }: Props) {
   const [card, setCard] = useState<KeywordCard | null>(null);
   const [failed, setFailed] = useState(false);
   const [range, setRange] = useState<ActivityRange>('24h');
   const [activity, setActivity] = useState<Activity | null>(null);
   const [showHolders, setShowHolders] = useState(() => { try { return localStorage.getItem(HOLDERS_KEY) === '1'; } catch { return false; } });
   const [busy, setBusy] = useState(false);
+  const [shared, setShared] = useState(false); // 공유 직후 잠깐 버튼을 막는다(채팅은 1초에 1회)
 
   useEffect(() => {
     api.keyword(keywordId).then(setCard).catch(() => setFailed(true));
@@ -61,7 +64,13 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
   }
 
   return (
-    <Modal title={card?.text ?? '키워드'} onClose={onClose} className="keyword-modal">
+    <Modal title={card?.text ?? '키워드'} onClose={onClose} className="keyword-modal"
+           titleExtra={card && onShare && (
+             <button className="kw-share" disabled={shared} title="채팅에 #키워드로 공유해요" aria-label={`${card.text} 채팅에 공유하기`}
+                     onClick={() => { onShare(card.text); setShared(true); window.setTimeout(() => setShared(false), 1500); }}>
+               {shared ? '공유함' : '💬 공유'}
+             </button>
+           )}>
       {failed && <p className="muted">키워드를 불러오지 못했어요. 금지되었거나 다른 나라의 키워드일 수 있어요.</p>}
       {!failed && !card && <p className="muted">불러오는 중…</p>}
       {card && (<>

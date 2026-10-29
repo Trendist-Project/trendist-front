@@ -122,6 +122,11 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .modal { width: min(640px, 100%); max-height: min(80vh, 760px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .modal-head h2 { margin: 0; font-size: 1.15rem; }
+.modal-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.modal-title h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 키워드 상세 창 제목 옆 [💬 공유]: 채팅에 #키워드로 보낸다 */
+.kw-share { flex: none; font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; }
+.kw-share:disabled { color: var(--accent); border-color: var(--accent); }
 .modal-body { padding: 16px 18px; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; } /* 안의 그래프·표가 창보다 넓어지지 않게 */
 .chip-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { padding: 6px 12px; border-radius: 999px; font-size: 0.88rem; color: var(--muted); }

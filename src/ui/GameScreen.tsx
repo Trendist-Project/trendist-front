@@ -442,6 +442,13 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
     setRefreshKey((k) => k + 1);
   }, [onPlused]);
   const sendChat = useCallback((text: string) => { connRef.current?.send({ type: 'chat', text }); }, []);
+  // 키워드 상세 창의 [공유]: 채팅에 #키워드로 바로 보낸다. 채팅 태그는 공백 없는 글자만 이어지므로 공백을 뺀다
+  // (검색은 공백을 무시하므로 누른 사람도 같은 키워드를 찾는다, 4.18). 채팅을 꺼 두었으면 켠다
+  const shareKeyword = useCallback((text: string) => {
+    const tag = `#${text.replace(/\s+/g, '')}`;
+    if (!connRef.current?.send({ type: 'chat', text: tag })) { showToast('연결된 뒤에 다시 공유해 주세요'); return; }
+    setChatView((v) => (v === 'off' ? 'open' : v));
+  }, [showToast]);
   const searchKeyword = useCallback((text: string) => setSearchRequest({ text, key: performance.now() }), []);
   const closeKeyword = useCallback(() => setOpenKeyword(null), []);
 
@@ -568,7 +575,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
                          onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} />
       )}
       {openKeyword !== null && (
-        <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} />
+        <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} onShare={shareKeyword} />
       )}
       {panel === 'notice' && <NoticeModal onClose={closePanel} />}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
