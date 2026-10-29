@@ -216,9 +216,11 @@ export function GameScreen({ initialPlayer }: Props) {
         chatInputRef.current?.focus();
         return;
       }
-      // M: 미니맵, L: 리더보드 켜기/끄기. 한글 입력 상태(ㅡ, ㅣ)에서도 되도록 key가 아니라 code로 본다
-      if ((e.code === 'KeyM' || e.code === 'KeyL') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
+      // M: 미니맵, L: 리더보드, C: 채팅 켜기/끄기. 한글 입력 상태(ㅡ, ㅣ, ㅊ)에서도 되도록 key가 아니라 code로 본다.
+      // Ctrl·Cmd와 함께 누른 C(복사)는 단축키로 쓰지 않는다
+      if ((e.code === 'KeyM' || e.code === 'KeyL' || e.code === 'KeyC') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.code === 'KeyC') setChatView((v) => (v === 'off' ? 'open' : 'off'));
+        else (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
         return;
       }
       if (!(e.code in KEYS)) return;
@@ -307,7 +309,7 @@ export function GameScreen({ initialPlayer }: Props) {
             <button className="leaderboard-toggle" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
                     title="리더보드 켜기/끄기 (L)">🏆 리더보드 <kbd>L</kbd></button>
             <button className="chat-toggle" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
-                    title="채팅 켜기/끄기">💬 채팅</button>
+                    title="채팅 켜기/끄기 (C)">💬 채팅 <kbd>C</kbd></button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
                     aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
@@ -322,7 +324,7 @@ export function GameScreen({ initialPlayer }: Props) {
                 <li><strong>검색 → +</strong> 뜨는 키워드를 찾아 +하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
-                <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, [💬 채팅]으로 끌 수 있어요.</li>
+                <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, C로 끄고 켤 수 있어요.</li>
               </ul>
               <div className="help-actions">
                 <button onClick={() => setPanel('guide')}>가이드 더 보기</button>
