@@ -31,10 +31,10 @@ export function MainScreen({ onStart, error }: Props) {
           <li>⭕ 원이 커진다</li>
         </ol>
         <ul className="main-howto" aria-label="조작과 규칙">
-          <li>🕹 모바일은 조이스틱, PC는 클릭·방향키로 이동해요</li>
+          <li>🕹 모바일은 조이스틱, PC는 클릭·방향키로 이동</li>
           <li>⭕ 큰 원이 작은 원을 튕겨내요</li>
-          <li>💥 지면 키워드 1개를 잃고, 이기면 그 키워드를 뺏어요</li>
-          <li>🛡 키워드 잃으면 3초 무적 · 세이프존 안은 안전해요</li>
+          <li>💥 지면 키워드 1개를 잃고, 이기면 그 키워드를 뺏음</li>
+          <li>🛡 키워드 잃으면 3초 무적 · 세이프존 안은 안전</li>
         </ul>
         <button className="primary big" onClick={onStart} autoFocus>시작</button>
         <div className="or-divider" aria-hidden="true"><span>또는</span></div>
