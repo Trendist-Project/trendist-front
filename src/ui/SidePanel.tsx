@@ -105,7 +105,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
       setCard(r.keyword);
       onPlused(r.gained, r.player);
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '+하지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : '추가하지 못했어요');
     } finally {
       setBusy(false);
     }

@@ -18,7 +18,7 @@ interface Props {
 
 /**
  * 키워드 상세 카드(4.12). 키워드 이름이 보이는 곳(보관함, 검색 결과)에서 같은 창이 열린다.
- * 상태·트렌드 값·인원·누적 수, 활동 그래프, 댓글을 보여 주고 바로 +할 수 있다.
+ * 상태·트렌드 값·인원·누적 수, 활동 그래프, 댓글을 보여 주고 바로 추가할 수 있다.
  */
 export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
   const [card, setCard] = useState<KeywordCard | null>(null);
@@ -54,7 +54,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError }: Props) {
       onPlused(r.gained, r.player);
       loadActivity();
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '+하지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : '추가하지 못했어요');
     } finally {
       setBusy(false);
     }

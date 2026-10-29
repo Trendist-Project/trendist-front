@@ -321,7 +321,7 @@ export function GameScreen({ initialPlayer }: Props) {
               <ul>
                 <li><strong>클릭·탭</strong> 빈 바닥을 누르면 그곳으로 가요. 다시 누르면 바로 방향을 바꿔요.</li>
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
-                <li><strong>검색 → +</strong> 뜨는 키워드를 찾아 +하면 내 원이 커져요.</li>
+                <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
                 <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, C로 끄고 켤 수 있어요.</li>

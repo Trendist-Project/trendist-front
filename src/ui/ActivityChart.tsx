@@ -8,7 +8,7 @@ const COLORS = { search: '#5aa9e6', plus: '#3fb68b', holders: '#f2b84b' };
 interface Props { activity: Activity; showHolders: boolean }
 
 /**
- * 키워드 활동 그래프(4.12). 검색 수(실선)와 + 수(파선)를 부드러운 곡선으로 그리고, 켜면 가진 사람 수를 오른쪽 축의 점선으로 겹친다.
+ * 키워드 활동 그래프(4.12). 검색 수(실선)와 추가 수(파선)를 부드러운 곡선으로 그리고, 켜면 가진 사람 수를 오른쪽 축의 점선으로 겹친다.
  * 이번 시간·오늘은 집계 중이라 마지막 구간을 점선으로 그리고 끝점이 깜빡인다. 가장 높은 점에 "최고"를 단다.
  */
 export function ActivityChart({ activity, showHolders }: Props) {
@@ -68,7 +68,7 @@ export function ActivityChart({ activity, showHolders }: Props) {
             <clipPath id="chart-reveal"><rect className="chart-reveal" x="0" y="0" width={width} height={HEIGHT} /></clipPath>
           </defs>
 
-          {/* 눈금: 왼쪽은 검색·+ 수, 오른쪽은 가진 사람 수 */}
+          {/* 눈금: 왼쪽은 검색·추가 수, 오른쪽은 가진 사람 수 */}
           {[0, 0.5, 1].map((f) => (
             <g key={f}>
               <line x1={PAD.left} x2={width - PAD.right} y1={PAD.top + innerH * (1 - f)} y2={PAD.top + innerH * (1 - f)} className="chart-grid" />
@@ -122,14 +122,14 @@ export function ActivityChart({ activity, showHolders }: Props) {
         <div className="chart-tooltip" style={{ left: Math.min(Math.max(x(hover), 70), width - 70) }}>
           <strong>{fmt.full(hp.t)}{hp.live ? ' · 집계 중' : ''}</strong>
           <span><i style={{ background: COLORS.search }} />검색 {hp.search.toLocaleString()}회</span>
-          <span><i style={{ background: COLORS.plus }} />+ {hp.plus.toLocaleString()}회</span>
+          <span><i style={{ background: COLORS.plus }} />추가 {hp.plus.toLocaleString()}회</span>
           {showHolders && <span><i style={{ background: COLORS.holders }} />가진 사람 {hp.holders.toLocaleString()}명</span>}
         </div>
       )}
 
       <div className="chart-legend" aria-hidden="true">
         <span><i className="solid" style={{ borderColor: COLORS.search }} />검색</span>
-        <span><i className="dash" style={{ borderColor: COLORS.plus }} />+</span>
+        <span><i className="dash" style={{ borderColor: COLORS.plus }} />추가</span>
         {showHolders && <span><i className="dot" style={{ borderColor: COLORS.holders }} />가진 사람</span>}
       </div>
       <p className="chart-summary">{summary(activity, fmt)}</p>
@@ -151,7 +151,7 @@ function summary(a: Activity, fmt: ReturnType<typeof formatters>) {
   if (search + plus === 0) return `${label} 동안 기록이 없어요. 지금 ${a.holders.toLocaleString()}명이 가지고 있어요.`;
   const best: ActivityPoint = a.points.reduce((b, p) => (p.search + p.plus > b.search + b.plus ? p : b));
   const when = a.range === '24h' ? `${fmt.hour(best.t)}에` : `${fmt.full(best.t)}에`;
-  return `${label} 검색 ${search.toLocaleString()}회, + ${plus.toLocaleString()}회, ${when} 가장 많았어요.`;
+  return `${label} 검색 ${search.toLocaleString()}회, 추가 ${plus.toLocaleString()}회, ${when} 가장 많았어요.`;
 }
 
 /**
