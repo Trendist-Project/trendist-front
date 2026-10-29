@@ -4,7 +4,7 @@ import { startGoogleLogin } from '../googleAuth';
  * 구글 로그인 버튼: 시작 버튼과 같은 크기·모서리로 구글 브랜드 모양(흰 바탕, G 로고)을 그린다.
  * 누르면 구글 계정 선택 페이지로 가서(매번 계정 선택), 고른 계정으로 로그인하고 돌아온다.
  */
-export function GoogleButton({ label = 'Google로 계속하기' }: { label?: string }) {
+export function GoogleButton({ label = 'Google로 시작' }: { label?: string }) {
   return (
     <button type="button" className="google-btn" onClick={startGoogleLogin}>
       <GoogleLogo /> <span>{label}</span>
