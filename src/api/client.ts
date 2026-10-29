@@ -39,15 +39,23 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 }
 
-/** 세션을 이어 간다: 계정은 갱신 토큰 쿠키(회전), 게스트는 방문자 ID 쿠키로. 둘 다 없으면 false(메인 화면을 보여 준다). */
-export async function resumeSession(): Promise<boolean> {
-  try {
-    accessToken = (await raw<TokenResponse>('POST', '/api/auth/session', undefined, false)).accessToken;
-    return true;
-  } catch {
-    accessToken = null;
-    return false;
-  }
+/**
+ * 세션을 이어 간다: 계정은 갱신 토큰 쿠키(회전), 게스트는 방문자 ID 쿠키로. 둘 다 없으면 false(메인 화면을 보여 준다).
+ * 이미 진행 중이면 그 결과를 같이 쓴다. 갱신 토큰은 한 번 쓰면 바뀌므로, 동시에 두 번 보내면 서버가 재사용(탈취)으로 보고 로그아웃시킨다(9.3).
+ */
+let resuming: Promise<boolean> | null = null;
+export function resumeSession(): Promise<boolean> {
+  if (resuming) return resuming;
+  resuming = (async () => {
+    try {
+      accessToken = (await raw<TokenResponse>('POST', '/api/auth/session', undefined, false)).accessToken;
+      return true;
+    } catch {
+      accessToken = null;
+      return false;
+    }
+  })().finally(() => { resuming = null; });
+  return resuming;
 }
 
 export const api = {

@@ -1,6 +1,7 @@
 import { GoogleButton } from './GoogleButton';
 
-interface Props { onStart(): void; error: string | null }
+/** loggedIn: 구글 계정으로 로그인한 상태면 true(구글 버튼을 숨긴다), 확인 중이면 null */
+interface Props { onStart(): void; error: string | null; loggedIn: boolean | null }
 
 /** 배경 원: [왼쪽 %, 위 %, 크기 px, 움직임 경로 1~3, 한 바퀴 초, 시작 지연 초]. 원마다 경로·속도를 달리해 따로 떠다니게 한다. */
 const BUBBLES: [number, number, number, number, number, number][] = [
@@ -10,7 +11,7 @@ const BUBBLES: [number, number, number, number, number, number][] = [
   [38, 5, 80, 2, 9, -7], [72, 92, 24, 1, 4, -1],
 ];
 
-export function MainScreen({ onStart, error }: Props) {
+export function MainScreen({ onStart, error, loggedIn }: Props) {
   return (
     <main className="main-screen">
       <div className="main-bg" aria-hidden="true">
@@ -37,9 +38,12 @@ export function MainScreen({ onStart, error }: Props) {
           <li>🛡&nbsp; 키워드 잃으면 3초 무적 · 세이프존 안은 안전</li>
         </ul>
         <button className="primary big" onClick={onStart} autoFocus>시작</button>
-        <div className="or-divider" aria-hidden="true"><span>또는</span></div>
-        <GoogleButton />
-        <p className="muted small">로그인하면 다른 기기에서도 기록이 이어져요. 게스트로 하던 기록도 그대로 이어져요</p>
+        {/* 이미 로그인한 계정이면 [시작]만(그 계정으로 이어 간다). 확인하는 동안에도 구글 버튼을 잠깐 띄웠다 숨기지 않게 기다린다 */}
+        {loggedIn === false && (<>
+          <div className="or-divider" aria-hidden="true"><span>또는</span></div>
+          <GoogleButton />
+          <p className="muted small">로그인하면 다른 기기에서도 기록이 이어져요. 게스트로 하던 기록도 그대로 이어져요</p>
+        </>)}
         {error && <p className="error" role="alert">{error}</p>}
       </section>
     </main>
