@@ -15,21 +15,22 @@ interface Props {
   searchRequest: { text: string; key: number } | null;
 }
 
-/** 보관함 정렬 기준. 기본은 최신순(보관함에 넣은 시각). */
+/** 보관함 정렬 기준. 기본은 남은 시간이 많은 것부터(곧 사라질 키워드가 아래로). */
 type SortKey = 'recent' | 'text' | 'state' | 'trend' | 'remaining';
 type SortDir = 'asc' | 'desc';
 const SORT_LABEL: Record<SortKey, string> = { recent: '최신순', text: '키워드', state: '상태', trend: '트렌드 점수', remaining: '남은 시간' };
-/** 기준을 고르면 먼저 쓰는 방향: 최신·트렌드는 큰 것부터, 키워드는 가나다, 상태는 🔥부터, 남은 시간은 적은 것부터 */
-const DEFAULT_DIR: Record<SortKey, SortDir> = { recent: 'desc', text: 'asc', state: 'asc', trend: 'desc', remaining: 'asc' };
+/** 기준을 고르면 먼저 쓰는 방향: 최신·트렌드·남은 시간은 큰 것부터, 키워드는 가나다, 상태는 🔥부터 */
+const DEFAULT_DIR: Record<SortKey, SortDir> = { recent: 'desc', text: 'asc', state: 'asc', trend: 'desc', remaining: 'desc' };
 const STATE_ORDER: Record<string, number> = { 활성: 0, 비활성: 1, 금지: 2 };
-const SORT_STORE = 'trendist.mineSort';
+// 기본 정렬을 남은 시간으로 바꾸면서 키를 바꿨다. 예전 키에는 열기만 해도 최신순이 저장되어 있어서 새 기본값이 적용되지 않는다
+const SORT_STORE = 'trendist.mineSort.v2';
 
 function loadSort(): { key: SortKey; dir: SortDir } {
   try {
     const v = JSON.parse(localStorage.getItem(SORT_STORE) ?? 'null');
     if (v && v.key in SORT_LABEL && (v.dir === 'asc' || v.dir === 'desc')) return v;
   } catch { /* 기본값 */ }
-  return { key: 'recent', dir: 'desc' };
+  return { key: 'remaining', dir: 'desc' };
 }
 
 function sortMine(list: MyKeyword[], key: SortKey, dir: SortDir) {
