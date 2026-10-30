@@ -23,6 +23,7 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
         ))}
       </div>
       <section className="main-card">
+        <img className="main-logo" src="/logo.png" alt="" width={96} height={96} />
         <h1>Trendist</h1>
         <p className="tagline">유행을 아는 자, 커진다.</p>
         <p className="muted">남들보다 먼저 뜨는 키워드를 찾아 추가하고, 내 원을 키워 보세요.</p>
