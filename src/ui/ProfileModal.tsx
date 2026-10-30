@@ -5,6 +5,7 @@ import { GoogleButton } from './GoogleButton';
 import { Modal } from './Modal';
 import { ScoreChart } from './ScoreChart';
 import { CustomizeView } from './CustomizeView';
+import { EffectsView } from './EffectsView';
 import { TitlesView } from './TitlesView';
 import { WithdrawDialog } from './WithdrawDialog';
 
@@ -19,8 +20,8 @@ const timeFormat = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '
 
 /** 내 정보(4.1): 지금 기록을 보여 주고 닉네임을 바꾼다. 변경 간격은 서버가 정하고, 화면은 다음 가능 시각만 안내한다. */
 export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn }: Props) {
-  // 칭호함·꾸미기·탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
-  const [view, setView] = useState<'main' | 'titles' | 'customize' | 'withdraw'>('main');
+  // 칭호함·꾸미기·이동 효과·탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
+  const [view, setView] = useState<'main' | 'titles' | 'customize' | 'effects' | 'withdraw'>('main');
   const [activeTitle, setActiveTitle] = useState<string | null | undefined>(undefined);
   const [nickname, setNickname] = useState(player.nickname);
   const [busy, setBusy] = useState(false);
@@ -76,6 +77,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
 
   if (view === 'withdraw') return <WithdrawDialog onDone={onWithdrawn} onCancel={() => setView('main')} />;
   if (view === 'titles') return <TitlesView onBack={() => setView('main')} onClose={onClose} />;
+  if (view === 'effects') return <EffectsView level={player.level} onBack={() => setView('main')} onClose={onClose} />;
   if (view === 'customize') return <CustomizeView level={player.level} onBack={() => setView('main')} onClose={onClose} />;
 
   return (
@@ -99,6 +101,11 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         <button className="profile-link" onClick={() => setView('customize')}>
           <span aria-hidden="true">🎨</span>
           <span><strong>꾸미기</strong><span className="muted small">{player.level >= 11 ? '원의 색과 테두리 바꾸기' : '11레벨부터 열려요'}</span></span>
+          <span aria-hidden="true">›</span>
+        </button>
+        <button className="profile-link" onClick={() => setView('effects')}>
+          <span aria-hidden="true">✨</span>
+          <span><strong>이동 효과</strong><span className="muted small">움직일 때 뒤에 남는 효과 고르기</span></span>
           <span aria-hidden="true">›</span>
         </button>
       </div>

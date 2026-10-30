@@ -1,5 +1,6 @@
 import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
 import { borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
+import { Trails } from './trails';
 
 /** 다른 엔티티의 최근 스냅샷들(서버 시각 ms 순). 조금 늦은 시각을 두 스냅샷 사이로 보간해 그린다. */
 interface Interp { buf: { t: number; s: EntityState }[]; cur: EntityState }
@@ -79,9 +80,10 @@ const HEADING_TURN_RATE = 12;
 export class Arena {
   private ctx: CanvasRenderingContext2D;
   private entities = new Map<number, Interp>();
-  private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null }>();
+  private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null; trail: string | null }>();
   /** 엔티티마다 머리 방향(라디안, 0 = 위)과 지난 프레임 위치 */
   private headings = new Map<number, { a: number; x: number; y: number }>();
+  private trails = new Trails();
   private half = 1500;
   private tuning: Tuning | null = null;
   private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
@@ -154,7 +156,7 @@ export class Arena {
   setRoster(players: RosterEntry[]) {
     this.names = new Map(players.map((p) => [p.e, {
       nickname: p.nickname, level: p.level, bot: !!p.bot, title: p.title ?? null,
-      bg: p.bg ?? TURTLE_BASE, borderColor: p.borderColor ?? null, borderWidth: p.borderWidth ?? null,
+      bg: p.bg ?? TURTLE_BASE, borderColor: p.borderColor ?? null, borderWidth: p.borderWidth ?? null, trail: p.trail ?? null,
     }]));
   }
   /**
@@ -444,6 +446,14 @@ export class Arena {
     }).sort((a, b) => b.r - a.r);
     const viewHalfW = w / 2 / this.zoom, viewHalfH = h / 2 / this.zoom;
     this.updateHeadings(list, dt);
+    // 이동 효과(4.23)는 모든 원 아래에 그린다. 화면 근처의 원만 새 입자를 만든다
+    for (const e of list) {
+      const info = this.names.get(e.e);
+      if (!info?.trail || info.bot) continue;
+      if (Math.abs(e.x - this.view.x) > viewHalfW + e.r * 4 || Math.abs(e.y - this.view.y) > viewHalfH + e.r * 4) continue;
+      this.trails.update(e.e, info.trail, e.x, e.y, e.r, now, info.bg);
+    }
+    this.trails.draw(ctx, now, dt);
     for (const e of list) {
       if (Math.abs(e.x - this.view.x) > viewHalfW + e.r || Math.abs(e.y - this.view.y) > viewHalfH + e.r) continue; // 화면 밖은 그리지 않는다
       this.drawEntity(ctx, e);

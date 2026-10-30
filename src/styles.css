@@ -495,3 +495,8 @@ button.link-back:hover { color: var(--text); }
 .width-row { display: flex; gap: 10px; align-items: center; }
 .width-row input[type=range] { flex: 1; padding: 0; accent-color: var(--accent); }
 @media (max-width: 760px) { .customize { grid-template-columns: 1fr; } }
+
+/* 이동 효과(4.23) */
+.effect-preview { max-width: 100%; height: auto !important; }
+.effect-actions { display: flex; gap: 6px; align-items: center; flex: none; }
+.effect-actions button { padding: 6px 10px; font-size: 0.85rem; }
