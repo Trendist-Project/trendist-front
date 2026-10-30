@@ -23,6 +23,9 @@ jobs:
 
       - name: Build Vite app
         run: npm run build
+        env:
+          # 카카오톡 공유(4.24) JavaScript 키. 공개 키라 저장소 변수(Settings → Variables)에 둔다. 없으면 카카오 공유 단추가 숨는다
+          VITE_KAKAO_JS_KEY: ${{ vars.KAKAO_JS_KEY }}
 
       - name: Upload build to server
         uses: appleboy/scp-action@master

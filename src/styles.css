@@ -655,3 +655,6 @@ button.link-back:hover { color: var(--text); }
 .rich-text > .rt-heading:first-child { margin-top: 0; }
 .rich-text a { color: #7dd3fc; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .rich-text a:hover { color: #bae6fd; }
+/* 카카오톡 공유: 카카오 노란색 단추 */
+.share-card-actions button.kakao-share { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fee500; border-color: #fee500; color: #191919; font-weight: 700; }
+.share-card-actions button.kakao-share:disabled { opacity: 0.6; }

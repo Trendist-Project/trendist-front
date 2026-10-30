@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { PlayerSummary } from '../api/types';
 import { drawShareCard, type ShareCardData } from '../game/shareCard';
+import { kakaoEnabled, sendKakao, uploadForKakao } from '../kakaoShare';
 import { Modal } from './Modal';
 
 interface Props { player: PlayerSummary; onBack(): void; onClose(): void }
 
 const FILE_NAME = 'trendist-card.png';
-const shareUrl = () => `${window.location.origin}/?ref=share`;
+const shareUrl = (ref = 'share') => `${window.location.origin}/?ref=${ref}`;
 
 /** 카드에 넣을 값을 지금 있는 API에서 모은다. 하나가 실패해도 그 칸만 비우고 그린다 */
 async function collect(player: PlayerSummary): Promise<ShareCardData> {
@@ -38,13 +39,16 @@ async function collect(player: PlayerSummary): Promise<ShareCardData> {
 
 /**
  * 자랑하기 카드(4.24): 내 기록을 1080×1350 이미지로 만들어 공유한다. 이미지는 브라우저에서 그린다(서버 부담 없음).
- * 휴대폰은 공유 시트로 바로 보내고, 공유를 못 하는 브라우저는 이미지 저장과 링크 복사를 쓴다.
+ * [카카오톡 공유]는 카드를 카카오 서버에 미리 올려 두고 누르면 바로 카카오톡 공유 창을 연다(휴대폰·PC 모두).
+ * 그 밖의 앱은 휴대폰 공유 시트로 보내고, 공유를 못 하는 브라우저는 이미지 저장과 링크 복사를 쓴다.
  */
 export function ShareCardView({ player, onBack, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [canShareFile, setCanShareFile] = useState(false);
+  // 카카오: null이면 준비 중, ''이면 실패(버튼 숨김), 주소면 준비됨
+  const [kakaoImage, setKakaoImage] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -56,6 +60,11 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
       // 파일 공유가 되는 브라우저인지 미리 본다(데스크톱 대부분은 안 된다)
       const probe = new File([new Blob()], FILE_NAME, { type: 'image/png' });
       setCanShareFile(!!navigator.canShare?.({ files: [probe] }));
+      if (kakaoEnabled) {
+        const blob = await new Promise<Blob | null>((resolve) => canvasRef.current?.toBlob(resolve, 'image/png') ?? resolve(null));
+        const url = blob ? await uploadForKakao(new File([blob], FILE_NAME, { type: 'image/png' })).catch(() => '') : '';
+        if (alive) setKakaoImage(url);
+      }
     }).catch(() => { if (alive) setMessage({ text: '카드를 만들지 못했어요', error: true }); });
     return () => { alive = false; };
   }, [player]);
@@ -73,6 +82,19 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
       });
     } catch (e) {
       if ((e as DOMException)?.name !== 'AbortError') setMessage({ text: '공유하지 못했어요. 이미지 저장을 써 주세요', error: true });
+    }
+  }
+
+  function kakao() {
+    if (!kakaoImage) return;
+    try {
+      sendKakao({
+        imageUrl: kakaoImage, url: shareUrl('kakao'),
+        title: `${player.nickname}의 트렌드 성적표`,
+        description: `유행도 ${player.currentScore.toLocaleString()} · ${player.level}레벨. 유행을 아는 자, 커진다!`,
+      });
+    } catch {
+      setMessage({ text: '카카오톡 공유 창을 열지 못했어요. 이미지 저장을 써 주세요', error: true });
     }
   }
 
@@ -106,8 +128,13 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
       <p className="muted small">내 유행도·칭호·가진 🔥 키워드·기록을 한 장에 담았어요. 💤 키워드는 넣지 않아요.</p>
       {message && <p className={message.error ? 'error small' : 'ok small'} role="status">{message.text}</p>}
       <div className="share-card-actions">
-        {canShareFile && <button className="primary" onClick={share} disabled={!ready}>📤 공유하기</button>}
-        <button className={canShareFile ? '' : 'primary'} onClick={save} disabled={!ready}>⬇️ 이미지 저장</button>
+        {kakaoEnabled && kakaoImage !== '' && (
+          <button className="kakao-share" onClick={kakao} disabled={!kakaoImage}>
+            <span aria-hidden="true">💬</span>{kakaoImage ? '카카오톡 공유' : '카카오톡 준비 중…'}
+          </button>
+        )}
+        {canShareFile && <button className={kakaoEnabled ? '' : 'primary'} onClick={share} disabled={!ready}>📤 {kakaoEnabled ? '다른 앱으로 공유' : '공유하기'}</button>}
+        <button className={canShareFile || kakaoEnabled ? '' : 'primary'} onClick={save} disabled={!ready}>⬇️ 이미지 저장</button>
         <button onClick={copyLink}>🔗 링크 복사</button>
       </div>
     </Modal>
