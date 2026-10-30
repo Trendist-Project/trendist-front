@@ -146,6 +146,12 @@ const qs = (o: Record<string, string | number | undefined>) =>
 export interface AdminNoticeInput { title: string; body: string; pinned: boolean; popupEnabled: boolean; popupDays: number | null }
 export interface AdminNotice extends AdminNoticeInput { id: number; popupUntil: string | null; createdAt: string; updatedAt: string; edited: boolean }
 
+/** 관리자 가이드(4.17, 13.4). code는 만들 때만, displayType은 FAQ(아코디언)·ARTICLE(문서형) */
+export interface AdminGuideCategoryInput { code?: string; name: string; displayType: 'FAQ' | 'ARTICLE'; enabled: boolean }
+export interface AdminGuideCategory { id: number; code: string; name: string; displayType: 'FAQ' | 'ARTICLE'; enabled: boolean; sortOrder: number; articleCount: number }
+export interface AdminGuideArticleInput { title: string; body: string }
+export interface AdminGuideArticle extends AdminGuideArticleInput { id: number; categoryId: number; sortOrder: number; createdAt: string; updatedAt: string }
+
 export const adminApi = {
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
   keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q })}`),
@@ -159,5 +165,15 @@ export const adminApi = {
   createNotice: (n: AdminNoticeInput) => request<AdminNotice>('POST', '/api/admin/notices', n),
   updateNotice: (id: number, n: AdminNoticeInput) => request<AdminNotice>('PUT', `/api/admin/notices/${id}`, n),
   deleteNotice: (id: number) => request<void>('DELETE', `/api/admin/notices/${id}`),
+  guideCategories: () => request<AdminGuideCategory[]>('GET', '/api/admin/guide/categories'),
+  createGuideCategory: (c: AdminGuideCategoryInput) => request<AdminGuideCategory>('POST', '/api/admin/guide/categories', c),
+  updateGuideCategory: (id: number, c: AdminGuideCategoryInput) => request<AdminGuideCategory>('PUT', `/api/admin/guide/categories/${id}`, c),
+  moveGuideCategory: (id: number, direction: -1 | 1) => request<AdminGuideCategory[]>('POST', `/api/admin/guide/categories/${id}/move`, { direction }),
+  deleteGuideCategory: (id: number) => request<void>('DELETE', `/api/admin/guide/categories/${id}`),
+  guideArticles: (categoryId: number) => request<AdminGuideArticle[]>('GET', `/api/admin/guide/categories/${categoryId}/articles`),
+  createGuideArticle: (categoryId: number, a: AdminGuideArticleInput) => request<AdminGuideArticle>('POST', `/api/admin/guide/categories/${categoryId}/articles`, a),
+  updateGuideArticle: (id: number, a: AdminGuideArticleInput) => request<AdminGuideArticle>('PUT', `/api/admin/guide/articles/${id}`, a),
+  moveGuideArticle: (id: number, direction: -1 | 1) => request<AdminGuideArticle[]>('POST', `/api/admin/guide/articles/${id}/move`, { direction }),
+  deleteGuideArticle: (id: number) => request<void>('DELETE', `/api/admin/guide/articles/${id}`),
   updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),
 };

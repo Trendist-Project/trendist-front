@@ -82,7 +82,7 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 .notice-toggle { display: grid; gap: 10px; align-content: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #0f151f; cursor: pointer; }
 label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .notice-toggle.on { border-color: var(--accent); background: rgba(63,182,139,0.08); }
-.notice-toggle input[type="checkbox"] { width: 18px; height: 18px; flex: none; margin: 2px 0 0; padding: 0; accent-color: var(--accent); }
+.notice-toggle input[type="checkbox"], .notice-toggle input[type="radio"] { width: 18px; height: 18px; flex: none; margin: 2px 0 0; padding: 0; accent-color: var(--accent); }
 .notice-toggle-text { display: grid; gap: 2px; min-width: 0; }
 .notice-toggle-text strong { white-space: nowrap; }
 .notice-days-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-left: 28px; font-size: 0.9rem; }
@@ -126,3 +126,43 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .admin-switch-text { display: grid; line-height: 1.25; font-size: 0.85rem; }
 .admin-switch-text .muted { font-size: 0.75rem; }
 @media (max-width: 760px) { .admin-switch { margin-left: 0; } }
+
+/* 본문 편집기(13.4): 서식 단추 줄 + 글 칸. 저장은 본문 문법 그대로, 결과는 옆 미리 보기로 본다 */
+.markup-editor { display: grid; border: 1px solid var(--line); border-radius: 10px; background: #0f151f; overflow: hidden; }
+.markup-editor:focus-within { border-color: var(--accent); }
+.markup-toolbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px; border-bottom: 1px solid var(--line); background: #141b26; }
+.markup-toolbar button { min-width: 34px; height: 32px; padding: 0 8px; border-radius: 8px; background: transparent; border-color: transparent; font-size: 0.9rem; }
+.markup-toolbar button:hover { background: #1d2635; border-color: var(--line); }
+.markup-toolbar button.on { border-color: var(--accent); color: var(--accent); }
+.markup-toolbar .tool-bold { font-weight: 800; }
+.markup-toolbar .tool-heading { font-weight: 800; font-family: Georgia, serif; }
+.markup-toolbar select.markup-embed { height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line); background: #1d2635; color: var(--text); font: inherit; font-size: 0.85rem; }
+.markup-spacer { flex: 1; }
+.markup-help { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 0.78rem; color: var(--muted); }
+.markup-help code { background: #1d2635; padding: 1px 5px; border-radius: 5px; color: var(--text); }
+.notice-field .markup-editor textarea { border: 0; border-radius: 0; background: transparent; min-height: 280px; font-family: inherit; line-height: 1.65; }
+.notice-field .markup-editor textarea:focus { outline: none; }
+
+/* 가이드 관리(4.17, 13.4): 왼쪽 카테고리, 오른쪽 글 */
+.guide-admin-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
+.guide-admin-cats { display: grid; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; position: sticky; top: 12px; }
+.guide-admin-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.guide-admin-head h2 { margin: 0; font-size: 1.05rem; }
+.guide-admin-head button { padding: 6px 10px; font-size: 0.85rem; }
+.guide-cat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.guide-cat-list li { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 12px; background: #0f151f; }
+.guide-cat-list li.on { border-color: var(--accent); background: rgba(63,182,139,0.08); }
+.guide-cat-main { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: left; border: 0; background: transparent; padding: 10px 12px; }
+.guide-cat-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guide-order { display: grid; gap: 2px; flex: none; padding-right: 6px; }
+.guide-order button { width: 28px; height: 22px; padding: 0; font-size: 0.65rem; border-radius: 6px; line-height: 1; }
+.notice-row > .guide-order { padding: 0; align-self: center; }
+.guide-admin-main { display: grid; gap: 14px; min-width: 0; }
+.guide-cat-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.guide-cat-bar h2 { margin: 0 0 2px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+.guide-cat-bar code { background: #1d2635; padding: 1px 6px; border-radius: 5px; }
+.notice-list-head .guide-new { margin-left: auto; }
+@media (max-width: 860px) {
+  .guide-admin-layout { grid-template-columns: 1fr; }
+  .guide-admin-cats { position: static; }
+}

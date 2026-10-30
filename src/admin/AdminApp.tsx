@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
-  adminApi, ApiFailure, resumeSession,
+  adminApi, resumeSession,
   type AdminKeywordPage, type AdminKeywordQuery, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminStatus,
 } from '../api/client';
 import { STATE_BADGE } from '../ui/keywordFormat';
 import { RichText } from '../ui/RichText';
+import { GuidesTab } from './GuidesTab';
+import { MarkupEditor } from './MarkupEditor';
+import { errMsg, fmt } from './format';
 
 /**
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
-type Tab = 'keywords' | 'add' | 'reports' | 'notices' | 'settings';
-const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['settings', '설정']];
+type Tab = 'keywords' | 'add' | 'reports' | 'notices' | 'guides' | 'settings';
+const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['settings', '설정']];
 
-const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-const errMsg = (e: unknown) => (e instanceof ApiFailure ? e.message : '요청에 실패했어요');
 
 export function AdminApp() {
   const [status, setStatus] = useState<AdminStatus | null | 'nologin'>(null);
@@ -52,6 +53,7 @@ export function AdminApp() {
       {tab === 'add' && <AddTab />}
       {tab === 'reports' && <ReportsTab />}
       {tab === 'notices' && <NoticesTab />}
+      {tab === 'guides' && <GuidesTab />}
       {tab === 'settings' && <SettingsTab />}
     </main>
   );
@@ -450,12 +452,11 @@ function NoticesTab() {
         </label>
 
         <div className="notice-edit">
-          <label className="notice-field">
-            <span className="notice-label">본문<span className={bodyLen > NOTICE_BODY_MAX ? 'count over' : 'count'}>{bodyLen.toLocaleString()}/{NOTICE_BODY_MAX.toLocaleString()}</span></span>
-            <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={14}
-                      placeholder={'빈 줄로 문단을 나눠요.\n- 로 시작하면 목록\n**굵게**\n> 로 시작하면 💡 팁 상자'} />
-            <span className="notice-syntax muted">빈 줄 = 문단 · <code>- </code> 목록 · <code>1. </code> 번호 · <code>**굵게**</code> · <code>&gt; </code> 팁 상자</span>
-          </label>
+          <div className="notice-field">
+            <label className="notice-label" htmlFor="notice-body">본문<span className={bodyLen > NOTICE_BODY_MAX ? 'count over' : 'count'}>{bodyLen.toLocaleString()}/{NOTICE_BODY_MAX.toLocaleString()}</span></label>
+            <MarkupEditor id="notice-body" value={form.body} onChange={(body) => setForm((f) => ({ ...f, body }))}
+                          placeholder={'공지 내용을 쓰세요. 위 단추로 굵게·목록·팁 상자를 넣을 수 있어요.\n빈 줄로 문단을 나눠요.'} />
+          </div>
           <div className="notice-preview" aria-label="미리 보기">
             <span className="notice-label">미리 보기<span className="count">사용자 화면과 같은 모양</span></span>
             <div className="notice-preview-box notice-article">
