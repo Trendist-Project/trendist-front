@@ -68,6 +68,9 @@ const MINIMAP_MIN = 110;
 const MINIMAP_INTERVAL = 1000; // 서버 미니맵 주기(1초)
 const MINIMAP_MAX = 180;
 const MINIMAP_MARGIN = 12;
+// 아이콘이 가는 쪽을 바라본다(4.2). 이보다 느리면 방향을 바꾸지 않고(멈추면 마지막 방향 그대로), 초당 이 비율로 돌아간다
+const HEADING_MIN_SPEED = 25;
+const HEADING_TURN_RATE = 12;
 
 /**
  * 캔버스 아레나 렌더러(8절). 스냅샷은 React state가 아니라 이 객체에 둔다.
@@ -77,6 +80,8 @@ export class Arena {
   private ctx: CanvasRenderingContext2D;
   private entities = new Map<number, Interp>();
   private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null }>();
+  /** 엔티티마다 머리 방향(라디안, 0 = 위)과 지난 프레임 위치 */
+  private headings = new Map<number, { a: number; x: number; y: number }>();
   private half = 1500;
   private tuning: Tuning | null = null;
   private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
@@ -438,6 +443,7 @@ export class Arena {
       return s.me ? { ...s, x: this.view.x, y: this.view.y, r } : { ...s, r };
     }).sort((a, b) => b.r - a.r);
     const viewHalfW = w / 2 / this.zoom, viewHalfH = h / 2 / this.zoom;
+    this.updateHeadings(list, dt);
     for (const e of list) {
       if (Math.abs(e.x - this.view.x) > viewHalfW + e.r || Math.abs(e.y - this.view.y) > viewHalfH + e.r) continue; // 화면 밖은 그리지 않는다
       this.drawEntity(ctx, e);
@@ -572,7 +578,7 @@ export class Arena {
     ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
     // 레벨이 오를수록 거북이 부위가 하나씩 생기고 선명해진다(4.9). 테두리를 그 위에 그려 가장자리를 깔끔하게 덮는다
-    drawTurtle(ctx, e.x, e.y, e.r, lvl);
+    drawTurtle(ctx, e.x, e.y, e.r, lvl, this.headings.get(e.e)?.a ?? 0);
     ctx.strokeStyle = look?.borderColor ?? '#11372a';
     ctx.lineWidth = borderLineWidth(e.r, look?.borderWidth ?? null);
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke();
@@ -604,6 +610,29 @@ export class Arena {
         ctx.fillText(info.title, e.x, ty);
       }
     }
+  }
+
+  /**
+   * 머리 방향(4.2): 내 원은 예측 속도, 다른 원은 지난 프레임에서 움직인 만큼으로 가는 쪽을 구하고 그쪽으로 부드럽게 돈다.
+   * 튕겨 날아가는 것(내 원)은 방향에 넣지 않는다. 멈추면 마지막 방향을 그대로 본다.
+   */
+  private updateHeadings(list: EntityState[], dt: number) {
+    const seen = new Set<number>();
+    const maxSpeed = this.tuning?.maxSpeed ?? 480;
+    for (const e of list) {
+      seen.add(e.e);
+      let h = this.headings.get(e.e);
+      if (!h) { h = { a: 0, x: e.x, y: e.y }; this.headings.set(e.e, h); }
+      let vx: number, vy: number;
+      if (e.me) { vx = this.me.vx; vy = this.me.vy; } else { vx = (e.x - h.x) / Math.max(dt, 0.001); vy = (e.y - h.y) / Math.max(dt, 0.001); }
+      h.x = e.x; h.y = e.y;
+      const speed = Math.hypot(vx, vy);
+      if (speed < HEADING_MIN_SPEED || speed > maxSpeed * 4) continue; // 너무 빠르면 순간 이동(입장·보정)
+      let d = Math.atan2(vy, vx) + Math.PI / 2 - h.a;
+      d = Math.atan2(Math.sin(d), Math.cos(d)); // 가까운 쪽으로 돈다
+      h.a += d * Math.min(1, dt * HEADING_TURN_RATE);
+    }
+    for (const id of this.headings.keys()) if (!seen.has(id)) this.headings.delete(id);
   }
 
   /** 클릭한 지점의 파동. 띠 두 개가 시차를 두고 바깥에서 안쪽으로 모이며 옅어진다. */

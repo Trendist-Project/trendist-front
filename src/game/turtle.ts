@@ -25,13 +25,17 @@ function reveal(level: number, appear: number) {
   return 0.25 + 0.75 * Math.min(1, (level - appear) / (COMPLETE - appear));
 }
 
-/** 바탕 원은 호출하는 쪽이 그린다. 여기서는 그 위에 거북이 부위만 그린다(원 밖으로 나가지 않게 잘라 낸다). */
-export function drawTurtle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, level: number) {
+/**
+ * 바탕 원은 호출하는 쪽이 그린다. 여기서는 그 위에 거북이 부위만 그린다(원 밖으로 나가지 않게 잘라 낸다).
+ * angle: 머리 방향(라디안). 0이면 위(화면 북쪽)를 보고, 시계 방향으로 돈다(4.2: 가는 쪽을 바라본다).
+ */
+export function drawTurtle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, level: number, angle = 0) {
   const lv = Math.min(level, COMPLETE);
   if (lv < 2) return;
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
   ctx.translate(x, y);
+  if (angle) ctx.rotate(angle);
   ctx.scale(r, r); // 이후 좌표는 반지름 1 기준
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
