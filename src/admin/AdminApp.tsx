@@ -62,7 +62,7 @@ const SORTS: [string, string][] = [
   ['totalPlusCount', '누적 추가'], ['searchCount', '누적 검색'], ['activatedAt', '🔥된 때'], ['externalUntil', '유지 끝'], ['createdAt', '등록'],
 ];
 const SORTABLE = new Set(['trendValue', 'holderCount', 'totalPlusCount', 'searchCount', 'activatedAt', 'externalUntil', 'createdAt']);
-const SOURCES = ['', 'google', 'admin', 'internal', 'naver_datalab', 'bq_trends_rising'];
+const SOURCES = ['', 'google', 'admin', 'internal'];
 
 function KeywordsTab() {
   const [query, setQuery] = useState<AdminKeywordQuery>({ sort: 'trendValue', dir: 'desc', page: 0 });
