@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   adminApi, ApiFailure, resumeSession,
-  type AdminKeywordPage, type AdminKeywordQuery, type AdminReportPage, type AdminSetting, type AdminStatus,
+  type AdminKeywordPage, type AdminKeywordQuery, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminStatus,
 } from '../api/client';
 import { STATE_BADGE } from '../ui/keywordFormat';
+import { RichText } from '../ui/RichText';
 
 /**
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
-type Tab = 'keywords' | 'add' | 'reports' | 'settings';
-const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['settings', '설정']];
+type Tab = 'keywords' | 'add' | 'reports' | 'notices' | 'settings';
+const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['settings', '설정']];
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
 const errMsg = (e: unknown) => (e instanceof ApiFailure ? e.message : '요청에 실패했어요');
@@ -50,6 +51,7 @@ export function AdminApp() {
       {tab === 'keywords' && <KeywordsTab />}
       {tab === 'add' && <AddTab />}
       {tab === 'reports' && <ReportsTab />}
+      {tab === 'notices' && <NoticesTab />}
       {tab === 'settings' && <SettingsTab />}
     </main>
   );
@@ -359,6 +361,131 @@ function SettingsTab() {
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- 공지(4.16)
+
+const NOTICE_TITLE_MAX = 50, NOTICE_BODY_MAX = 5000;
+const EMPTY_NOTICE: AdminNoticeInput = { title: '', body: '', pinned: false, popupEnabled: true, popupDays: 7 };
+const chars = (s: string) => [...s].length; // 서버와 같이 글자(코드 포인트) 수로 센다
+
+/** 공지 쓰기·고치기·지우기. 본문은 게임의 공지 창과 같은 모양으로 미리 본다(문단, `- ` 목록, **굵게** 등). */
+function NoticesTab() {
+  const [list, setList] = useState<AdminNotice[] | null>(null);
+  const [form, setForm] = useState<AdminNoticeInput>(EMPTY_NOTICE);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+
+  const load = useCallback(() => { adminApi.notices().then(setList).catch((e) => setMessage({ text: errMsg(e), ok: false })); }, []);
+  useEffect(load, [load]);
+
+  const titleLen = chars(form.title.trim()), bodyLen = chars(form.body.trim());
+  const valid = titleLen >= 1 && titleLen <= NOTICE_TITLE_MAX && bodyLen >= 1 && bodyLen <= NOTICE_BODY_MAX
+    && (!form.popupEnabled || (form.popupDays !== null && form.popupDays >= 1 && form.popupDays <= 90));
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!valid) return;
+    setBusy(true); setMessage(null);
+    try {
+      if (editing === null) await adminApi.createNotice(form); else await adminApi.updateNotice(editing, form);
+      setMessage({ text: editing === null ? '공지를 올렸어요' : '공지를 고쳤어요', ok: true });
+      setForm(EMPTY_NOTICE); setEditing(null);
+      load();
+    } catch (err) {
+      setMessage({ text: errMsg(err), ok: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function startEdit(n: AdminNotice) {
+    setEditing(n.id);
+    setForm({ title: n.title, body: n.body, pinned: n.pinned, popupEnabled: n.popupEnabled, popupDays: n.popupDays ?? 7 });
+    setMessage(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function remove(id: number) {
+    setBusy(true);
+    try {
+      await adminApi.deleteNotice(id);
+      if (editing === id) { setEditing(null); setForm(EMPTY_NOTICE); }
+      setMessage({ text: '공지를 지웠어요', ok: true });
+      load();
+    } catch (err) {
+      setMessage({ text: errMsg(err), ok: false });
+    } finally {
+      setBusy(false); setConfirmDelete(null);
+    }
+  }
+
+  return (
+    <section className="admin-panel">
+      <form className="notice-form" onSubmit={submit}>
+        <h2>{editing === null ? '새 공지' : '공지 고치기'}</h2>
+        <label className="notice-field">
+          <span>제목 <span className={titleLen > NOTICE_TITLE_MAX ? 'error small' : 'muted small'}>{titleLen}/{NOTICE_TITLE_MAX}</span></span>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="예) 10월 31일 새벽 점검 안내" />
+        </label>
+        <div className="notice-edit">
+          <label className="notice-field">
+            <span>본문 <span className={bodyLen > NOTICE_BODY_MAX ? 'error small' : 'muted small'}>{bodyLen.toLocaleString()}/{NOTICE_BODY_MAX.toLocaleString()}</span></span>
+            <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={12}
+                      placeholder={'빈 줄로 문단을 나눠요.\n- 로 시작하면 목록\n**굵게**\n> 로 시작하면 💡 팁 상자'} />
+          </label>
+          <div className="notice-preview" aria-label="미리 보기">
+            <span className="muted small">미리 보기(게임의 공지 창과 같은 모양)</span>
+            <div className="notice-preview-box">
+              <strong>{form.pinned && '📌 '}{form.title.trim() || '제목'}</strong>
+              {form.body.trim() ? <RichText text={form.body} /> : <p className="muted small">본문을 쓰면 여기에 보여요</p>}
+            </div>
+          </div>
+        </div>
+        <div className="notice-options">
+          <label><input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} /> 📌 맨 위에 고정</label>
+          <label><input type="checkbox" checked={form.popupEnabled} onChange={(e) => setForm({ ...form, popupEnabled: e.target.checked })} /> 팝업으로 띄우기</label>
+          {form.popupEnabled && (
+            <label>등록일부터 <input type="number" min={1} max={90} value={form.popupDays ?? ''} className="notice-days"
+                               onChange={(e) => setForm({ ...form, popupDays: e.target.value === '' ? null : Number(e.target.value) })} />일 (1~90)</label>
+          )}
+        </div>
+        <p className="muted small admin-hint">팝업 설정은 저장만 돼요. 메인·게임 화면에 팝업으로 띄우는 기능은 아직 없어요(목록과 [공지] 창에는 바로 보여요).</p>
+        {message && <p className={message.ok ? 'ok small' : 'error small'} role="status">{message.text}</p>}
+        <div className="admin-actions">
+          <button className="primary" type="submit" disabled={!valid || busy}>{busy ? '저장하는 중…' : editing === null ? '공지 올리기' : '고친 내용 저장'}</button>
+          {editing !== null && <button type="button" onClick={() => { setEditing(null); setForm(EMPTY_NOTICE); }} disabled={busy}>새 공지로</button>}
+        </div>
+      </form>
+
+      <h2>올린 공지 {list ? list.length : ''}</h2>
+      {list === null ? <p className="muted">불러오는 중…</p> : list.length === 0 ? <p className="muted">아직 공지가 없어요.</p> : (
+        <ul className="admin-reports notice-list">
+          {list.map((n) => (
+            <li key={n.id} className={editing === n.id ? 'editing' : undefined}>
+              <div className="report-head">
+                {n.pinned && <span className="badge">📌 고정</span>}
+                <strong>{n.title}</strong>
+                <span className="muted small">{fmt(n.createdAt)}{n.edited ? ` · 수정 ${fmt(n.updatedAt)}` : ''}{n.popupEnabled && n.popupUntil ? ` · 팝업 ${fmt(n.popupUntil)}까지` : ''}</span>
+              </div>
+              <details><summary className="muted small">본문 보기</summary><RichText text={n.body} /></details>
+              <div className="admin-actions">
+                <button onClick={() => startEdit(n)} disabled={busy}>고치기</button>
+                {confirmDelete === n.id ? (
+                  <span className="confirm">
+                    <button className="danger" onClick={() => remove(n.id)} disabled={busy}>정말 지우기</button>
+                    <button onClick={() => setConfirmDelete(null)} disabled={busy}>취소</button>
+                  </span>
+                ) : <button className="danger" onClick={() => setConfirmDelete(n.id)} disabled={busy}>지우기</button>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

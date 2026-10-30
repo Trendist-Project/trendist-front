@@ -54,3 +54,18 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 .setting-edit input { width: 110px; }
 .admin .ok { color: #9fe0c3; }
 .admin-denied { min-height: 60vh; place-content: center; text-align: center; }
+
+/* 공지(4.16) */
+.admin h2 { margin: 0; font-size: 1.05rem; }
+.notice-form { display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.notice-field { display: grid; gap: 6px; font-weight: 600; font-size: 0.9rem; }
+.notice-field input, .notice-field textarea { font: inherit; font-weight: 400; width: 100%; box-sizing: border-box; padding: 10px; border-radius: 10px; background: #0f151f; color: inherit; border: 1px solid var(--line); }
+.notice-field textarea { resize: vertical; min-height: 220px; line-height: 1.6; }
+.notice-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.notice-preview { display: grid; gap: 6px; align-content: start; }
+.notice-preview-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #0f151f; min-height: 220px; overflow: auto; max-height: 420px; }
+.notice-options { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 0.9rem; }
+.notice-options label { display: inline-flex; gap: 6px; align-items: center; }
+.notice-days { width: 64px; }
+.notice-list li.editing { border-color: var(--accent); }
+@media (max-width: 760px) { .notice-edit { grid-template-columns: 1fr; } }

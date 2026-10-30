@@ -142,6 +142,10 @@ export interface AdminKeywordQuery { state?: string; source?: string; q?: string
 const qs = (o: Record<string, string | number | undefined>) =>
   new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString();
 
+/** 관리자 공지(4.16). popupDays는 등록 시각부터 팝업 기간(1~90일) */
+export interface AdminNoticeInput { title: string; body: string; pinned: boolean; popupEnabled: boolean; popupDays: number | null }
+export interface AdminNotice extends AdminNoticeInput { id: number; popupUntil: string | null; createdAt: string; updatedAt: string; edited: boolean }
+
 export const adminApi = {
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
   keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q })}`),
@@ -151,5 +155,9 @@ export const adminApi = {
   setReportStatus: (id: number, status: string, sameTarget: boolean) =>
     request<{ changed: number }>('PATCH', `/api/admin/reports/${id}`, { status, sameTarget }),
   settings: () => request<AdminSetting[]>('GET', '/api/admin/settings'),
+  notices: () => request<AdminNotice[]>('GET', '/api/admin/notices'),
+  createNotice: (n: AdminNoticeInput) => request<AdminNotice>('POST', '/api/admin/notices', n),
+  updateNotice: (id: number, n: AdminNoticeInput) => request<AdminNotice>('PUT', `/api/admin/notices/${id}`, n),
+  deleteNotice: (id: number) => request<void>('DELETE', `/api/admin/notices/${id}`),
   updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),
 };
