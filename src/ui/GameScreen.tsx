@@ -20,6 +20,8 @@ interface Props {
   /** 구글이 연결되지 않은 게스트인지(4.1) */
   guest: boolean;
   onLogout(): void;
+  /** 탈퇴를 마쳤다(토큰은 이미 지워졌다). 메인 화면으로 간다 */
+  onWithdrawn(): void;
 }
 
 const KEYS: Record<string, [number, number]> = {
@@ -91,7 +93,7 @@ function saveHelpPref(open: boolean) {
   try { localStorage.setItem(HELP_KEY, open ? '1' : '0'); } catch { /* 무시 */ }
 }
 
-export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
+export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const arenaRef = useRef<Arena | null>(null);
   const connRef = useRef<GameConnection | null>(null);
@@ -593,7 +595,7 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
       {panel === 'profile' && (
         <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
-                      onLogout={onLogout} />
+                      onLogout={onLogout} onWithdrawn={onWithdrawn} />
       )}
 
     </div>

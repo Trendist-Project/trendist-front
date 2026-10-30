@@ -442,3 +442,16 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .mobile-menu-sep { height: 1px; background: var(--line); margin: 4px 6px; }
   .menu-login { color: #f2b84b; }
 }
+
+/* 계정: 탈퇴 확인·복구 안내(4.1) */
+.account-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button.link-danger { background: transparent; border-color: transparent; color: #ff9a9a; padding: 8px 6px; font-size: 0.85rem; margin-left: auto; }
+button.link-danger:hover { text-decoration: underline; }
+button.danger-fill { background: #e5484d; border-color: #e5484d; color: #fff; font-weight: 700; }
+.account-dialog .modal-body { display: grid; gap: 12px; }
+.account-dialog p { margin: 0; }
+.account-dialog-form { display: grid; gap: 10px; }
+.account-dialog-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: 0.9rem; }
+.withdraw-phrase { color: #ff9a9a; user-select: none; }
+.account-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+

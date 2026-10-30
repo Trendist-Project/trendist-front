@@ -58,6 +58,8 @@ export function resumeSession(): Promise<boolean> {
   return resuming;
 }
 
+export type GoogleLoginResult = 'LINKED' | 'EXISTING' | 'CREATED' | 'WITHDRAWN';
+
 export const api = {
   async startGuest() {
     accessToken = (await raw<TokenResponse>('POST', '/api/auth/guest', undefined, false)).accessToken;
@@ -65,11 +67,21 @@ export const api = {
   /**
    * 구글 로그인(9.3): 구글이 준 ID 토큰을 보내면 서버가 검증하고 이 사이트의 JWT를 준다(갱신 토큰은 HttpOnly 쿠키).
    * result: LINKED(게스트 기록에 연결) / EXISTING(기존 계정으로 들어감) / CREATED(새 계정)
+   * / WITHDRAWN(탈퇴한 계정이라 로그인하지 않음. 복구할지 물어본 뒤 googleRestore를 부른다)
    */
-  async googleLogin(idToken: string, nonce: string | null): Promise<'LINKED' | 'EXISTING' | 'CREATED'> {
-    const r = await raw<{ accessToken: string; expiresIn: number; result: 'LINKED' | 'EXISTING' | 'CREATED' }>('POST', '/api/auth/google', { idToken, nonce }, false);
-    accessToken = r.accessToken;
+  async googleLogin(idToken: string, nonce: string | null): Promise<GoogleLoginResult> {
+    const r = await raw<{ accessToken: string | null; expiresIn: number; result: GoogleLoginResult }>('POST', '/api/auth/google', { idToken, nonce }, false);
+    if (r.accessToken) accessToken = r.accessToken;
     return r.result;
+  },
+  /** 탈퇴한 계정 복구(4.1): 같은 구글 ID 토큰으로 복구하고 바로 로그인한다. */
+  async googleRestore(idToken: string, nonce: string | null) {
+    accessToken = (await raw<{ accessToken: string }>('POST', '/api/auth/google/restore', { idToken, nonce }, false)).accessToken;
+  },
+  /** 탈퇴(4.1): 확인 문구를 그대로 보낸다. 서버가 갱신 토큰을 폐기하고 쿠키를 지운다. */
+  async withdraw(phrase: string) {
+    await request<void>('POST', '/api/auth/withdraw', { phrase });
+    accessToken = null;
   },
   /** 로그아웃: 서버가 갱신 토큰을 폐기하고 지금까지 발급한 JWT도 바로 무효로 한다. 브라우저에 든 JWT도 지운다. */
   async logout() {

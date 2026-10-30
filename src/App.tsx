@@ -5,6 +5,7 @@ import type { PlayerSummary } from './api/types';
 import { MainScreen } from './ui/MainScreen';
 import { NicknameScreen } from './ui/NicknameScreen';
 import { GameScreen } from './ui/GameScreen';
+import { RestoreDialog } from './ui/RestoreDialog';
 
 type Phase = { kind: 'main' } | { kind: 'nickname' } | { kind: 'game'; player: PlayerSummary; guest: boolean; key: number };
 
@@ -15,6 +16,8 @@ export function App() {
   // 메인 화면에서 이미 구글 계정으로 로그인한 상태인지(갱신 토큰). 맞으면 구글 버튼 없이 [시작]만 보여 준다. 확인 전에는 null
   const [account, setAccount] = useState<boolean | null>(null);
   const googlePending = useRef(false);
+  // 탈퇴한 계정으로 구글 로그인했으면 복구할지 묻는다. 같은 ID 토큰으로 복구를 요청한다(4.1)
+  const [restoreToken, setRestoreToken] = useState<{ idToken: string; nonce: string | null } | null>(null);
 
   /** 토큰이 있는 상태에서 플레이어 유무로 다음 화면을 정한다. */
   async function route() {
@@ -46,7 +49,10 @@ export function App() {
       return;
     }
     api.googleLogin(r.idToken, r.nonce)
-      .then(route)
+      .then((result) => {
+        if (result === 'WITHDRAWN') { setRestoreToken({ idToken: r.idToken, nonce: r.nonce }); setAccount(false); return; }
+        return route();
+      })
       .catch((e) => { setError(e instanceof ApiFailure ? e.message : '구글 로그인에 실패했어요'); setAccount(false); })
       .finally(() => { googlePending.current = false; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,6 +77,13 @@ export function App() {
     setPhase({ kind: 'main' });
   }
 
+  async function restore() {
+    if (!restoreToken) return;
+    await api.googleRestore(restoreToken.idToken, restoreToken.nonce);
+    setRestoreToken(null);
+    await route();
+  }
+
   async function createPlayer(nickname: string) {
     const player = await api.createPlayer(nickname);
     const me = await api.me();
@@ -79,10 +92,14 @@ export function App() {
 
   switch (phase.kind) {
     case 'main':
-      return <MainScreen onStart={start} error={error} loggedIn={account} />;
+      return (<>
+        <MainScreen onStart={start} error={error} loggedIn={account} />
+        {restoreToken && <RestoreDialog onRestore={restore} onCancel={() => setRestoreToken(null)} />}
+      </>);
     case 'nickname':
       return <NicknameScreen onSubmit={createPlayer} />;
     case 'game':
-      return <GameScreen key={phase.key} initialPlayer={phase.player} guest={phase.guest} onLogout={logout} />;
+      return <GameScreen key={phase.key} initialPlayer={phase.player} guest={phase.guest} onLogout={logout}
+                         onWithdrawn={() => setPhase({ kind: 'main' })} />;
   }
 }

@@ -4,18 +4,21 @@ import type { PlayerSummary, ScoreHistory, ScoreRange } from '../api/types';
 import { GoogleButton } from './GoogleButton';
 import { Modal } from './Modal';
 import { ScoreChart } from './ScoreChart';
+import { WithdrawDialog } from './WithdrawDialog';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['all', '전체']];
 
 interface Props {
   player: PlayerSummary; onChanged(player: PlayerSummary): void; onClose(): void;
-  guest: boolean; onLogout(): void;
+  guest: boolean; onLogout(): void; onWithdrawn(): void;
 }
 
 const timeFormat = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
 
 /** 내 정보(4.1): 지금 기록을 보여 주고 닉네임을 바꾼다. 변경 간격은 서버가 정하고, 화면은 다음 가능 시각만 안내한다. */
-export function ProfileModal({ player, onChanged, onClose, guest, onLogout }: Props) {
+export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn }: Props) {
+  // 탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
+  const [view, setView] = useState<'main' | 'withdraw'>('main');
   const [nickname, setNickname] = useState(player.nickname);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -61,6 +64,8 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout }: Pr
       setBusy(false);
     }
   }
+
+  if (view === 'withdraw') return <WithdrawDialog onDone={onWithdrawn} onCancel={() => setView('main')} />;
 
   return (
     <Modal title="내 정보" onClose={onClose}>
@@ -108,7 +113,10 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout }: Pr
           <GoogleButton label="Google로 로그인" />
         </>) : (<>
           <p className="muted small">Google 계정으로 로그인했어요. 다른 기기에서도 이 기록으로 이어서 할 수 있어요.</p>
-          <button onClick={onLogout}>로그아웃</button>
+          <div className="account-actions">
+            <button onClick={onLogout}>로그아웃</button>
+            <button className="link-danger" onClick={() => setView('withdraw')}>회원 탈퇴</button>
+          </div>
         </>)}
       </section>
     </Modal>
