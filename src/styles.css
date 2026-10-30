@@ -500,3 +500,5 @@ button.link-back:hover { color: var(--text); }
 .effect-preview { max-width: 100%; height: auto !important; }
 .effect-actions { display: flex; gap: 6px; align-items: center; flex: none; }
 .effect-actions button { padding: 6px 10px; font-size: 0.85rem; }
+.effect-actions button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
+.title-item.previewing:not(.active) { border-color: #3a475c; background: #151d2a; }

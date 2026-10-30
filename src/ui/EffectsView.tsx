@@ -90,14 +90,16 @@ export function EffectsView({ level, onBack, onClose }: Props) {
             {active && <button onClick={() => choose(null)} disabled={busy}>끄기</button>}
           </li>
           {box.effects.map((e) => (
-            <li key={e.id} className={`title-item${e.active ? ' active' : ''}${e.unlocked ? '' : ' locked'}`}
-                onMouseEnter={() => setPreview(e)}>
+            // 미리 보기는 [보기]로 고른 효과를 다른 것을 고를 때까지 계속 보여 준다(마우스를 올리는 것만으로는 바꾸지 않는다)
+            <li key={e.id} className={`title-item${e.active ? ' active' : ''}${e.unlocked ? '' : ' locked'}${preview?.id === e.id ? ' previewing' : ''}`}>
               <div className="title-main">
                 <strong>{e.unlocked ? '✨' : '🔒'} {e.name}</strong>
                 <span className="muted small">{e.unlocked ? e.description : e.lockReason}</span>
               </div>
               <div className="effect-actions">
-                <button onClick={() => setPreview(e)} aria-label={`${e.name} 미리 보기`}>보기</button>
+                <button onClick={() => setPreview(e)} aria-pressed={preview?.id === e.id} aria-label={`${e.name} 미리 보기`}>
+                  {preview?.id === e.id ? '보는 중' : '보기'}
+                </button>
                 {e.active ? <span className="muted small">사용 중</span>
                   : e.unlocked && <button className="primary" onClick={() => { setPreview(e); choose(e.id); }} disabled={busy}>쓰기</button>}
               </div>
