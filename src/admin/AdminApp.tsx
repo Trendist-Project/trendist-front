@@ -371,7 +371,7 @@ const NOTICE_TITLE_MAX = 50, NOTICE_BODY_MAX = 5000;
 const EMPTY_NOTICE: AdminNoticeInput = { title: '', body: '', pinned: false, popupEnabled: true, popupDays: 7 };
 const chars = (s: string) => [...s].length; // 서버와 같이 글자(코드 포인트) 수로 센다
 
-/** 공지 쓰기·고치기·지우기. 본문은 게임의 공지 창과 같은 모양으로 미리 본다(문단, `- ` 목록, **굵게** 등). */
+/** 공지 쓰기·수정·삭제. 본문은 게임의 공지 창과 같은 모양으로 미리 본다(문단, `- ` 목록, **굵게** 등). */
 function NoticesTab() {
   const [list, setList] = useState<AdminNotice[] | null>(null);
   const [form, setForm] = useState<AdminNoticeInput>(EMPTY_NOTICE);
@@ -393,7 +393,7 @@ function NoticesTab() {
     setBusy(true); setMessage(null);
     try {
       if (editing === null) await adminApi.createNotice(form); else await adminApi.updateNotice(editing, form);
-      setMessage({ text: editing === null ? '공지를 올렸어요' : '공지를 고쳤어요', ok: true });
+      setMessage({ text: editing === null ? '공지를 올렸어요' : '공지를 수정했어요', ok: true });
       setForm(EMPTY_NOTICE); setEditing(null);
       load();
     } catch (err) {
@@ -415,7 +415,7 @@ function NoticesTab() {
     try {
       await adminApi.deleteNotice(id);
       if (editing === id) { setEditing(null); setForm(EMPTY_NOTICE); }
-      setMessage({ text: '공지를 지웠어요', ok: true });
+      setMessage({ text: '공지를 삭제했어요', ok: true });
       load();
     } catch (err) {
       setMessage({ text: errMsg(err), ok: false });
@@ -424,66 +424,108 @@ function NoticesTab() {
     }
   }
 
+  const popupState = (n: AdminNotice) => !n.popupEnabled || !n.popupUntil ? null
+    : new Date(n.popupUntil).getTime() > Date.now() ? { on: true, text: `팝업 중 · ${fmt(n.popupUntil)}까지` } : { on: false, text: '팝업 끝남' };
+  const editingNotice = editing === null ? null : list?.find((n) => n.id === editing) ?? null;
+
+  function cancelEdit() { setEditing(null); setForm(EMPTY_NOTICE); setMessage(null); }
+
   return (
-    <section className="admin-panel">
-      <form className="notice-form" onSubmit={submit}>
-        <h2>{editing === null ? '새 공지' : '공지 고치기'}</h2>
+    <section className="admin-panel notice-admin">
+      <form className={editing === null ? 'notice-form' : 'notice-form editing'} onSubmit={submit}>
+        <div className="notice-form-head">
+          <h2>{editing === null ? '✍️ 새 공지 쓰기' : '✏️ 공지 수정'}</h2>
+          {editingNotice && <span className="muted small">{fmt(editingNotice.createdAt)}에 올린 공지</span>}
+          {editing !== null && <button type="button" className="notice-cancel" onClick={cancelEdit} disabled={busy}>취소</button>}
+        </div>
+
         <label className="notice-field">
-          <span>제목 <span className={titleLen > NOTICE_TITLE_MAX ? 'error small' : 'muted small'}>{titleLen}/{NOTICE_TITLE_MAX}</span></span>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="예) 10월 31일 새벽 점검 안내" />
+          <span className="notice-label">제목<span className={titleLen > NOTICE_TITLE_MAX ? 'count over' : 'count'}>{titleLen}/{NOTICE_TITLE_MAX}</span></span>
+          <input className="notice-title-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                 placeholder="예) 10월 31일 새벽 점검 안내" />
         </label>
+
         <div className="notice-edit">
           <label className="notice-field">
-            <span>본문 <span className={bodyLen > NOTICE_BODY_MAX ? 'error small' : 'muted small'}>{bodyLen.toLocaleString()}/{NOTICE_BODY_MAX.toLocaleString()}</span></span>
-            <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={12}
+            <span className="notice-label">본문<span className={bodyLen > NOTICE_BODY_MAX ? 'count over' : 'count'}>{bodyLen.toLocaleString()}/{NOTICE_BODY_MAX.toLocaleString()}</span></span>
+            <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={14}
                       placeholder={'빈 줄로 문단을 나눠요.\n- 로 시작하면 목록\n**굵게**\n> 로 시작하면 💡 팁 상자'} />
+            <span className="notice-syntax muted">빈 줄 = 문단 · <code>- </code> 목록 · <code>1. </code> 번호 · <code>**굵게**</code> · <code>&gt; </code> 팁 상자</span>
           </label>
           <div className="notice-preview" aria-label="미리 보기">
-            <span className="muted small">미리 보기(게임의 공지 창과 같은 모양)</span>
-            <div className="notice-preview-box">
-              <strong>{form.pinned && '📌 '}{form.title.trim() || '제목'}</strong>
+            <span className="notice-label">미리 보기<span className="count">사용자 화면과 같은 모양</span></span>
+            <div className="notice-preview-box notice-article">
+              <div className="notice-article-badges">
+                {form.pinned && <span className="notice-badge pin">📌 고정</span>}
+                <span className="notice-badge new">NEW</span>
+              </div>
+              <h3 className="notice-article-title">{form.title.trim() || '제목을 입력하세요'}</h3>
               {form.body.trim() ? <RichText text={form.body} /> : <p className="muted small">본문을 쓰면 여기에 보여요</p>}
             </div>
           </div>
         </div>
+
         <div className="notice-options">
-          <label><input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} /> 📌 맨 위에 고정</label>
-          <label><input type="checkbox" checked={form.popupEnabled} onChange={(e) => setForm({ ...form, popupEnabled: e.target.checked })} /> 팝업으로 띄우기</label>
-          {form.popupEnabled && (
-            <label>등록일부터 <input type="number" min={1} max={90} value={form.popupDays ?? ''} className="notice-days"
-                               onChange={(e) => setForm({ ...form, popupDays: e.target.value === '' ? null : Number(e.target.value) })} />일 (1~90)</label>
-          )}
+          <label className={form.pinned ? 'notice-toggle on' : 'notice-toggle'}>
+            <input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} />
+            <span className="notice-toggle-text"><strong>📌 맨 위에 고정</strong><span className="muted small">목록에서 항상 맨 위에 보여요</span></span>
+          </label>
+          <div className={form.popupEnabled ? 'notice-toggle on' : 'notice-toggle'}>
+            <label className="notice-toggle-main">
+              <input type="checkbox" checked={form.popupEnabled} onChange={(e) => setForm({ ...form, popupEnabled: e.target.checked })} />
+              <span className="notice-toggle-text"><strong>🔔 팝업으로 띄우기</strong><span className="muted small">게임에 들어올 때 아직 안 본 사람에게 한 번 보여요</span></span>
+            </label>
+            {form.popupEnabled && (
+              <label className="notice-days-row">
+                <span>올린 날부터</span>
+                <input type="number" min={1} max={90} value={form.popupDays ?? ''} className="notice-days"
+                       onChange={(e) => setForm({ ...form, popupDays: e.target.value === '' ? null : Number(e.target.value) })} />
+                <span>일 동안</span>
+                <span className="muted small">(1~90)</span>
+              </label>
+            )}
+          </div>
         </div>
-        <p className="muted small admin-hint">팝업 설정은 저장만 돼요. 메인·게임 화면에 팝업으로 띄우는 기능은 아직 없어요(목록과 [공지] 창에는 바로 보여요).</p>
-        {message && <p className={message.ok ? 'ok small' : 'error small'} role="status">{message.text}</p>}
-        <div className="admin-actions">
-          <button className="primary" type="submit" disabled={!valid || busy}>{busy ? '저장하는 중…' : editing === null ? '공지 올리기' : '고친 내용 저장'}</button>
-          {editing !== null && <button type="button" onClick={() => { setEditing(null); setForm(EMPTY_NOTICE); }} disabled={busy}>새 공지로</button>}
+
+        <div className="notice-submit">
+          {message && <p className={message.ok ? 'ok small' : 'error small'} role="status">{message.text}</p>}
+          <button className="primary" type="submit" disabled={!valid || busy}>{busy ? '저장하는 중…' : editing === null ? '공지 올리기' : '수정'}</button>
         </div>
       </form>
 
-      <h2>올린 공지 {list ? list.length : ''}</h2>
-      {list === null ? <p className="muted">불러오는 중…</p> : list.length === 0 ? <p className="muted">아직 공지가 없어요.</p> : (
-        <ul className="admin-reports notice-list">
-          {list.map((n) => (
-            <li key={n.id} className={editing === n.id ? 'editing' : undefined}>
-              <div className="report-head">
-                {n.pinned && <span className="badge">📌 고정</span>}
-                <strong>{n.title}</strong>
-                <span className="muted small">{fmt(n.createdAt)}{n.edited ? ` · 수정 ${fmt(n.updatedAt)}` : ''}{n.popupEnabled && n.popupUntil ? ` · 팝업 ${fmt(n.popupUntil)}까지` : ''}</span>
-              </div>
-              <details><summary className="muted small">본문 보기</summary><RichText text={n.body} /></details>
-              <div className="admin-actions">
-                <button onClick={() => startEdit(n)} disabled={busy}>고치기</button>
-                {confirmDelete === n.id ? (
-                  <span className="confirm">
-                    <button className="danger" onClick={() => remove(n.id)} disabled={busy}>정말 지우기</button>
+      <div className="notice-list-head">
+        <h2>올린 공지</h2>
+        {list && <span className="muted small">{list.length}개 · 고정 먼저, 최신순</span>}
+      </div>
+      {list === null ? <p className="muted">불러오는 중…</p> : list.length === 0 ? <p className="muted notice-empty">아직 공지가 없어요. 위에서 첫 공지를 써 보세요.</p> : (
+        <ul className="notice-list">
+          {list.map((n) => {
+            const popup = popupState(n);
+            return (
+              <li key={n.id} className={editing === n.id ? 'notice-row editing' : 'notice-row'}>
+                <div className="notice-row-main">
+                  <div className="notice-row-badges">
+                    {n.pinned && <span className="notice-badge pin">📌 고정</span>}
+                    {popup && <span className={popup.on ? 'notice-badge popup' : 'notice-badge off'}>🔔 {popup.text}</span>}
+                    {editing === n.id && <span className="notice-badge editing">수정 중</span>}
+                  </div>
+                  <strong className="notice-row-title">{n.title}</strong>
+                  <span className="muted small">{fmt(n.createdAt)}{n.edited ? ` · 수정 ${fmt(n.updatedAt)}` : ''}</span>
+                  <details className="notice-row-body"><summary>본문 보기</summary><RichText text={n.body} /></details>
+                </div>
+                <div className="notice-row-actions">
+                  {confirmDelete === n.id ? (<>
+                    <span className="small">삭제할까요?</span>
+                    <button className="danger" onClick={() => remove(n.id)} disabled={busy}>삭제</button>
                     <button onClick={() => setConfirmDelete(null)} disabled={busy}>취소</button>
-                  </span>
-                ) : <button className="danger" onClick={() => setConfirmDelete(n.id)} disabled={busy}>지우기</button>}
-              </div>
-            </li>
-          ))}
+                  </>) : (<>
+                    <button onClick={() => startEdit(n)} disabled={busy || editing === n.id}>수정</button>
+                    <button className="danger" onClick={() => setConfirmDelete(n.id)} disabled={busy}>삭제</button>
+                  </>)}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

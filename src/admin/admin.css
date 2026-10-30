@@ -57,15 +57,59 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 
 /* 공지(4.16) */
 .admin h2 { margin: 0; font-size: 1.05rem; }
-.notice-form { display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
-.notice-field { display: grid; gap: 6px; font-weight: 600; font-size: 0.9rem; }
-.notice-field input, .notice-field textarea { font: inherit; font-weight: 400; width: 100%; box-sizing: border-box; padding: 10px; border-radius: 10px; background: #0f151f; color: inherit; border: 1px solid var(--line); }
-.notice-field textarea { resize: vertical; min-height: 220px; line-height: 1.6; }
-.notice-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* 공지 관리(13.4): 위는 쓰기 카드, 아래는 올린 공지 목록 */
+.notice-admin { gap: 16px; }
+.notice-form { display: grid; gap: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+.notice-form.editing { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.notice-form-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.notice-form-head h2 { margin: 0; font-size: 1.15rem; }
+.notice-cancel { margin-left: auto; }
+.notice-field { display: grid; gap: 6px; }
+.notice-label { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 0.9rem; }
+.notice-label .count { margin-left: auto; font-weight: 400; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.notice-label .count.over { color: #ff7a7a; font-weight: 700; }
+.notice-field input, .notice-field textarea { font: inherit; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; background: #0f151f; color: inherit; border: 1px solid var(--line); }
+.notice-field input:focus, .notice-field textarea:focus { outline: none; border-color: var(--accent); }
+.notice-field .notice-title-input { font-size: 1.2rem; font-weight: 700; padding: 12px 14px; }
+.notice-field textarea { resize: vertical; min-height: 260px; line-height: 1.65; }
+.notice-syntax { font-size: 0.78rem; }
+.notice-syntax code { background: #1d2635; padding: 1px 5px; border-radius: 5px; }
+.notice-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .notice-preview { display: grid; gap: 6px; align-content: start; }
-.notice-preview-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #0f151f; min-height: 220px; overflow: auto; max-height: 420px; }
-.notice-options { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 0.9rem; }
-.notice-options label { display: inline-flex; gap: 6px; align-items: center; }
-.notice-days { width: 64px; }
-.notice-list li.editing { border-color: var(--accent); }
-@media (max-width: 760px) { .notice-edit { grid-template-columns: 1fr; } }
+.notice-preview-box { border: 1px dashed var(--line); border-radius: 12px; padding: 16px 18px; background: #0f151f; min-height: 260px; max-height: 460px; overflow: auto; }
+.notice-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* 체크박스는 공통 input 규칙(너비 100%)을 받지 않게 크기를 정한다. 그래서 글자가 한 줄로 옆에 붙는다 */
+.notice-toggle { display: grid; gap: 10px; align-content: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #0f151f; cursor: pointer; }
+label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.notice-toggle.on { border-color: var(--accent); background: rgba(63,182,139,0.08); }
+.notice-toggle input[type="checkbox"] { width: 18px; height: 18px; flex: none; margin: 2px 0 0; padding: 0; accent-color: var(--accent); }
+.notice-toggle-text { display: grid; gap: 2px; min-width: 0; }
+.notice-toggle-text strong { white-space: nowrap; }
+.notice-days-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-left: 28px; font-size: 0.9rem; }
+.notice-days-row input.notice-days { width: 72px; flex: none; padding: 6px 8px; text-align: center; }
+.notice-submit { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 14px; }
+.notice-submit p { margin: 0 auto 0 0; }
+.notice-submit button.primary { min-width: 140px; padding: 10px 20px; font-size: 1rem; }
+.notice-list-head { display: flex; align-items: baseline; gap: 10px; }
+.notice-list-head h2 { margin: 0; font-size: 1.15rem; }
+.notice-empty { padding: 24px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+.notice-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.notice-row { display: flex; gap: 16px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.notice-row.editing { border-color: var(--accent); }
+.notice-row-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.notice-row-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.notice-row-badges:empty { display: none; }
+.notice-row-title { font-size: 1.08rem; overflow-wrap: anywhere; }
+.notice-row-body summary { cursor: pointer; color: var(--muted); font-size: 0.82rem; width: max-content; }
+.notice-row-body[open] summary { margin-bottom: 6px; }
+.notice-row-body .rich-text { padding: 10px 12px; background: #0f151f; border-radius: 10px; }
+.notice-row-actions { display: flex; gap: 6px; align-items: center; flex: none; white-space: nowrap; }
+.notice-row-actions button { padding: 6px 14px; }
+.notice-badge.editing { color: var(--accent); border: 1px solid var(--accent); }
+.notice-badge.popup { color: #8fd0ff; border: 1px solid rgba(143,208,255,0.5); }
+.notice-badge.off { color: var(--muted); }
+@media (max-width: 860px) {
+  .notice-edit, .notice-options { grid-template-columns: 1fr; }
+  .notice-row { flex-direction: column; gap: 10px; }
+  .notice-row-actions { align-self: flex-end; }
+}

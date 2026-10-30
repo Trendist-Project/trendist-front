@@ -80,7 +80,7 @@ export interface GuideCategory { code: string; name: string; displayType: 'FAQ' 
 export interface GuideArticle { id: number; title: string; body: string; updatedAt: string }
 
 /** 공지사항(4.16). edited: 등록 뒤 고침("수정됨"), fresh: 최근 공지(NEW). */
-export interface Notice { id: number; title: string; body: string; pinned: boolean; createdAt: string; edited: boolean; fresh: boolean }
+export interface Notice { id: number; title: string; body: string; pinned: boolean; createdAt: string; edited: boolean; fresh: boolean; popup: boolean }
 
 export interface ApiError { code: string; message: string }
 

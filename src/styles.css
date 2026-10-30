@@ -563,3 +563,52 @@ button.link-back:hover { color: var(--text); }
   .guide-step-no { position: static; }
   .guide-step-icon { font-size: 1.3rem; grid-row: span 2; }
 }
+
+/* 공지(4.16): 목록 카드와 새 소식 팝업. 관리자 화면의 미리 보기도 같은 모양(notice-article)을 쓴다 */
+.notice-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #1d2635; white-space: nowrap; }
+.notice-badge.pin { color: #ffd27a; background: rgba(255,196,80,0.12); border: 1px solid rgba(255,196,80,0.4); }
+.notice-badge.new { color: #ff9b7a; background: rgba(255,110,80,0.12); border: 1px solid rgba(255,110,80,0.4); }
+.notice-article-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.notice-article-title { margin: 0; font-size: 1.15rem; line-height: 1.4; overflow-wrap: anywhere; }
+.notice-article-date { color: var(--muted); font-size: 0.8rem; }
+.notice-article { display: grid; gap: 6px; align-content: start; }
+.notice-article .rich-text { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.notice-article .rich-text > :first-child, .notice-card-body .rich-text > :first-child, .notice-popup-body .rich-text > :first-child { margin-top: 0; }
+
+.notice-modal { width: min(680px, 100%); }
+.notice-cards { display: grid; gap: 10px; }
+.notice-card { border: 1px solid var(--line); border-radius: 14px; background: #0f151f; overflow: hidden; transition: border-color 0.15s; }
+.notice-card.pinned { border-color: rgba(255,196,80,0.35); }
+.notice-card[open] { border-color: rgba(63,182,139,0.55); }
+.notice-card summary { list-style: none; display: flex; gap: 12px; align-items: center; padding: 14px 16px; cursor: pointer; }
+.notice-card summary::-webkit-details-marker { display: none; }
+.notice-card summary:hover { background: rgba(255,255,255,0.03); }
+.notice-card summary:focus-visible { outline: 3px solid #7dd3fc; outline-offset: -3px; }
+.notice-card-head { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.notice-card .notice-article-title { font-size: 1.05rem; }
+.notice-card-chevron { flex: none; color: var(--muted); font-size: 1.3rem; transition: transform 0.15s; }
+.notice-card[open] .notice-card-chevron { transform: rotate(90deg); }
+.notice-card-body { padding: 0 16px 16px; }
+.notice-card-body .rich-text { padding-top: 12px; border-top: 1px solid var(--line); }
+.notice-empty-user { display: grid; justify-items: center; gap: 4px; padding: 28px 0; font-size: 2rem; }
+.notice-empty-user p { margin: 0; font-size: 0.95rem; }
+
+.notice-popup { width: min(520px, 100%); }
+.notice-popup .modal-head { background: linear-gradient(90deg, rgba(63,182,139,0.18), rgba(125,211,252,0.08)); border-radius: 16px 16px 0 0; }
+.notice-popup .modal-body { gap: 0; padding: 0; }
+.notice-popup-article { display: grid; gap: 6px; padding: 18px 20px 6px; }
+.notice-popup-article .notice-article-title { font-size: 1.3rem; }
+.notice-popup-body { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); max-height: min(46vh, 420px); overflow: auto; line-height: 1.7; }
+.notice-popup-foot { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px 16px; background: var(--panel); border-top: 1px solid var(--line); border-radius: 0 0 16px 16px; }
+.notice-popup-foot > button.primary { min-width: 96px; }
+.notice-popup-nav { display: flex; align-items: center; gap: 6px; }
+.notice-popup-nav > button { width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 1.1rem; }
+.notice-dots { display: flex; gap: 6px; padding: 0 4px; }
+.notice-dots button.notice-dot { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 999px; background: #3a4558; transition: width 0.15s, background 0.15s; }
+.notice-dots button.notice-dot.on { width: 20px; background: var(--accent); }
+.notice-popup-count { margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+/* [공지사항] 버튼의 새 공지 빨간 점 */
+.notice-toggle-button, .menu-toggle { position: relative; }
+.dot-badge { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: #ff4d4f; box-shadow: 0 0 0 2px var(--panel); pointer-events: none; }
+.mobile-menu button > span.dot-badge.inline, .dot-badge.inline { position: static; width: 8px; height: 8px; margin-left: 2px; box-shadow: none; }

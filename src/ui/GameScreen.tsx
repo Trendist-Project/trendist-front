@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PlayerSummary } from '../api/types';
+import type { Notice, PlayerSummary } from '../api/types';
 import { Arena } from '../game/Arena';
 import { GameConnection } from '../game/connection';
 import type { ChatMessage, OrbResult, ServerMessage } from '../game/protocol';
@@ -7,10 +7,10 @@ import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
 import { startGoogleLogin } from '../googleAuth';
-import { adminApi } from '../api/client';
+import { adminApi, api } from '../api/client';
 import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
-import { NoticeModal } from './NoticeModal';
+import { hasUnread, markNoticesRead, NoticeModal, NoticePopup, popupNotices } from './NoticeModal';
 import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
@@ -127,6 +127,23 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const touchControlRef = useRef(touchControl);
   touchControlRef.current = touchControl;
   const joyRef = useRef<HTMLDivElement>(null);
+  // 공지(4.16): 들어올 때 아직 안 본 팝업 공지를 띄우고, 목록에서 못 본 새 공지가 있으면 [공지사항]에 빨간 점을 켠다.
+  // 게임 중에 올라온 공지는 팝업 없이 점만 켠다(5분마다 다시 읽는다)
+  const [noticePopup, setNoticePopup] = useState<Notice[] | null>(null);
+  const [noticeDot, setNoticeDot] = useState(false);
+  const noticesRef = useRef<Notice[]>([]);
+  useEffect(() => {
+    let first = true;
+    const load = () => api.notices().then((ns) => {
+      noticesRef.current = ns;
+      setNoticeDot(hasUnread(ns));
+      if (first) { const p = popupNotices(ns); if (p.length) setNoticePopup(p); }
+      first = false;
+    }).catch(() => { /* 다음에 다시 */ });
+    load();
+    const t = window.setInterval(load, 5 * 60_000);
+    return () => clearInterval(t);
+  }, []);
   // 관리자 계정이면 관리자 페이지(/admin/, 13절)로 가는 버튼을 보여 준다. 다른 사람에게는 버튼이 없다
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
@@ -502,7 +519,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             )}
             <button onClick={() => setPanel('profile')} aria-label="내 정보">👤 <span className="tool-label">내 정보</span></button>
             {isAdmin && <button onClick={openAdmin} aria-label="관리자 페이지" title="관리자 페이지(새 탭)">🛠 <span className="tool-label">관리자</span></button>}
-            <button onClick={() => setPanel('notice')} aria-label="공지사항">📢 <span className="tool-label">공지사항</span></button>
+            <button className="notice-toggle-button" onClick={() => setPanel('notice')} aria-label={noticeDot ? '공지사항(새 공지 있음)' : '공지사항'}>
+              📢 <span className="tool-label">공지사항</span>{noticeDot && <span className="dot-badge" aria-hidden="true" />}
+            </button>
             <button onClick={() => setPanel('guide')} aria-label="가이드·FAQ">📖 <span className="tool-label">가이드·FAQ</span></button>
             <button className="minimap-toggle" aria-label="미니맵" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
                     title="미니맵 켜기/끄기 (M)">🗺 <span className="tool-label">미니맵</span> <kbd>M</kbd></button>
@@ -518,8 +537,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
                     aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
             {/* 모바일: 위 버튼들은 숨기고(🔍만 남김) 이 메뉴에 이름과 함께 모은다 */}
-            <button className="menu-toggle" aria-label="메뉴" aria-expanded={menuOpen} aria-controls="mobile-menu"
-                    onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}</button>
+            <button className="menu-toggle" aria-label={noticeDot ? '메뉴(새 공지 있음)' : '메뉴'} aria-expanded={menuOpen} aria-controls="mobile-menu"
+                    onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}{noticeDot && !menuOpen && <span className="dot-badge" aria-hidden="true" />}</button>
           </div>
           {menuOpen && (
             <nav id="mobile-menu" className="mobile-menu" aria-label="메뉴">
@@ -528,7 +547,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                 ['📢', '공지사항', () => setPanel('notice')],
                 ['📖', '가이드·FAQ', () => setPanel('guide')],
               ] as const).map(([icon, label, act]) => (
-                <button key={label} onClick={() => { setMenuOpen(false); act(); }}><span aria-hidden="true">{icon}</span>{label}</button>
+                <button key={label} onClick={() => { setMenuOpen(false); act(); }}>
+                  <span aria-hidden="true">{icon}</span>{label}{label === '공지사항' && noticeDot && <span className="dot-badge inline" aria-hidden="true" />}
+                </button>
               ))}
               <div className="mobile-menu-sep" />
               {([
@@ -593,7 +614,13 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       {openKeyword !== null && (
         <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} onShare={shareKeyword} />
       )}
-      {panel === 'notice' && <NoticeModal onClose={closePanel} />}
+      {panel === 'notice' && <NoticeModal onClose={closePanel} onRead={() => setNoticeDot(false)} />}
+      {noticePopup && panel === null && (
+        // 팝업으로 본 공지는 목록에서도 읽은 것으로 친다
+        <NoticePopup notices={noticePopup} onClose={() => {
+          markNoticesRead(noticePopup); setNoticeDot(hasUnread(noticesRef.current)); setNoticePopup(null);
+        }} />
+      )}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
       {panel === 'profile' && (
         <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
