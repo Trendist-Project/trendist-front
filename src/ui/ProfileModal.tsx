@@ -15,14 +15,16 @@ const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'
 interface Props {
   player: PlayerSummary; onChanged(player: PlayerSummary): void; onClose(): void;
   guest: boolean; onLogout(): void; onWithdrawn(): void;
+  /** 처음 열 화면. 새 칭호 알림의 [칭호 보기]는 칭호함으로 바로 연다 */
+  initialView?: 'main' | 'titles';
 }
 
 const timeFormat = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
 
 /** 내 정보(4.1): 지금 기록을 보여 주고 닉네임을 바꾼다. 변경 간격은 서버가 정하고, 화면은 다음 가능 시각만 안내한다. */
-export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn }: Props) {
+export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn, initialView = 'main' }: Props) {
   // 칭호함·꾸미기·이동 효과·탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
-  const [view, setView] = useState<'main' | 'titles' | 'customize' | 'effects' | 'share' | 'withdraw'>('main');
+  const [view, setView] = useState<'main' | 'titles' | 'customize' | 'effects' | 'share' | 'withdraw'>(initialView);
   const [activeTitle, setActiveTitle] = useState<string | null | undefined>(undefined);
   const [nickname, setNickname] = useState(player.nickname);
   const [busy, setBusy] = useState(false);

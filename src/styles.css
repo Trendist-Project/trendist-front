@@ -623,6 +623,26 @@ button.link-back:hover { color: var(--text); }
 .share-card-actions button { flex: 1 1 140px; }
 .ok { color: #9fe0c3; }
 
+/* 장착 중인 칭호 표시(4.10) */
+.badge.equipped { margin-left: 8px; font-size: 0.72rem; color: var(--accent); border: 1px solid var(--accent); background: rgba(63,182,139,0.12); vertical-align: middle; }
+
+/* 새 칭호 알림(4.10): 화면 위 가운데에 6초 동안 뜨고, 아래 줄이 줄어들며 남은 시간을 보여 준다 */
+.title-alert { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 9; width: min(440px, calc(100vw - 24px)); display: flex; gap: 12px; align-items: center;
+  padding: 14px 14px 16px 16px; border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, rgba(40,32,12,0.96), rgba(20,27,38,0.96));
+  border: 1px solid rgba(255,196,80,0.6); box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 24px rgba(255,196,80,0.18); animation: title-alert-in 0.35s cubic-bezier(.2,1.4,.4,1); }
+.title-alert-icon { font-size: 2.2rem; flex: none; animation: title-alert-pop 0.6s 0.15s ease-out both; }
+.title-alert-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.title-alert-kicker { font-size: 0.75rem; font-weight: 700; color: #ffd27a; letter-spacing: 0.02em; }
+.title-alert-text strong { font-size: 1.15rem; overflow-wrap: anywhere; }
+.title-alert-actions { display: flex; gap: 6px; align-items: center; flex: none; }
+.title-alert-actions button.primary { padding: 7px 12px; white-space: nowrap; }
+.title-alert-timer { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #ffd27a; transform-origin: left; animation: title-alert-timer 6s linear forwards; }
+@keyframes title-alert-in { from { opacity: 0; transform: translate(-50%, -16px) scale(0.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes title-alert-pop { 0% { transform: scale(0.4) rotate(-20deg); } 70% { transform: scale(1.2) rotate(8deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes title-alert-timer { to { transform: scaleX(0); } }
+@media (max-width: 760px) { .title-alert { top: 56px; padding: 12px 10px 14px 12px; gap: 10px; } .title-alert-icon { font-size: 1.8rem; } }
+@media (prefers-reduced-motion: reduce) { .title-alert, .title-alert-icon { animation: none; } }
+
 /* 게스트 잠금 안내(이동 효과 등) */
 .login-gate { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(125,211,252,0.4); background: rgba(125,211,252,0.07); }
 .login-gate > span { flex: 1 1 220px; display: grid; gap: 2px; }

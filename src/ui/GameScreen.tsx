@@ -152,6 +152,20 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   }, [guest]);
   const openAdmin = useCallback(() => { window.open('/admin/', '_blank', 'noopener'); }, []);
 
+  // 새 칭호 알림(4.10): 화면 위에 카드로 띄우고 6초 뒤 저절로 사라진다. 한꺼번에 여러 개 받으면 차례로 보여 준다
+  const [titleAlerts, setTitleAlerts] = useState<{ name: string; description: string; key: number }[]>([]);
+  const titleAlert = titleAlerts[0] ?? null;
+  const showTitleAlert = useCallback((name: string, description: string) => {
+    setTitleAlerts((q) => [...q, { name, description, key: Date.now() + Math.random() }]);
+  }, []);
+  const dismissTitleAlert = useCallback(() => setTitleAlerts((q) => q.slice(1)), []);
+  useEffect(() => {
+    if (!titleAlert) return;
+    const t = window.setTimeout(dismissTitleAlert, 6000);
+    return () => clearTimeout(t);
+  }, [titleAlert, dismissTitleAlert]);
+  const [profileView, setProfileView] = useState<'main' | 'titles'>('main');
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 3500);
@@ -183,7 +197,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             conn.send({ type: 'ping', t: performance.now() });
             break;
           case 'tuning': arena.setTuning(m); break;
-          case 'titleGranted': showToast(`🏅 새 칭호 '${m.name}'을(를) 받았어요! 내 정보 › 칭호에서 달 수 있어요`); break;
+          case 'titleGranted': showTitleAlert(m.name, m.description); break;
           case 'roster': arena.setRoster(m.players); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
           case 'score':
             setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));
@@ -460,7 +474,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   useEffect(() => { saveTouchControl(touchControl); }, [touchControl]);
   const toggleTouchControl = useCallback(() => setTouchControl((v) => (v === 'joystick' ? 'tap' : 'joystick')), []);
   const touchControlLabel = touchControl === 'joystick' ? '조이스틱' : '터치 이동';
-  const closePanel = useCallback(() => setPanel(null), []);
+  const closePanel = useCallback(() => { setPanel(null); setProfileView('main'); }, []);
 
 
   const onPlused = useCallback((gained: number, p: PlayerSummary) => {
@@ -602,6 +616,21 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         <div ref={joyRef} className="joystick" hidden aria-hidden="true"><div className="joystick-knob" /></div>
         {inspect && <div className="inspect-hint" role="status">정보를 볼 원을 누르세요 · 빈 곳을 누르면 취소</div>}
         {toast && <div className="toast" role="status">{toast}</div>}
+        {titleAlert && (
+          <div key={titleAlert.key} className="title-alert" role="status" aria-live="polite">
+            <span className="title-alert-icon" aria-hidden="true">🏅</span>
+            <div className="title-alert-text">
+              <span className="title-alert-kicker">새 칭호를 받았어요!</span>
+              <strong>{titleAlert.name}</strong>
+              <span className="muted small">{titleAlert.description}</span>
+            </div>
+            <div className="title-alert-actions">
+              <button className="primary" onClick={() => { dismissTitleAlert(); setProfileView('titles'); setPanel('profile'); }}>칭호 보기</button>
+              <button className="icon-button" onClick={dismissTitleAlert} aria-label="알림 닫기">✕</button>
+            </div>
+            <span className="title-alert-timer" aria-hidden="true" />
+          </div>
+        )}
         {hit && <div key={hit.key} className="toast hit-toast" role="status">🎯 {hit.text}</div>}
         {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
       </div>
@@ -623,8 +652,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       )}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
       {panel === 'profile' && (
-        <ProfileModal player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
-                      onLogout={onLogout} onWithdrawn={onWithdrawn} />
+        <ProfileModal key={profileView} player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
+                      onLogout={onLogout} onWithdrawn={onWithdrawn} initialView={profileView} />
       )}
 
     </div>
