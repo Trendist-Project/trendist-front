@@ -18,7 +18,8 @@ interface Props {
 /** 보관함 정렬 기준. 기본은 남은 시간이 많은 것부터(곧 사라질 키워드가 아래로). */
 type SortKey = 'recent' | 'text' | 'state' | 'trend' | 'remaining';
 type SortDir = 'asc' | 'desc';
-const SORT_LABEL: Record<SortKey, string> = { recent: '최신순', text: '키워드', state: '상태', trend: '트렌드 점수', remaining: '남은 시간' };
+// 칩은 이 순서로 보인다. 기본 정렬인 남은 시간을 맨 앞에 둔다
+const SORT_LABEL: Record<SortKey, string> = { remaining: '남은 시간', recent: '최신순', text: '키워드', state: '상태', trend: '트렌드 점수' };
 /** 기준을 고르면 먼저 쓰는 방향: 최신·트렌드·남은 시간은 큰 것부터, 키워드는 가나다, 상태는 🔥부터 */
 const DEFAULT_DIR: Record<SortKey, SortDir> = { recent: 'desc', text: 'asc', state: 'asc', trend: 'desc', remaining: 'desc' };
 const STATE_ORDER: Record<string, number> = { 활성: 0, 비활성: 1, 금지: 2 };
