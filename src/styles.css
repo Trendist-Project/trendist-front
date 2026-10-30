@@ -178,7 +178,9 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .list li { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
 .ranking li { display: flex; align-items: center; gap: 6px; }
 /* 리더보드(4.14): 아레나 오른쪽 위 도구 버튼 바로 아래 */
-.leaderboard { width: min(260px, calc(100vw - 48px)); background: rgba(20, 27, 38, 0.9); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font-size: 0.85rem; }
+/* 게임 중에도 뒤의 아레나가 보이게 반투명. 글자는 그림자로 읽히게 하고, 마우스를 올리면 진해진다 */
+.leaderboard { width: min(260px, calc(100vw - 48px)); background: rgba(20, 27, 38, 0.42); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; font-size: 0.85rem; text-shadow: 0 1px 2px rgba(0,0,0,0.85); transition: background 0.2s; }
+.leaderboard:hover { background: rgba(20, 27, 38, 0.85); }
 .leaderboard h3 { margin: 0 0 6px; font-size: 0.95rem; display: flex; align-items: baseline; gap: 6px; }
 .leaderboard p { margin: 0; }
 .leaderboard .ranking { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
@@ -445,8 +447,9 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 
 /* 계정: 탈퇴 확인·복구 안내(4.1) */
 .account-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-button.link-danger { background: transparent; border-color: transparent; color: #ff9a9a; padding: 8px 6px; font-size: 0.85rem; margin-left: auto; }
-button.link-danger:hover { text-decoration: underline; }
+/* 회원 탈퇴: 어두운 바탕에서도 버튼으로 보이게 빨간 테두리·옅은 빨간 바탕(눌러도 확인 창이 한 번 더 뜬다) */
+button.link-danger { background: rgba(255,77,79,0.1); border: 1px solid rgba(255,107,107,0.6); color: #ff8f8f; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; margin-left: auto; }
+button.link-danger:hover { background: rgba(255,77,79,0.2); border-color: #ff6b6b; color: #ffb0b0; }
 button.danger-fill { background: #e5484d; border-color: #e5484d; color: #fff; font-weight: 700; }
 .account-dialog .modal-body { display: grid; gap: 12px; }
 .account-dialog p { margin: 0; }

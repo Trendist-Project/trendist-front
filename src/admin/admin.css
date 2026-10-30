@@ -113,3 +113,16 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
   .notice-row { flex-direction: column; gap: 10px; }
   .notice-row-actions { align-self: flex-end; }
 }
+
+/* 켜고 끄는 스위치(신고 "같은 대상 함께 처리"). 공통 input 규칙(너비 100%)을 받지 않게 체크박스는 숨기고 트랙을 그린다 */
+.admin-switch { position: relative; margin-left: auto; display: inline-flex; align-items: center; gap: 10px; padding: 6px 12px 6px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; user-select: none; }
+.admin-switch.on { border-color: var(--accent); background: rgba(63,182,139,0.08); }
+.admin-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.admin-switch-track { position: relative; width: 36px; height: 20px; flex: none; border-radius: 999px; background: #3a4558; transition: background 0.15s; }
+.admin-switch-track > span { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.admin-switch.on .admin-switch-track { background: var(--accent); }
+.admin-switch.on .admin-switch-track > span { transform: translateX(16px); }
+.admin-switch:has(input:focus-visible) { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+.admin-switch-text { display: grid; line-height: 1.25; font-size: 0.85rem; }
+.admin-switch-text .muted { font-size: 0.75rem; }
+@media (max-width: 760px) { .admin-switch { margin-left: 0; } }

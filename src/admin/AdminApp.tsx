@@ -271,8 +271,12 @@ function ReportsTab() {
         {REPORT_STATUS.map(([s, label]) => (
           <button key={s} className={status === s ? 'on' : undefined} onClick={() => { setStatus(s); setPage(0); }}>{label}</button>
         ))}
-        <label className="small"><input type="checkbox" checked={sameTarget} onChange={(e) => setSameTarget(e.target.checked)} /> 같은 대상의 접수 신고도 함께 처리</label>
         <span className="muted small">{data ? `${data.total.toLocaleString()}건` : ''}</span>
+        <label className={sameTarget ? 'admin-switch on' : 'admin-switch'} title="처리할 때 같은 댓글·채팅·플레이어에 들어온 다른 접수 신고도 같은 결과로 바꿔요">
+          <input type="checkbox" role="switch" checked={sameTarget} onChange={(e) => setSameTarget(e.target.checked)} />
+          <span className="admin-switch-track" aria-hidden="true"><span /></span>
+          <span className="admin-switch-text"><strong>같은 대상 함께 처리</strong><span className="muted">같은 대상의 접수 신고도 같은 결과로</span></span>
+        </label>
       </div>
       {error && <p className="error">{error}</p>}
       <ul className="admin-reports">
@@ -337,7 +341,7 @@ function SettingsTab() {
       </div>
       <div className="admin-table-wrap">
         <table className="admin-table settings">
-          <thead><tr><th>설정</th><th>값</th><th>범위</th><th>기본값</th><th>바꾼 때</th></tr></thead>
+          <thead><tr><th>설정</th><th>값</th><th>범위</th><th>기본값</th><th>수정 일시</th></tr></thead>
           <tbody>
             {shown.map((s) => {
               const v = draft[s.name] ?? s.value;
