@@ -8,6 +8,15 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 .admin-panel { display: grid; gap: 12px; }
 .admin-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .admin-filters input:not([type]) { min-width: 200px; }
+.admin-filter-box { display: grid; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.admin-chip-filter { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.admin-chip-label { width: 44px; flex: none; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.admin-chip-filter .sort-chip { padding: 6px 12px; font-size: 0.85rem; }
+.chip-count { font-size: 0.75rem; opacity: 0.75; font-variant-numeric: tabular-nums; }
+.admin-search { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.admin-search input { flex: 1; min-width: 200px; max-width: 360px; }
+.admin-hint { margin: 0; }
+@media (max-width: 760px) { .admin-chip-label { width: 100%; } }
 .admin-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .admin-table th, .admin-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; vertical-align: top; }

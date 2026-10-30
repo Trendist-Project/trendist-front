@@ -62,7 +62,29 @@ const SORTS: [string, string][] = [
   ['totalPlusCount', '누적 추가'], ['searchCount', '누적 검색'], ['activatedAt', '🔥된 때'], ['externalUntil', '유지 끝'], ['createdAt', '등록'],
 ];
 const SORTABLE = new Set(['trendValue', 'holderCount', 'totalPlusCount', 'searchCount', 'activatedAt', 'externalUntil', 'createdAt']);
-const SOURCES = ['', 'google', 'admin', 'internal'];
+const STATES: [string, string][] = [['', '전체'], ['활성', '🔥 활성'], ['비활성', '💤 비활성'], ['금지', '⛔ 금지']];
+const SOURCES: [string, string][] = [['', '전체'], ['google', 'google'], ['admin', 'admin'], ['internal', 'internal']];
+
+/** 필터 한 줄: 이름표 + 하나만 고르는 칩(게임의 정렬 칩과 같은 모양). */
+function ChipFilter({ label, options, value, counts, onChange }: {
+  label: string; options: [string, string][]; value: string; counts?: Record<string, number>; onChange(v: string): void;
+}) {
+  const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : undefined;
+  return (
+    <div className="admin-chip-filter" role="radiogroup" aria-label={label}>
+      <span className="admin-chip-label">{label}</span>
+      {options.map(([v, text]) => {
+        const n = counts ? (v ? counts[v] ?? 0 : total) : undefined;
+        return (
+          <button key={v || 'all'} type="button" role="radio" aria-checked={value === v}
+                  className={`sort-chip${value === v ? ' active' : ''}`} onClick={() => onChange(v)}>
+            {text}{n !== undefined && <span className="chip-count">{n.toLocaleString()}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function KeywordsTab() {
   const [query, setQuery] = useState<AdminKeywordQuery>({ sort: 'trendValue', dir: 'desc', page: 0 });
@@ -88,17 +110,18 @@ function KeywordsTab() {
 
   return (
     <section className="admin-panel">
-      <form className="admin-filters" onSubmit={(e: FormEvent) => { e.preventDefault(); setQuery((q) => ({ ...q, page: 0, q: qInput.trim() })); }}>
-        <select value={query.state ?? ''} onChange={(e) => setQuery((q) => ({ ...q, page: 0, state: e.target.value }))} aria-label="상태">
-          <option value="">상태 전체</option><option value="활성">🔥활성</option><option value="비활성">💤비활성</option><option value="금지">⛔금지</option>
-        </select>
-        <select value={query.source ?? ''} onChange={(e) => setQuery((q) => ({ ...q, page: 0, source: e.target.value }))} aria-label="반영 소스">
-          {SOURCES.map((s) => <option key={s} value={s}>{s || '소스 전체'}</option>)}
-        </select>
-        <input value={qInput} onChange={(e) => setQInput(e.target.value)} placeholder="키워드 검색" aria-label="키워드 검색" />
-        <button type="submit">검색</button>
-        <span className="muted small">{data ? `${data.total.toLocaleString()}개` : ''}</span>
-      </form>
+      <div className="admin-filter-box">
+        <ChipFilter label="상태" options={STATES} value={query.state ?? ''} counts={data?.stateCounts}
+                    onChange={(v) => setQuery((q) => ({ ...q, page: 0, state: v }))} />
+        <ChipFilter label="소스" options={SOURCES} value={query.source ?? ''}
+                    onChange={(v) => setQuery((q) => ({ ...q, page: 0, source: v }))} />
+        <form className="admin-search" onSubmit={(e: FormEvent) => { e.preventDefault(); setQuery((q) => ({ ...q, page: 0, q: qInput.trim() })); }}>
+          <input value={qInput} onChange={(e) => setQInput(e.target.value)} placeholder="🔍 키워드 검색" aria-label="키워드 검색" />
+          <button type="submit" className="primary">검색</button>
+          <span className="muted small">{data ? `${data.total.toLocaleString()}개` : ''}</span>
+        </form>
+        {!query.state && <p className="muted small admin-hint">상태 전체에서는 금지 키워드를 맨 위에 모아 보여 줘요.</p>}
+      </div>
       {error && <p className="error">{error}</p>}
       <div className="admin-table-wrap">
         <table className="admin-table">

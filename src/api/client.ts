@@ -108,7 +108,7 @@ export interface AdminKeywordRow {
   totalPlusCount: number; searchCount: number; externalUntil: string | null; activatedAt: string | null;
   bannedAt: string | null; createdAt: string;
 }
-export interface AdminKeywordPage { items: AdminKeywordRow[]; total: number; page: number; size: number }
+export interface AdminKeywordPage { items: AdminKeywordRow[]; total: number; page: number; size: number; stateCounts: Record<string, number> }
 export interface AdminAdded { id: number; text: string; state: string; trendValue: number; holderCount: number; externalUntil: string; created: boolean }
 export interface AdminReport {
   id: number; type: string; targetId: number; reason: string | null; status: string; createdAt: string; updatedAt: string;
