@@ -204,12 +204,14 @@ export function GameScreen({ initialPlayer, guest, onLogout }: Props) {
             setRefreshKey((k) => k + 1);
             break;
           case 'hit': {
-            // 공격 성공: 상대가 잃은 키워드와 점수를 내 화면에 보여 준다(봇의 키워드는 이름이 없다).
+            // 공격 성공: 상대가 잃은 키워드와 점수를 내 화면에 보여 준다.
             // 사람에게서 이기면 그 키워드를 빼앗는다: 없던 키워드는 보관함에 추가, 이미 있던 키워드는 남은 시간 갱신(4.3)
+            // 봇을 이기면 봇의 키워드 대신 내 보관함에 없는 무작위 🔥 키워드를 얻는다(4.21)
             const key = performance.now();
-            const text = m.stolen === 'ADDED' ? `${m.target}의 '${m.keyword}' ${m.score}점을 빼앗아 보관함에 넣었어요!`
+            const text = m.stolen === 'BOT' ? `${m.target}을 이겨 '${m.keyword}' ${m.score}점 키워드를 얻었어요!`
+              : m.stolen === 'ADDED' ? `${m.target}의 '${m.keyword}' ${m.score}점을 빼앗아 보관함에 넣었어요!`
               : m.stolen === 'RENEWED' ? `${m.target}의 '${m.keyword}'를 빼앗아 남은 시간을 24시간으로 늘렸어요!`
-              : m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}의 ${m.score}점짜리 키워드를 떨어뜨렸어요!`;
+              : m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}을 이겼어요!`;
             setHit({ text, key });
             if (m.stolen) {
               if (m.gained) arena.floatText(`+${m.gained}`);
