@@ -166,6 +166,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             conn.send({ type: 'ping', t: performance.now() });
             break;
           case 'tuning': arena.setTuning(m); break;
+          case 'titleGranted': showToast(`🏅 새 칭호 '${m.name}'을(를) 받았어요! 내 정보 › 칭호에서 달 수 있어요`); break;
           case 'roster': arena.setRoster(m.players); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
           case 'score':
             setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));

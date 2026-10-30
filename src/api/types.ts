@@ -83,3 +83,10 @@ export interface GuideArticle { id: number; title: string; body: string; updated
 export interface Notice { id: number; title: string; body: string; pinned: boolean; createdAt: string; edited: boolean; fresh: boolean }
 
 export interface ApiError { code: string; message: string }
+
+/** 칭호(4.10). METRIC은 current / target 진행도, RANK는 target위 안(current 없음). */
+export interface TitleItem {
+  id: number; name: string; description: string; conditionType: 'METRIC' | 'RANK'; metric: string;
+  current: number; target: number; owned: boolean; acquiredAt: string | null; active: boolean;
+}
+export interface TitleBox { activeTitleId: number | null; titles: TitleItem[] }

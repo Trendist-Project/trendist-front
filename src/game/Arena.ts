@@ -76,7 +76,7 @@ const MINIMAP_MARGIN = 12;
 export class Arena {
   private ctx: CanvasRenderingContext2D;
   private entities = new Map<number, Interp>();
-  private names = new Map<number, { nickname: string; level: number; bot: boolean }>();
+  private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null }>();
   private half = 1500;
   private tuning: Tuning | null = null;
   private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
@@ -147,7 +147,9 @@ export class Arena {
   /** 입력·목표를 비운다. 연결이 끊기면 서버도 더 이상 움직이지 않으므로 예측도 멈춘다. */
   clearControl() { this.input = { dx: 0, dy: 0 }; this.target = null; }
   setRoster(players: RosterEntry[]) {
-    this.names = new Map(players.map((p) => [p.e, { nickname: p.nickname, level: p.level, bot: !!p.bot }]));
+    this.names = new Map(players.map((p) => [p.e, {
+      nickname: p.nickname, level: p.level, bot: !!p.bot, title: p.title ?? null,
+    }]));
   }
   /**
    * 예측에 쓰는 입력. 서버로 보내는 순간에 같이 불러야 예측과 서버가 같은 입력으로 움직인다(서버 Room.setInput과 같게).
@@ -588,6 +590,16 @@ export class Arena {
       const label = info.nickname; // 닉네임은 항상 텍스트로만 그린다
       ctx.strokeText(label, e.x, e.y + e.r + 4 / this.zoom);
       ctx.fillText(label, e.x, e.y + e.r + 4 / this.zoom);
+      if (info.title) {
+        // 활성 칭호는 닉네임 바로 아래 작은 글씨(4.10)
+        const ts = fs * 0.72;
+        ctx.font = `600 ${ts}px "Noto Sans KR", system-ui, sans-serif`;
+        ctx.lineWidth = ts / 5;
+        ctx.fillStyle = '#ffd166';
+        const ty = e.y + e.r + 4 / this.zoom + fs * 1.15;
+        ctx.strokeText(info.title, e.x, ty);
+        ctx.fillText(info.title, e.x, ty);
+      }
     }
   }
 

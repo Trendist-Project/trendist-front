@@ -53,12 +53,17 @@ export interface Tuning {
 }
 
 /** 방에 있는 엔티티의 이름표. bot이면 NPC 봇(4.21): 키워드가 없고 점수는 서버 메모리에만 있다. */
-export interface RosterEntry { e: number; nickname: string; level: number; bot?: boolean }
+/** title: 활성 칭호(4.10). */
+export interface RosterEntry {
+  e: number; nickname: string; level: number; bot?: boolean;
+  title?: string | null;
+}
 
 export type ServerMessage =
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
   | { type: 'roster'; players: RosterEntry[] }
+  | { type: 'titleGranted'; name: string; description: string } // 새 칭호를 받았다(4.10)
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
   | { type: 'lost'; by: string; keyword: string; score: number; stolen?: boolean } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:

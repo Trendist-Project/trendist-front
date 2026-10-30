@@ -4,6 +4,7 @@ import type { PlayerSummary, ScoreHistory, ScoreRange } from '../api/types';
 import { GoogleButton } from './GoogleButton';
 import { Modal } from './Modal';
 import { ScoreChart } from './ScoreChart';
+import { TitlesView } from './TitlesView';
 import { WithdrawDialog } from './WithdrawDialog';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['all', '전체']];
@@ -17,8 +18,9 @@ const timeFormat = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '
 
 /** 내 정보(4.1): 지금 기록을 보여 주고 닉네임을 바꾼다. 변경 간격은 서버가 정하고, 화면은 다음 가능 시각만 안내한다. */
 export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn }: Props) {
-  // 탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
-  const [view, setView] = useState<'main' | 'withdraw'>('main');
+  // 칭호함·탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
+  const [view, setView] = useState<'main' | 'titles' | 'withdraw'>('main');
+  const [activeTitle, setActiveTitle] = useState<string | null | undefined>(undefined);
   const [nickname, setNickname] = useState(player.nickname);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -65,7 +67,14 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
     }
   }
 
+  // 달고 있는 칭호 이름(칭호함에서 바꾸고 돌아오면 다시 읽는다)
+  useEffect(() => {
+    if (view !== 'main') return;
+    api.titles().then((b) => setActiveTitle(b.titles.find((t) => t.active)?.name ?? null)).catch(() => setActiveTitle(null));
+  }, [view]);
+
   if (view === 'withdraw') return <WithdrawDialog onDone={onWithdrawn} onCancel={() => setView('main')} />;
+  if (view === 'titles') return <TitlesView onBack={() => setView('main')} onClose={onClose} />;
 
   return (
     <Modal title="내 정보" onClose={onClose}>
@@ -78,6 +87,14 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         <div><dt>누적 추가</dt><dd>{player.totalPlusCount.toLocaleString()}회</dd></div>
         <div><dt>누적 검색</dt><dd>{(player.searchCount ?? 0).toLocaleString()}회</dd></div>
       </dl>
+
+      <div className="profile-links">
+        <button className="profile-link" onClick={() => setView('titles')}>
+          <span aria-hidden="true">🏅</span>
+          <span><strong>칭호</strong><span className="muted small">{activeTitle === undefined ? '…' : activeTitle ?? '달고 있는 칭호 없음'}</span></span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
 
       <section className="kw-activity" aria-label="점수 추이">
         <div className="kw-activity-head">
