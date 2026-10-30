@@ -78,7 +78,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
 
   if (view === 'withdraw') return <WithdrawDialog onDone={onWithdrawn} onCancel={() => setView('main')} />;
   if (view === 'titles') return <TitlesView onBack={() => setView('main')} onClose={onClose} />;
-  if (view === 'effects') return <EffectsView level={player.level} onBack={() => setView('main')} onClose={onClose} />;
+  if (view === 'effects') return <EffectsView level={player.level} guest={guest} onBack={() => setView('main')} onClose={onClose} />;
   if (view === 'share') return <ShareCardView player={player} onBack={() => setView('main')} onClose={onClose} />;
   if (view === 'customize') return <CustomizeView level={player.level} onBack={() => setView('main')} onClose={onClose} />;
 
@@ -110,7 +110,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         </button>
         <button className="profile-link" onClick={() => setView('effects')}>
           <span aria-hidden="true">✨</span>
-          <span><strong>이동 효과</strong><span className="muted small">움직일 때 뒤에 남는 효과 고르기</span></span>
+          <span><strong>이동 효과</strong><span className="muted small">{guest ? '로그인하면 쓸 수 있어요' : '움직일 때 뒤에 남는 효과 고르기'}</span></span>
           <span aria-hidden="true">›</span>
         </button>
         <button className="profile-link" onClick={() => setView('share')}>

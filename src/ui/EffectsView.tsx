@@ -3,9 +3,10 @@ import { api, ApiFailure } from '../api/client';
 import type { EffectBox, EffectItem } from '../api/types';
 import { Trails } from '../game/trails';
 import { drawTurtle, TURTLE_BASE } from '../game/turtle';
+import { GoogleButton } from './GoogleButton';
 import { Modal } from './Modal';
 
-interface Props { level: number; onBack(): void; onClose(): void }
+interface Props { level: number; guest: boolean; onBack(): void; onClose(): void }
 
 const W = 260, H = 150;
 
@@ -48,9 +49,9 @@ function Preview({ code, level }: { code: string | null; level: number }) {
 
 /**
  * 이동 효과(4.23): 움직일 때 원 뒤에 남는 효과를 하나 고른다. 지금은 모두 조건 없이 쓸 수 있고,
- * 나중에 조건(레벨·칭호·구매)이 붙은 효과는 잠금 안내만 보인다.
+ * 나중에 조건(레벨·칭호·구매)이 붙은 효과는 잠금 안내만 보인다. 게스트는 미리 보기만 하고 쓰려면 로그인한다.
  */
-export function EffectsView({ level, onBack, onClose }: Props) {
+export function EffectsView({ level, guest, onBack, onClose }: Props) {
   const [box, setBox] = useState<EffectBox | null>(null);
   const [preview, setPreview] = useState<EffectItem | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,6 +84,12 @@ export function EffectsView({ level, onBack, onClose }: Props) {
           <span className="muted small">{preview ? `${preview.name} 미리 보기` : '효과 없음'}</span>
         </div>
         <p className="muted small">움직일 때 내 원 뒤에 남는 효과예요. 하나만 쓸 수 있고 모두에게 보여요.</p>
+        {guest && (
+          <div className="login-gate">
+            <span><strong>🔒 로그인하면 쓸 수 있어요</strong><span className="muted small">게스트는 미리 보기만 할 수 있어요. 처음 쓰는 Google 계정이면 지금 기록이 그대로 이어져요.</span></span>
+            <GoogleButton label="Google로 로그인" />
+          </div>
+        )}
         {message && <p className={message.error ? 'error small' : 'small'} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
         <ul className="title-list">
           <li className={active ? 'title-item' : 'title-item active'}>
