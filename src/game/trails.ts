@@ -8,7 +8,7 @@ export const TRAIL_CODES = ['afterimage', 'sparkle', 'flame', 'bubble', 'rainbow
 export type TrailCode = (typeof TRAIL_CODES)[number];
 
 interface Particle { x: number; y: number; vx: number; vy: number; size: number; born: number; life: number; rot: number; vr: number; hue: number }
-interface PathPoint { x: number; y: number; r: number; t: number }
+interface PathPoint { x: number; y: number; r: number; t: number; life: number }
 interface Track {
   code: TrailCode; color: string;
   parts: Particle[]; path: PathPoint[];
@@ -19,6 +19,16 @@ const MAX_PER_TRACK = 90;
 const MAX_TOTAL = 1500;
 /** 한 프레임에 이보다 멀리 움직였으면 순간 이동(입장·보정)으로 보고 효과를 만들지 않는다 */
 const TELEPORT = 400;
+/**
+ * 효과는 모든 원 아래에 그려서, 원 안에 생긴 입자는 원이 지나갈 때까지 가려진다. 속도는 크기와 관계없이 같아서
+ * 큰 원일수록 오래 가려지므로, 입자는 원의 뒤쪽 가장자리 바깥에서 만들고 큰 원일수록 오래 남긴다.
+ * 수명 배수 = 1 + 반지름 / 이 값(상한 LIFE_SCALE_MAX). 잔상은 원 중심에 남는 그림자라 더 길게 늘린다
+ */
+const LIFE_SCALE_R = 150;
+const LIFE_SCALE_MAX = 3;
+const AFTERIMAGE_SCALE_R = 90;
+const AFTERIMAGE_SCALE_MAX = 4.5;
+const lifeScale = (r: number, per: number, max: number) => Math.min(max, 1 + r / per);
 
 /** 효과별: 입자 간격(반지름 배수, 최소 px), 수명(ms). 길(path)형은 점 간격 */
 const SPEC: Record<TrailCode, { gap: number; minGap: number; life: number }> = {
@@ -73,22 +83,29 @@ export class Trails {
   }
 
   private emit(t: Track, x: number, y: number, ux: number, uy: number, r: number, now: number) {
-    const life = SPEC[t.code].life;
     const rnd = (a: number, b: number) => a + Math.random() * (b - a);
     const px = -uy, py = ux; // 가는 방향에 수직
-    if (t.code === 'afterimage' || t.code === 'rainbow') {
-      t.path.push({ x, y, r, t: now });
+    if (t.code === 'afterimage') {
+      // 지나온 중심에 남는 그림자. 큰 원은 자기 몸이 비켜날 때까지 오래 가려지므로 크기에 따라 오래 남긴다
+      t.path.push({ x, y, r, t: now, life: SPEC.afterimage.life * lifeScale(r, AFTERIMAGE_SCALE_R, AFTERIMAGE_SCALE_MAX) });
       if (t.path.length > 40) t.path.shift();
       return;
     }
+    if (t.code === 'rainbow') {
+      // 띠는 원의 뒤쪽 가장자리에서 나온다(중심에서 그리면 원 크기만큼 몸에 가려진다)
+      t.path.push({ x: x - ux * r * 0.92, y: y - uy * r * 0.92, r, t: now, life: SPEC.rainbow.life * lifeScale(r, LIFE_SCALE_R, LIFE_SCALE_MAX) });
+      if (t.path.length > 60) t.path.shift();
+      return;
+    }
+    const life = SPEC[t.code].life * lifeScale(r, LIFE_SCALE_R, LIFE_SCALE_MAX);
     if (t.parts.length >= MAX_PER_TRACK || this.total >= MAX_TOTAL) return;
     const s = Math.max(r, 18);
-    const tail = r * 0.75; // 원의 뒤쪽 가장자리 근처에서 나온다
+    const tail = r * 1.05; // 원의 뒤쪽 가장자리 바로 바깥에서 나온다(원 안이면 몸에 가려진다)
     let p: Particle;
     switch (t.code) {
       case 'sparkle': {
         const side = rnd(-0.8, 0.8) * r;
-        p = { x: x - ux * tail * 0.6 + px * side, y: y - uy * tail * 0.6 + py * side, vx: rnd(-12, 12), vy: rnd(-12, 12),
+        p = { x: x - ux * tail + px * side, y: y - uy * tail + py * side, vx: rnd(-12, 12), vy: rnd(-12, 12),
           size: s * rnd(0.1, 0.2), born: now, life: life * rnd(0.7, 1.1), rot: rnd(0, Math.PI), vr: rnd(-2, 2), hue: rnd(40, 60) };
         break;
       }
@@ -108,7 +125,7 @@ export class Trails {
       case 'footprint': {
         t.step ^= 1;
         const side = (t.step ? 1 : -1) * r * 0.32;
-        p = { x: x - ux * r * 0.2 + px * side, y: y - uy * r * 0.2 + py * side, vx: 0, vy: 0,
+        p = { x: x - ux * (tail + s * 0.2) + px * side, y: y - uy * (tail + s * 0.2) + py * side, vx: 0, vy: 0,
           size: s * 0.16, born: now, life, rot: Math.atan2(uy, ux) + Math.PI / 2, vr: 0, hue: 0 };
         break;
       }
@@ -135,15 +152,14 @@ export class Trails {
   draw(ctx: CanvasRenderingContext2D, now: number, dt: number) {
     for (const [id, t] of this.tracks) {
       // 오래된 입자·점을 버린다
-      const life = SPEC[t.code].life;
       const before = t.parts.length;
       t.parts = t.parts.filter((p) => now - p.born < p.life);
       this.total -= before - t.parts.length;
-      while (t.path.length && now - t.path[0].t > life) t.path.shift();
+      while (t.path.length && now - t.path[0].t > t.path[0].life) t.path.shift();
       if (t.seen !== this.frame && t.parts.length === 0 && t.path.length === 0) { this.tracks.delete(id); continue; }
       for (const p of t.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; }
       ctx.save();
-      DRAW[t.code](ctx, t, now, life);
+      DRAW[t.code](ctx, t, now);
       ctx.restore();
     }
     this.frame++;
@@ -152,16 +168,16 @@ export class Trails {
   clear() { this.tracks.clear(); this.total = 0; }
 }
 
-type Drawer = (ctx: CanvasRenderingContext2D, t: Track, now: number, life: number) => void;
+type Drawer = (ctx: CanvasRenderingContext2D, t: Track, now: number) => void;
 
 const age = (born: number, now: number, life: number) => Math.min(1, Math.max(0, (now - born) / life));
 
 const DRAW: Record<TrailCode, Drawer> = {
   /** 지나온 자리에 원 모양 그림자가 흐려지며 작아진다 */
-  afterimage(ctx, t, now, life) {
+  afterimage(ctx, t, now) {
     ctx.fillStyle = t.color;
     for (const p of t.path) {
-      const a = age(p.t, now, life);
+      const a = age(p.t, now, p.life);
       ctx.globalAlpha = 0.3 * (1 - a);
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.95 - 0.25 * a), 0, Math.PI * 2); ctx.fill();
     }
@@ -210,13 +226,13 @@ const DRAW: Record<TrailCode, Drawer> = {
     }
   },
   /** 지나온 길을 따라 색이 흐르는 띠. 꼬리로 갈수록 가늘고 옅다 */
-  rainbow(ctx, t, now, life) {
+  rainbow(ctx, t, now) {
     const pts = t.path;
     if (pts.length < 2) return;
     ctx.lineCap = 'round';
     for (let i = 1; i < pts.length; i++) {
       const p0 = pts[i - 1], p1 = pts[i];
-      const a = age(p1.t, now, life);
+      const a = age(p1.t, now, p1.life);
       ctx.globalAlpha = 0.6 * (1 - a);
       ctx.strokeStyle = `hsl(${(p1.t / 4) % 360}, 90%, 62%)`;
       ctx.lineWidth = p1.r * 0.7 * (1 - a * 0.8);
