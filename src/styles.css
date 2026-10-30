@@ -502,3 +502,64 @@ button.link-back:hover { color: var(--text); }
 .effect-actions button { padding: 6px 10px; font-size: 0.85rem; }
 .effect-actions button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
 .title-item.previewing:not(.active) { border-color: #3a475c; background: #151d2a; }
+
+/* 가이드(4.17): 넓은 화면은 왼쪽 카테고리 + 오른쪽 글, 좁은 화면은 위에 가로 칩 */
+.guide-modal { width: min(920px, 100%); height: min(86vh, 820px); }
+.guide-modal .modal-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.guide-search input { width: 100%; }
+.guide-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 16px; }
+.guide-nav { display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+.guide-nav-item { text-align: left; background: transparent; border-color: transparent; padding: 9px 12px; color: var(--muted); }
+.guide-nav-item:hover { background: #1a2230; color: var(--text); }
+.guide-nav-item.active { background: #1d2a26; border-color: rgba(63,182,139,0.5); color: var(--text); font-weight: 700; }
+.guide-content { min-height: 0; overflow: auto; display: grid; gap: 14px; align-content: start; padding-right: 4px; scroll-padding-top: 8px; }
+.guide-heading { margin: 0; font-size: 1.2rem; }
+.guide-toc { display: flex; flex-wrap: wrap; gap: 6px; }
+.guide-toc .chip { font-size: 0.82rem; }
+.guide-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: #0f151f; }
+.guide-card h4 { margin: 0 0 8px; font-size: 1.02rem; }
+.guide-card .rich-text > :first-child { margin-top: 0; }
+.guide-card .rich-text > :last-child { margin-bottom: 0; }
+.guide-faq .faq-q { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--accent); color: #0b0f17; font-weight: 800; font-size: 0.8rem; flex: none; }
+.guide-faq details[open] { border-color: rgba(63,182,139,0.5); }
+.guide-faq .rich-text { margin-top: 8px; }
+.guide-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.guide-results button { width: 100%; text-align: left; display: grid; gap: 2px; background: #0f151f; padding: 10px 12px; }
+.guide-results button:hover { border-color: #3a475c; background: #151d2a; }
+.guide-pager { display: flex; justify-content: space-between; gap: 8px; padding-top: 4px; }
+.rich-text kbd { display: inline-block; min-width: 1.6em; text-align: center; margin: 0 2px; padding: 0 6px; font-size: 0.8rem; font-weight: 700; background: #1d2635; border-bottom-width: 2px; }
+.rich-text .tip { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(63,182,139,0.1); border: 1px solid rgba(63,182,139,0.35); }
+.rich-text .tip p { margin: 0; }
+.guide-steps { list-style: none; margin: 8px 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.guide-steps li { position: relative; display: grid; justify-items: center; text-align: center; gap: 4px; padding: 14px 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: #1a2230; }
+.guide-step-no { position: absolute; top: 6px; left: 8px; font-size: 0.75rem; color: var(--muted); }
+.guide-step-icon { font-size: 1.7rem; }
+.guide-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0; }
+.guide-controls figure { margin: 0; display: grid; justify-items: center; align-content: start; gap: 8px; padding: 12px 8px; border: 1px solid var(--line); border-radius: 12px; background: #1a2230; text-align: center; }
+.guide-controls figcaption { display: grid; gap: 2px; }
+.guide-controls .keys { display: grid; justify-items: center; gap: 4px; min-height: 58px; align-content: center; }
+.guide-controls .key-row { display: flex; gap: 4px; }
+.guide-controls kbd { margin: 0; min-width: 26px; padding: 3px 0; text-align: center; font-weight: 700; font-size: 0.85rem; background: #0f151f; border-bottom-width: 3px; border-radius: 6px; }
+.guide-controls .joystick { width: 58px; height: 58px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.25); display: grid; place-items: center; }
+.guide-controls .joystick span { width: 24px; height: 24px; border-radius: 999px; background: rgba(255,255,255,0.45); transform: translate(10px, -8px); }
+.guide-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; }
+.guide-badges .badge { font-size: 0.85rem; padding: 4px 10px; }
+.guide-legend { list-style: none; margin: 4px 0; padding: 12px; display: flex; flex-wrap: wrap; gap: 10px 18px; border: 1px solid var(--line); border-radius: 12px; background: #1f2a37; font-size: 0.88rem; }
+.guide-legend li { display: flex; align-items: center; gap: 8px; }
+.swatch-zone { width: 26px; height: 26px; border-radius: 4px; }
+.swatch-zone.center { background: rgba(79,140,255,0.16); border: 2px solid #4f8cff; }
+.swatch-zone.random { background: rgba(166,224,74,0.14); border: 2px dashed #a6e04a; }
+.legend-me { display: inline-grid; }
+.legend-bot { width: 26px; height: 26px; border-radius: 999px; background: #d9534f; border: 2px solid #11372a; }
+.legend-orb { width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: 0.8rem; color: #3b2a12; background: radial-gradient(circle at 35% 35%, #fff6c8, #ffc94a 60%, #e09a1a); }
+@media (max-width: 760px) {
+  .guide-modal { height: 92dvh; }
+  .guide-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
+  .guide-nav { flex-direction: row; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .guide-nav-item { flex: none; border-radius: 999px; border-color: var(--line); padding: 6px 12px; }
+  .guide-steps, .guide-controls { grid-template-columns: 1fr; }
+  .guide-steps li { grid-template-columns: auto auto 1fr; justify-items: start; text-align: left; align-items: center; column-gap: 10px; padding: 10px 12px; }
+  .guide-steps li .muted { grid-column: 3; }
+  .guide-step-no { position: static; }
+  .guide-step-icon { font-size: 1.3rem; grid-row: span 2; }
+}
