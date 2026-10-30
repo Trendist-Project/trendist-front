@@ -1,5 +1,5 @@
 import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
-import { drawTurtle, TURTLE_BASE } from './turtle';
+import { borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
 
 /** 다른 엔티티의 최근 스냅샷들(서버 시각 ms 순). 조금 늦은 시각을 두 스냅샷 사이로 보간해 그린다. */
 interface Interp { buf: { t: number; s: EntityState }[]; cur: EntityState }
@@ -76,7 +76,7 @@ const MINIMAP_MARGIN = 12;
 export class Arena {
   private ctx: CanvasRenderingContext2D;
   private entities = new Map<number, Interp>();
-  private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null }>();
+  private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null }>();
   private half = 1500;
   private tuning: Tuning | null = null;
   private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
@@ -149,6 +149,7 @@ export class Arena {
   setRoster(players: RosterEntry[]) {
     this.names = new Map(players.map((p) => [p.e, {
       nickname: p.nickname, level: p.level, bot: !!p.bot, title: p.title ?? null,
+      bg: p.bg ?? TURTLE_BASE, borderColor: p.borderColor ?? null, borderWidth: p.borderWidth ?? null,
     }]));
   }
   /**
@@ -566,12 +567,14 @@ export class Arena {
     // 옅은 그림자는 shadowBlur 대신 살짝 큰 반투명 원으로 그린다(shadowBlur는 휴대폰에서 매우 느리다)
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath(); ctx.arc(e.x, e.y + e.r * 0.05 + 1 / this.zoom, e.r + 3 / this.zoom, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = this.names.get(e.e)?.bot ? BOT_BASE : TURTLE_BASE; // 성장 캐릭터의 바탕색, 봇은 빨간색(4.21)
+    const look = this.names.get(e.e);
+    // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(11레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
+    ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
     // 레벨이 오를수록 거북이 부위가 하나씩 생기고 선명해진다(4.9). 테두리를 그 위에 그려 가장자리를 깔끔하게 덮는다
     drawTurtle(ctx, e.x, e.y, e.r, lvl);
-    ctx.strokeStyle = '#11372a';
-    ctx.lineWidth = Math.max(2, e.r * 0.08);
+    ctx.strokeStyle = look?.borderColor ?? '#11372a';
+    ctx.lineWidth = borderLineWidth(e.r, look?.borderWidth ?? null);
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke();
     if (e.me) {
       ctx.strokeStyle = '#ffffff';

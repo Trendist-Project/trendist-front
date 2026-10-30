@@ -53,10 +53,10 @@ export interface Tuning {
 }
 
 /** 방에 있는 엔티티의 이름표. bot이면 NPC 봇(4.21): 키워드가 없고 점수는 서버 메모리에만 있다. */
-/** title: 활성 칭호(4.10). */
+/** title: 활성 칭호(4.10). bg·borderColor·borderWidth: 원의 꾸미기(4.9), 테두리가 null이면 기본 테두리 */
 export interface RosterEntry {
   e: number; nickname: string; level: number; bot?: boolean;
-  title?: string | null;
+  title?: string | null; bg?: string; borderColor?: string | null; borderWidth?: number | null;
 }
 
 export type ServerMessage =

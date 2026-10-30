@@ -7,6 +7,11 @@
  */
 
 export const TURTLE_BASE = '#3fb68b'; // 성장 캐릭터의 정해진 바탕색(4.9)
+
+/** 테두리 두께(4.9): 꾸민 두께는 1~8단계로 반지름에 비례한다(큰 원에서도 보이게). null이면 기본 테두리 */
+export function borderLineWidth(r: number, step: number | null) {
+  return step ? Math.max(1.5, r * 0.03 * step) : Math.max(2, r * 0.08);
+}
 const SHELL = '#2a8a66';
 const SHELL_LINE = '#17573f';
 const SKIN = '#9be0b8';

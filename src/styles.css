@@ -475,3 +475,23 @@ button.link-back:hover { color: var(--text); }
 .title-bar { flex: 1; min-width: 80px; max-width: 200px; height: 6px; border-radius: 999px; background: #1d2635; overflow: hidden; }
 .title-bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
 
+/* 꾸미기(4.9) */
+.customize { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.customize-preview { display: grid; gap: 8px; justify-items: center; }
+.look-preview { border-radius: 14px; border: 1px solid var(--line); }
+.customize-controls { display: grid; gap: 12px; min-width: 0; }
+.customize-locked { display: grid; gap: 8px; justify-items: center; text-align: center; }
+.customize-locked p { margin: 0; }
+.color-picker { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.color-picker legend { padding: 0 4px; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatch { width: 26px; height: 26px; padding: 0; border-radius: 999px; border: 2px solid rgba(255,255,255,0.12); }
+.swatch.on { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+.swatch.default { width: auto; padding: 0 10px; font-size: 0.75rem; background: #1d2635; color: var(--muted); }
+.swatch.default.on { color: var(--text); }
+.hex-row { display: flex; gap: 8px; align-items: center; }
+.hex-row input[type=color] { width: 40px; height: 36px; padding: 2px; flex: none; }
+.hex-row input:not([type]) { max-width: 130px; font-family: ui-monospace, monospace; }
+.width-row { display: flex; gap: 10px; align-items: center; }
+.width-row input[type=range] { flex: 1; padding: 0; accent-color: var(--accent); }
+@media (max-width: 760px) { .customize { grid-template-columns: 1fr; } }

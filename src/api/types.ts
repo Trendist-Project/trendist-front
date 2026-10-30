@@ -90,3 +90,7 @@ export interface TitleItem {
   current: number; target: number; owned: boolean; acquiredAt: string | null; active: boolean;
 }
 export interface TitleBox { activeTitleId: number | null; titles: TitleItem[] }
+
+/** 원의 꾸미기(4.9). borderWidth는 1~8단계, 테두리가 null이면 기본 테두리 */
+export interface Look { background: string; borderColor: string | null; borderWidth: number | null }
+export interface MyLook { look: Look; unlocked: boolean; unlockLevel: number; defaults: Look; presets: string[] }

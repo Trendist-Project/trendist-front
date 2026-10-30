@@ -1,6 +1,6 @@
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
-  PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
+  Look, MyLook, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
 
 export class ApiFailure extends Error {
@@ -92,6 +92,8 @@ export const api = {
   changeNickname: (nickname: string) => request<PlayerSummary>('PATCH', '/api/me/nickname', { nickname }),
   titles: () => request<TitleBox>('GET', '/api/me/titles'),
   setTitle: (titleId: number | null) => request<TitleBox>('PUT', '/api/me/title', { titleId }),
+  myLook: () => request<MyLook>('GET', '/api/me/profile'),
+  updateLook: (look: Look) => request<MyLook>('PUT', '/api/me/profile', look),
   search: (q: string) => request<SearchResult>('GET', `/api/keywords/search?q=${encodeURIComponent(q)}`),
   plus: (text: string) => request<PlusResult>('POST', '/api/keywords/plus', { text }),
   myKeywords: () => request<MyKeyword[]>('GET', '/api/me/keywords'),
