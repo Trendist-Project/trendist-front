@@ -15,6 +15,10 @@ export interface PlayerSummary {
   searchCount: number;
   /** 다음에 닉네임을 바꿀 수 있는 시각. null이면 지금 바꿀 수 있다. */
   nicknameChangeableAt: string | null;
+  /** 칭호·자랑하기 카드용 누적 기록: 빼앗은 횟수, 봇을 이긴 횟수, 활동한 날(4.10) */
+  stealCount: number;
+  botWinCount: number;
+  activeDays: number;
 }
 
 export interface Me { userId: number; guest: boolean; player: PlayerSummary | null }

@@ -612,3 +612,13 @@ button.link-back:hover { color: var(--text); }
 .notice-toggle-button, .menu-toggle { position: relative; }
 .dot-badge { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: #ff4d4f; box-shadow: 0 0 0 2px var(--panel); pointer-events: none; }
 .mobile-menu button > span.dot-badge.inline, .dot-badge.inline { position: static; width: 8px; height: 8px; margin-left: 2px; box-shadow: none; }
+
+/* 자랑하기 카드(4.24) */
+.share-card-modal { width: min(560px, 100%); }
+.share-card-frame { position: relative; display: grid; place-items: center; }
+.share-card-canvas { width: min(100%, 400px); aspect-ratio: 1080 / 1350; height: auto; border-radius: 16px; border: 1px solid var(--line); background: #0d1420; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.share-card-canvas.loading { opacity: 0.35; }
+.share-card-loading { position: absolute; }
+.share-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.share-card-actions button { flex: 1 1 140px; }
+.ok { color: #9fe0c3; }
