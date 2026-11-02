@@ -1,5 +1,9 @@
 import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
 import { borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
+import { artImage, drawArt } from './pixelArt';
+import { drawBorderEffect, drawNameTag, drawOrbits, EMOTE_CHAR } from './skin';
+
+const EMOTE_MS = 2500;
 import { Trails } from './trails';
 
 /** 다른 엔티티의 최근 스냅샷들(서버 시각 ms 순). 조금 늦은 시각을 두 스냅샷 사이로 보간해 그린다. */
@@ -80,7 +84,12 @@ const HEADING_TURN_RATE = 12;
 export class Arena {
   private ctx: CanvasRenderingContext2D;
   private entities = new Map<number, Interp>();
-  private names = new Map<number, { nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null; trail: string | null }>();
+  private names = new Map<number, {
+    nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null;
+    trail: string | null; art: string | null; borderEffect: string | null; nameColor: string | null; nameStyle: string | null; combo: number; orbits: number;
+  }>();
+  /** 이모트(4.26): 원 위에 2.5초 뜨는 이모지 */
+  private emotes = new Map<number, { code: string; at: number }>();
   /** 엔티티마다 머리 방향(라디안, 0 = 위)과 지난 프레임 위치 */
   private headings = new Map<number, { a: number; x: number; y: number }>();
   private trails = new Trails();
@@ -157,7 +166,10 @@ export class Arena {
     this.names = new Map(players.map((p) => [p.e, {
       nickname: p.nickname, level: p.level, bot: !!p.bot, title: p.title ?? null,
       bg: p.bg ?? TURTLE_BASE, borderColor: p.borderColor ?? null, borderWidth: p.borderWidth ?? null, trail: p.trail ?? null,
+      art: p.art ?? null, borderEffect: p.borderEffect ?? null, nameColor: p.nameColor ?? null, nameStyle: p.nameStyle ?? null,
+      combo: p.combo ?? 0, orbits: p.orbits ?? 0,
     }]));
+    for (const p of players) if (p.art) artImage(p.art); // 그림을 미리 받아 둔다
   }
   /**
    * 예측에 쓰는 입력. 서버로 보내는 순간에 같이 불러야 예측과 서버가 같은 입력으로 움직인다(서버 Room.setInput과 같게).
@@ -229,6 +241,12 @@ export class Arena {
   }
   setMinimapVisible(visible: boolean) { this.minimapVisible = visible; }
   /** 채팅을 끄면 말풍선도 그리지 않는다. */
+  /** 연속 빼앗기 콤보와 위성 수가 바뀌었다(4.25). */
+  setCombo(e: number, combo: number, orbits: number) {
+    const n = this.names.get(e);
+    if (n) { n.combo = combo; n.orbits = orbits; }
+  }
+  showEmote(e: number, code: string) { this.emotes.set(e, { code, at: performance.now() }); }
   setBubblesVisible(visible: boolean) { this.bubblesVisible = visible; if (!visible) this.bubbles.clear(); }
   /** ping 왕복 시간(ms)을 반영한다. 튀는 값에 흔들리지 않게 조금씩 따라간다. */
   updateRtt(ms: number) {
@@ -372,7 +390,7 @@ export class Arena {
 
   /**
    * 예측을 now(ms)까지 진행한다. 서버 틱처럼 50ms씩 나눠 계산해서, 모바일에서 프레임이 늦게 와도 그 시간만큼 빠짐없이 움직인다
-   * (예전에는 0.1초를 넘는 시간을 버려서 내 원이 서버보다 뒤처지고, 그 차이를 보정하느라 화면이 튀었다).
+   * (시간을 버리면 내 원이 서버보다 뒤처지고, 그 차이를 보정하느라 화면이 튄다).
    */
   private predictUntil(now: number) {
     let dt = Math.min(PREDICT_MAX, (now - this.predictedAt) / 1000);
@@ -460,6 +478,7 @@ export class Arena {
     }
     this.drawEatenOrbs(ctx, now);
     this.drawBubbles(ctx, now);
+    this.drawEmotes(ctx, now);
     this.drawShields(ctx, now);
     ctx.restore();
     this.drawFloatTexts(ctx, w, h, now);
@@ -587,11 +606,20 @@ export class Arena {
     // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(11레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
     ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
+    // 픽셀 그림(4.9)이 있으면 성장 캐릭터 대신 그린다. 아직 못 받았으면 받는 동안 거북이를 그린다
+    const art = look?.art && !look.bot ? artImage(look.art) : null;
+    if (art) drawArt(ctx, art, e.x, e.y, e.r);
     // 레벨이 오를수록 거북이 부위가 하나씩 생기고 선명해진다(4.9). 테두리를 그 위에 그려 가장자리를 깔끔하게 덮는다
-    drawTurtle(ctx, e.x, e.y, e.r, lvl, this.headings.get(e.e)?.a ?? 0);
+    else drawTurtle(ctx, e.x, e.y, e.r, lvl, this.headings.get(e.e)?.a ?? 0);
     ctx.strokeStyle = look?.borderColor ?? '#11372a';
     ctx.lineWidth = borderLineWidth(e.r, look?.borderWidth ?? null);
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke();
+    const t = performance.now() / 1000;
+    if (look && !look.bot) {
+      // 테두리 효과(4.9)와 궤도 위성(4.25)
+      drawBorderEffect(ctx, look.borderEffect, e.x, e.y, e.r, look.bg, look.borderColor ?? '#ffffff', ctx.lineWidth as number, t, 1 / this.zoom);
+      drawOrbits(ctx, e.x, e.y, e.r, look.orbits, t, 1 / this.zoom);
+    }
     if (e.me) {
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = Math.max(2, 3 / this.zoom);
@@ -600,22 +628,30 @@ export class Arena {
     const info = this.names.get(e.e);
     if (info) {
       const fs = Math.max(12 / this.zoom, Math.min(e.r * 0.45, 40));
-      ctx.font = `600 ${fs}px "Noto Sans KR", system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.lineWidth = fs / 5;
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillStyle = '#ffffff';
-      const label = info.nickname; // 닉네임은 항상 텍스트로만 그린다
-      ctx.strokeText(label, e.x, e.y + e.r + 4 / this.zoom);
-      ctx.fillText(label, e.x, e.y + e.r + 4 / this.zoom);
+      const nameY = e.y + e.r + 4 / this.zoom + (info.orbits > 0 ? e.r * 0.35 + 10 / this.zoom : 0); // 위성 궤도 아래로
+      // 닉네임은 항상 텍스트로만 그린다. 글자색·모양은 꾸미기(4.9)
+      drawNameTag(ctx, info.nickname, e.x, nameY, fs, info.bot ? null : info.nameColor, info.bot ? null : info.nameStyle,
+        info.borderColor ?? '#11372a');
+      let lineY = nameY + fs * 1.15;
+      if (info.combo >= 2) {
+        // 연속 빼앗기 콤보(4.25)
+        const cs = fs * 0.72;
+        ctx.font = `800 ${cs}px "Noto Sans KR", system-ui, sans-serif`;
+        ctx.lineWidth = cs / 5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillStyle = info.orbits > 0 ? '#ffd166' : '#ff9f43';
+        const ct = `⚔️ ${info.combo} Combo`;
+        ctx.strokeText(ct, e.x, lineY);
+        ctx.fillText(ct, e.x, lineY);
+        lineY += cs * 1.15;
+      }
       if (info.title) {
         // 활성 칭호는 닉네임 바로 아래 작은 글씨(4.10)
         const ts = fs * 0.72;
         ctx.font = `600 ${ts}px "Noto Sans KR", system-ui, sans-serif`;
         ctx.lineWidth = ts / 5;
         ctx.fillStyle = '#ffd166';
-        const ty = e.y + e.r + 4 / this.zoom + fs * 1.15;
+        const ty = lineY;
         ctx.strokeText(info.title, e.x, ty);
         ctx.fillText(info.title, e.x, ty);
       }
@@ -759,6 +795,29 @@ export class Arena {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       lines.forEach((l, i) => ctx.fillText(l, pos.x, by + padY + i * lh)); // 채팅은 항상 텍스트로만 그린다
+      ctx.restore();
+    }
+  }
+
+  /** 이모트(4.26): 원 위(채팅 말풍선보다 위)에 커다란 이모지가 튀어 오르듯 나타났다가 2.5초 뒤 사라진다. */
+  private drawEmotes(ctx: CanvasRenderingContext2D, now: number) {
+    const z = this.zoom;
+    for (const [e, em] of this.emotes) {
+      const age = now - em.at;
+      if (age > EMOTE_MS) { this.emotes.delete(e); continue; }
+      const pos = this.entityPos(e, now);
+      const ch = EMOTE_CHAR[em.code];
+      if (!pos || !ch) continue;
+      const pop = age < 180 ? 0.6 + 0.6 * (age / 180) : age < 300 ? 1.2 - 0.2 * ((age - 180) / 120) : 1;
+      const fs = (34 / z) * pop;
+      const lift = this.bubbles.has(e) ? 64 / z : 0;
+      const y = pos.y - pos.r - 14 / z - lift - Math.min(age, 600) / 600 * (8 / z);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (EMOTE_MS - age) / 400);
+      ctx.font = `${fs}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(ch, pos.x, y);
       ctx.restore();
     }
   }

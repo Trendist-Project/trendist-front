@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   adminApi, resumeSession,
-  type AdminKeywordPage, type AdminKeywordQuery, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
+  type AdminKeywordPage, type AdminKeywordQuery, type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
 } from '../api/client';
 import { STATE_BADGE } from '../ui/keywordFormat';
 import { RichText } from '../ui/RichText';
 import { GuidesTab } from './GuidesTab';
+import { DashboardTab } from './DashboardTab';
+import { StatsTab } from './StatsTab';
+import { UsersTab } from './UsersTab';
 import { MarkupEditor } from './MarkupEditor';
 import { successToast } from '../ui/toast';
 import { errMsg, fmt } from './format';
@@ -14,13 +17,21 @@ import { errMsg, fmt } from './format';
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
-type Tab = 'keywords' | 'add' | 'reports' | 'notices' | 'guides' | 'share' | 'settings';
-const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
+type Tab = 'dashboard' | 'stats' | 'users' | 'keywords' | 'add' | 'reports' | 'notices' | 'guides' | 'share' | 'settings';
+const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['users', '사용자'], ['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
 
 
 export function AdminApp() {
   const [status, setStatus] = useState<AdminStatus | null | 'nologin'>(null);
-  const [tab, setTab] = useState<Tab>('keywords');
+  const [tab, setTabState] = useState<Tab>('dashboard');
+  // 대시보드에서 눌러 들어갈 때 사용자 탭에 넘길 값(바로 열 사용자, 필터). key가 바뀌면 사용자 탭을 새로 연다
+  const [jump, setJump] = useState<{ userId: number | null; filter: string; key: number }>({ userId: null, filter: 'all', key: 0 });
+  const setTab = (t: Tab) => setTabState(t);
+  const go = (t: string, opts?: { userId?: number; filter?: string }) => {
+    if (t === 'users') setJump((j) => ({ userId: opts?.userId ?? null, filter: opts?.filter ?? 'all', key: j.key + 1 }));
+    setTabState(t as Tab);
+    window.scrollTo({ top: 0 });
+  };
 
   useEffect(() => {
     resumeSession().then((ok) => {
@@ -50,9 +61,12 @@ export function AdminApp() {
         </nav>
         <a className="muted small" href="/">게임으로</a>
       </header>
+      {tab === 'dashboard' && <DashboardTab onGo={go} />}
+      {tab === 'stats' && <StatsTab />}
+      {tab === 'users' && <UsersTab key={jump.key} initialUserId={jump.userId} initialFilter={jump.filter} />}
       {tab === 'keywords' && <KeywordsTab />}
       {tab === 'add' && <AddTab />}
-      {tab === 'reports' && <ReportsTab />}
+      {tab === 'reports' && <ReportsTab onGo={go} />}
       {tab === 'notices' && <NoticesTab />}
       {tab === 'guides' && <GuidesTab />}
       {tab === 'share' && <ShareTab />}
@@ -252,7 +266,16 @@ function AddTab() {
 const REPORT_STATUS: [string, string][] = [['RECEIVED', '접수'], ['RESOLVED', '조치함'], ['REJECTED', '문제없음'], ['', '전체']];
 const STATUS_LABEL: Record<string, string> = { RECEIVED: '접수', RESOLVED: '조치함', REJECTED: '문제없음' };
 
-function ReportsTab() {
+/** 신고 유형별로 먼저 골라 두는 조치(13.5): 채팅은 채팅 정지, 댓글은 댓글 작성 정지 + 댓글 지우기, 플레이어는 제재 없이 */
+const ACT_DEFAULT: Record<string, { sanction: SanctionKind | null; days: number | null; del: boolean }> = {
+  채팅: { sanction: 'CHAT', days: 1, del: false },
+  댓글: { sanction: 'COMMENT', days: 1, del: true },
+  플레이어: { sanction: null, days: 1, del: false },
+};
+const ACT_SANCTIONS: [SanctionKind | null, string][] = [[null, '제재 없이'], ['CHAT', '💬 채팅 정지'], ['COMMENT', '📝 댓글 작성 정지'], ['UPLOAD', '🎨 그림 저장 정지'], ['BAN', '⛔ 계정 금지']];
+const ACT_DAYS: [number | null, string][] = [[1, '1일'], [3, '3일'], [7, '7일'], [30, '30일'], [null, '영구']];
+
+function ReportsTab({ onGo }: { onGo(tab: string, opts?: { userId?: number }): void }) {
   const [status, setStatus] = useState('RECEIVED');
   const [page, setPage] = useState(0);
   const [data, setData] = useState<AdminReportPage | null>(null);
@@ -265,7 +288,11 @@ function ReportsTab() {
   useEffect(load, [load]);
 
   const decide = async (id: number, s: string) => {
-    try { await adminApi.setReportStatus(id, s, sameTarget); load(); } catch (e) { setError(errMsg(e)); }
+    try {
+      const r = await adminApi.setReportStatus(id, s, sameTarget);
+      successToast(`${STATUS_LABEL[s]}으로 바꿨어요${r.changed > 1 ? ` (같은 대상 ${r.changed}건)` : ''}`);
+      load();
+    } catch (e) { setError(errMsg(e)); }
   };
   const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
 
@@ -285,22 +312,7 @@ function ReportsTab() {
       {error && <p className="error">{error}</p>}
       <ul className="admin-reports">
         {data?.items.map((r) => (
-          <li key={r.id} className={`report-${r.status}`}>
-            <div className="report-head">
-              <span className="badge">{r.type}</span>
-              <strong>{r.targetNickname ?? '(없어진 대상)'}</strong>
-              <span className="muted small">신고 {r.sameTargetCount}건 · {r.reporterNickname} 신고 · {fmt(r.createdAt)}</span>
-              <span className={`report-status ${r.status}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
-            </div>
-            {r.keywordText && <p className="muted small">키워드: {r.keywordText}</p>}
-            {r.content && <blockquote>{r.content}</blockquote>}
-            <p className="small">사유: {r.reason ?? '(없음)'}</p>
-            <div className="admin-actions">
-              <button className="danger" disabled={r.status === 'RESOLVED'} onClick={() => decide(r.id, 'RESOLVED')}>조치함</button>
-              <button disabled={r.status === 'REJECTED'} onClick={() => decide(r.id, 'REJECTED')}>문제없음</button>
-              {r.status !== 'RECEIVED' && <button onClick={() => decide(r.id, 'RECEIVED')}>접수로 되돌리기</button>}
-            </div>
-          </li>
+          <ReportCard key={r.id} r={r} sameTarget={sameTarget} onDone={load} onDecide={decide} onError={setError} onGo={onGo} />
         ))}
         {data && data.items.length === 0 && <li className="muted">신고가 없어요</li>}
       </ul>
@@ -310,6 +322,91 @@ function ReportsTab() {
         <button disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>다음 ›</button>
       </div>
     </section>
+  );
+}
+
+/**
+ * 신고 한 건(13.5). 접수된 신고는 아래 조치 칸에서 제재 종류·기간·사유를 골라 [제재하고 조치함]을 누르면 그 사람에게 제재를 걸고
+ * (댓글이면 지우기도) 바로 조치함으로 넘어간다. 문제가 없으면 [문제없음].
+ */
+function ReportCard({ r, sameTarget, onDone, onDecide, onError, onGo }: {
+  r: AdminReport; sameTarget: boolean; onDone(): void; onDecide(id: number, s: string): void; onError(e: string): void;
+  onGo(tab: string, opts?: { userId?: number }): void;
+}) {
+  const def = ACT_DEFAULT[r.type] ?? { sanction: null, days: 1, del: false };
+  const [sanction, setSanction] = useState<SanctionKind | null>(def.sanction);
+  const [days, setDays] = useState<number | null>(def.days);
+  const [reason, setReason] = useState('');
+  const [del, setDel] = useState(def.del && !r.contentDeleted);
+  const [busy, setBusy] = useState(false);
+  const canSanction = r.targetUserId !== null;
+  const isComment = r.type === '댓글';
+  const label = ACT_SANCTIONS.find(([k]) => k === sanction)?.[1] ?? '';
+
+  async function act() {
+    const what = [sanction ? `${label.replace(/^\S+\s/, '')} ${days ? `${days}일` : '영구'}` : null, del ? '댓글 지우기' : null].filter(Boolean).join(' + ') || '제재 없이 조치함';
+    if (!window.confirm(`${r.targetNickname ?? '대상'}: ${what}\n이렇게 처리하고 조치함으로 넘길까요?`)) return;
+    setBusy(true);
+    try {
+      const res = await adminApi.actReport(r.id, { sanction, days, reason: reason.trim(), deleteContent: del && isComment, sameTarget });
+      successToast(`처리했어요: ${what}${res.changed > 1 ? ` (신고 ${res.changed}건 조치함)` : ''}`);
+      onDone();
+    } catch (e) {
+      onError(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className={`report-${r.status}`}>
+      <div className="report-head">
+        <span className="badge">{r.type}</span>
+        <strong>{r.targetNickname ?? '(없어진 대상)'}</strong>
+        {r.targetUserId !== null && <button className="link-btn small" onClick={() => onGo('users', { userId: r.targetUserId! })}>사용자 보기 ›</button>}
+        <span className="muted small">신고 {r.sameTargetCount}건 · {r.reporterNickname} 신고 · {fmt(r.createdAt)}</span>
+        <span className={`report-status ${r.status}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
+      </div>
+      {r.targetSanctions.length > 0 && (
+        <div className="report-sanctions">{r.targetSanctions.map((x) => <span key={x} className="badge danger">{x}</span>)}</div>
+      )}
+      {r.keywordText && <p className="muted small">키워드: {r.keywordText}</p>}
+      {r.content && <blockquote className={r.contentDeleted ? 'deleted' : undefined}>{r.content}{r.contentDeleted ? ' (지운 댓글)' : ''}</blockquote>}
+      <p className="small">사유: {r.reason ?? '(없음)'}</p>
+      {r.status === 'RECEIVED' ? (
+        <div className="report-act">
+          <div className="admin-filters">
+            <span className="muted small">제재</span>
+            {ACT_SANCTIONS.map(([k, l]) => (
+              <button key={l} type="button" disabled={!canSanction && k !== null} className={sanction === k ? (k === 'BAN' ? 'on danger-on' : 'on') : undefined}
+                      onClick={() => setSanction(k)}>{l}</button>
+            ))}
+          </div>
+          {sanction && (
+            <div className="admin-filters">
+              <span className="muted small">기간</span>
+              {ACT_DAYS.map(([v, l]) => <button key={l} type="button" className={days === v ? 'on' : undefined} onClick={() => setDays(v)}>{l}</button>)}
+            </div>
+          )}
+          {sanction && (
+            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500}
+                   placeholder={`사유(비우면 "신고 #${r.id}(${r.type}): ${r.reason ?? ''}"로 남아요)`} aria-label="제재 사유" />
+          )}
+          {isComment && !r.contentDeleted && (
+            <label className="report-check"><input type="checkbox" checked={del} onChange={(e) => setDel(e.target.checked)} /> 신고된 댓글 지우기(사용자에게 "삭제된 댓글"로 보여요)</label>
+          )}
+          <div className="admin-actions">
+            <button className="danger" disabled={busy} onClick={act}>{sanction || del ? '제재하고 조치함' : '조치함(제재 없이)'}</button>
+            <button disabled={busy} onClick={() => onDecide(r.id, 'REJECTED')}>문제없음</button>
+          </div>
+        </div>
+      ) : (
+        <div className="admin-actions">
+          <button onClick={() => onDecide(r.id, 'RECEIVED')}>접수로 되돌리기</button>
+          <span className="muted small">걸린 제재는 사용자 탭에서 풀 수 있어요</span>
+        </div>
+      )}
+    </li>
   );
 }
 

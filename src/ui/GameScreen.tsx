@@ -7,7 +7,6 @@ import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
 import { startGoogleLogin } from '../googleAuth';
-import { loginEnabled } from '../platform';
 import { adminApi, api } from '../api/client';
 import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
@@ -15,6 +14,7 @@ import { hasUnread, markNoticesRead, NoticeModal, NoticePopup, popupNotices } fr
 import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
+import { EMOTES } from '../game/skin';
 
 interface Props {
   initialPlayer: PlayerSummary;
@@ -103,6 +103,10 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [bots, setBots] = useState(0);
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
+  const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
+  const [myCombo, setMyCombo] = useState<{ combo: number; orbits: number; orbitAt: number; key: number }>({ combo: 0, orbits: 0, orbitAt: 5, key: 0 }); // 4.25
+  const [emoteOpen, setEmoteOpen] = useState(false); // 이모트 고르기(4.26)
+  const sendEmoteRef = useRef<(code: string) => void>(() => {});
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
@@ -231,6 +235,23 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             });
             break;
           case 'chatError': showToast(m.message); break;
+          case 'kicked': conn.stop(); setKicked(m.message); break;
+          case 'emote': arena.showEmote(m.e, m.code); break;
+          case 'combo': {
+            // 연속 빼앗기 콤보와 궤도 위성(4.25)
+            arena.setCombo(m.e, m.combo, m.orbits);
+            const mine = m.e === myEntity;
+            if (mine) setMyCombo((c) => ({ combo: m.combo, orbits: m.orbits, orbitAt: m.orbitAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
+            if (m.event === 'up' && mine) arena.floatText(`⚔️ ${m.combo} Combo!`, '#ff9f43');
+            else if (m.event === 'start') showToast(mine ? `🛰 ${m.combo} Combo! 위성이 생기기 시작해요. 키워드를 잃으면 사라져요`
+              : `🛰 ${m.nickname} ${m.combo} Combo! 위성이 생겼어요`);
+            else if (m.event === 'orbit' && mine) arena.floatText(`🛰 +1`, '#ffd166');
+            else if (m.event === 'broken') {
+              if (mine) showToast(`💥 ${m.by ?? '누군가'}에게 져서 위성이 모두 깨졌어요`);
+              else if (m.byE === myEntity) showToast(`🎯 ${m.nickname}의 위성을 깨뜨렸어요!`);
+            }
+            break;
+          }
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
             showToast(m.stolen ? `${m.by}에게 '${m.keyword}' ${m.score}점짜리 키워드를 빼앗겼어요`
@@ -262,6 +283,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       },
     });
     connRef.current = conn;
+    sendEmoteRef.current = (code: string) => { if (ready) conn.send({ type: 'emote', code }); };
     conn.start();
     // 서버 왕복 시간을 2초마다 잰다(내 원 보정 허용 오차에 쓴다)
     const pingTimer = window.setInterval(() => conn.send({ type: 'ping', t: performance.now() }), 2000);
@@ -419,6 +441,12 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         else (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
         return;
       }
+      // 1~8: 이모트(4.26)
+      if (/^Digit[1-8]$/.test(e.code) && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const em = EMOTES[Number(e.code.slice(5)) - 1];
+        if (em) sendEmoteRef.current(em[0]);
+        return;
+      }
       if (!(e.code in KEYS)) return;
       // Ctrl·Alt·Cmd와 함께 누른 키는 단축키다. 이때는 떼는 신호가 오지 않는 브라우저가 있어 이동으로 쓰지 않는다
       if (e.ctrlKey || e.metaKey || e.altKey) { releaseAll(); return; }
@@ -500,6 +528,15 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
 
   return (
     <div className="game">
+      {kicked && (
+        <div className="modal-backdrop kicked-backdrop" role="alertdialog" aria-labelledby="kicked-title">
+          <div className="modal kicked-box">
+            <h2 id="kicked-title">접속이 끊겼어요</h2>
+            <p>{kicked}</p>
+            <button className="primary" onClick={() => { location.href = '/'; }}>처음 화면으로</button>
+          </div>
+        </div>
+      )}
       <div className={showMinimap ? 'arena-wrap with-minimap' : 'arena-wrap'}>
         <canvas ref={canvasRef} className="arena"
                 aria-label="아레나. 방향키나 WASD로 이동하고 빈 바닥을 클릭하면 그곳으로 이동해요" />
@@ -510,6 +547,23 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             {bots > 0 && <span className="muted"><span className="hud-long"> · 봇 {bots}</span><span className="hud-short"> · 🤖 {bots}</span></span>}
           </span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}
+        </div>
+        {myCombo.combo >= 1 && (
+          <div key={myCombo.key} className={myCombo.orbits > 0 ? 'combo-hud orbiting' : 'combo-hud'} role="status" aria-live="polite">
+            <strong>⚔️ {myCombo.combo} Combo</strong>
+            {myCombo.orbits > 0 && <span>🛰 위성 {myCombo.orbits}개</span>}
+          </div>
+        )}
+        <div className="emote-dock">
+          {emoteOpen && (
+            <div className="emote-palette" role="menu" aria-label="이모트">
+              {EMOTES.map(([code, ch, label], i) => (
+                <button key={code} role="menuitem" title={`${label} (${i + 1})`} aria-label={label}
+                        onClick={() => { sendEmoteRef.current(code); setEmoteOpen(false); }}>{ch}<kbd>{i + 1}</kbd></button>
+              ))}
+            </div>
+          )}
+          <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
         </div>
         <div className="hud-bottom">
           <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
@@ -523,7 +577,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
             {guest ? (
               // 누르면 바로 구글 계정 선택 페이지로(매번 계정을 고른다). 돌아오면 지금 기록에 연결된 채로 다시 게임에 들어온다
-              loginEnabled && <button className="login-toggle" onClick={startGoogleLogin} aria-label="Google로 로그인" title="Google로 로그인">
+              <button className="login-toggle" onClick={startGoogleLogin} aria-label="Google로 로그인" title="Google로 로그인">
                 🔑 <span className="tool-label">로그인</span>
               </button>
             ) : (
@@ -583,7 +637,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
               {isAdmin && <button onClick={() => { setMenuOpen(false); openAdmin(); }}><span aria-hidden="true">🛠</span>관리자 페이지</button>}
               <div className="mobile-menu-sep" />
               {guest
-                ? loginEnabled && <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
+                ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
                 : <button onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>로그아웃</button>}
             </nav>
           )}
@@ -600,6 +654,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
+                <li><strong>콤보</strong> 부딪혀 키워드를 연속으로 빼앗으면 Combo가 쌓이고, 5 Combo면 원 둘레에 위성이 생겨요. 한 번이라도 빼앗기면 사라져요.</li>
+                <li><strong>1~8 · 😀</strong> 이모트를 원 위에 띄워요.</li>
                 <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, C로 끄고 켤 수 있어요.</li>
               </ul>
               <div className="help-actions">

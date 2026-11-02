@@ -1,8 +1,7 @@
 import type {
-  Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
-  EffectBox, Look, ShareCardCreated, MyLook, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
+  Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
+  Look, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
-import { apiUrl } from '../platform';
 
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -18,7 +17,7 @@ async function raw<T>(method: string, path: string, body?: unknown, auth = true)
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-  const res = await fetch(apiUrl(path), {
+  const res = await fetch(path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -93,10 +92,10 @@ export const api = {
   changeNickname: (nickname: string) => request<PlayerSummary>('PATCH', '/api/me/nickname', { nickname }),
   titles: () => request<TitleBox>('GET', '/api/me/titles'),
   setTitle: (titleId: number | null) => request<TitleBox>('PUT', '/api/me/title', { titleId }),
-  myLook: () => request<MyLook>('GET', '/api/me/profile'),
-  updateLook: (look: Look) => request<MyLook>('PUT', '/api/me/profile', look),
-  effects: () => request<EffectBox>('GET', '/api/me/effects'),
-  setEffect: (effectId: number | null) => request<EffectBox>('PUT', '/api/me/effect', { effectId }),
+  /** 꾸미기 프로필(4.9): 1~3번 칸 저장(equip이면 저장 후 장착)과 장착 */
+  profiles: () => request<ProfileBox>('GET', '/api/me/profiles'),
+  saveProfile: (slot: number, body: ProfileSave) => request<ProfileBox>('PUT', `/api/me/profiles/${slot}`, body),
+  equipProfile: (slot: number) => request<ProfileBox>('PUT', '/api/me/profiles/equipped', { slot }),
   search: (q: string) => request<SearchResult>('GET', `/api/keywords/search?q=${encodeURIComponent(q)}`),
   plus: (text: string) => request<PlusResult>('POST', '/api/keywords/plus', { text }),
   myKeywords: () => request<MyKeyword[]>('GET', '/api/me/keywords'),
@@ -134,6 +133,8 @@ export interface AdminAdded { id: number; text: string; state: string; trendValu
 export interface AdminReport {
   id: number; type: string; targetId: number; reason: string | null; status: string; createdAt: string; updatedAt: string;
   reporterNickname: string; targetNickname: string | null; content: string | null; keywordText: string | null; sameTargetCount: number;
+  /** 신고된 사람의 사용자 번호(없어진 대상이면 null), 댓글이 이미 지워졌는지, 지금 걸린 제재("채팅 정지 11월 9일 12:00까지") */
+  targetUserId: number | null; contentDeleted: boolean; targetSanctions: string[];
 }
 export interface AdminReportPage { items: AdminReport[]; total: number; page: number; size: number }
 export interface AdminSetting {
@@ -159,7 +160,66 @@ export interface AdminGuideArticle extends AdminGuideArticleInput { id: number; 
 export interface AdminShareItem { code: string; url: string; nickname: string; views: number; plays: number; createdAt: string }
 export interface AdminShareStats { cards: number; cardsToday: number; views: number; plays: number; items: AdminShareItem[]; total: number; page: number; size: number }
 
+/** 관리자 통계(13.9). Row의 t는 시간별이면 그 시간의 시작(UTC ISO), 하루별이면 현지 날짜. live면 아직 집계 중 */
+export interface StatPeriod { peakOnline: number; activePlayers: number; newPlayers: number; plus: number; search: number; orb: number; collision: number; chat: number; comment: number; share: number }
+export interface StatTotals { users: number; guests: number; google: number; admins: number; withdrawn: number; banned: number; players: number; wau: number; mau: number }
+export interface StatSummary {
+  onlineNow: number; today: StatPeriod; yesterday: StatPeriod; totals: StatTotals;
+  keywordStates: Record<string, number>; pendingReports: number; levels: { label: string; count: number }[];
+}
+export interface StatRow extends StatPeriod { t: string; avgOnline: number; live: boolean }
+
+/** 관리자 사용자 관리(13.10) */
+export interface AdminUserRow {
+  userId: number; playerId: number; nickname: string; type: 'GUEST' | 'GOOGLE'; admin: boolean; withdrawn: boolean;
+  bannedUntil: string | null; uploadBannedUntil: string | null; commentBannedUntil: string | null;
+  level: number; score: number; holdCount: number; totalPlusCount: number; reportCount: number;
+  createdAt: string; lastSeenAt: string | null; online: boolean; chatBannedUntil: string | null;
+}
+export interface AdminUserPage { items: AdminUserRow[]; total: number; page: number; size: number }
+export interface AdminUserDetail {
+  user: AdminUserRow; lastLoginAt: string | null; deletedAt: string | null; nicknameChangedAt: string | null; lastPlayedAt: string | null;
+  stats: {
+    exp: number; level: number; score: number; holdCount: number; totalPlusCount: number; searchCount: number; commentScore: number;
+    stealCount: number; botWinCount: number; orbCount: number; loseCount: number; activeDays: number;
+    titleCount: number; title: string | null; commentCount: number; chatCount: number;
+  };
+  look: Look; art: PixelArtData | null;
+  keywords: MyKeyword[];
+  comments: { id: number; keyword: string; body: string; likes: number; dislikes: number; deleted: boolean; createdAt: string }[];
+  chats: { id: number; body: string; createdAt: string }[];
+  reports: { id: number; type: string; reason: string | null; status: string; reporter: string; content: string | null; createdAt: string }[];
+  sanctions: { id: number; type: string; reason: string; createdAt: string; expiresAt: string; releasedAt: string | null; active: boolean }[];
+}
+export type SanctionKind = 'BAN' | 'UPLOAD' | 'COMMENT' | 'CHAT';
+
+/** 관리자 대시보드(13.11). todo.level: danger / warn / ok, tab: 눌렀을 때 열 탭 */
+export interface DashboardTodo { key: string; label: string; count: number; level: 'danger' | 'warn' | 'ok'; detail: string | null; tab: string | null; filter: string | null }
+export interface Dashboard {
+  at: string; onlineNow: number; today: StatPeriod; yesterday: StatPeriod; totals: StatTotals; hourly: StatRow[];
+  todos: DashboardTodo[]; reported: { userId: number; playerId: number; nickname: string; reports: number }[];
+  keywordStates: Record<string, number>; hotKeywords: { id: number; text: string; holderCount: number; trendValue: number; source: string }[];
+  newKeywordsToday: number; googleEnabled: boolean; googleFetchedAt: string | null;
+  leaderboard: { rank: number; playerId: number; nickname: string; level: number; score: number }[];
+  newPlayers: { userId: number; playerId: number; nickname: string; type: 'GUEST' | 'GOOGLE'; level: number; createdAt: string }[];
+  notices: { id: number; title: string; pinned: boolean; popup: boolean; createdAt: string }[];
+  share: { today: number; cards: number; views: number; plays: number };
+}
+
 export const adminApi = {
+  dashboard: () => request<Dashboard>('GET', '/api/admin/dashboard?country=KR'),
+  statsSummary: () => request<StatSummary>('GET', '/api/admin/stats/summary?country=KR'),
+  statsHourly: (hours: number) => request<StatRow[]>('GET', `/api/admin/stats/hourly?${qs({ country: 'KR', hours })}`),
+  statsDaily: (days: number) => request<StatRow[]>('GET', `/api/admin/stats/daily?${qs({ country: 'KR', days })}`),
+  users: (q: { q?: string; filter: string; sort: string; page: number }) => request<AdminUserPage>('GET', `/api/admin/users?${qs({ country: 'KR', ...q })}`),
+  user: (userId: number) => request<AdminUserDetail>('GET', `/api/admin/users/${userId}`),
+  sanction: (userId: number, type: SanctionKind, days: number | null, reason: string) =>
+    request<AdminUserDetail>('POST', `/api/admin/users/${userId}/sanctions`, { type, days, reason }),
+  releaseSanction: (sanctionId: number) => request<AdminUserDetail>('POST', `/api/admin/users/sanctions/${sanctionId}/release`),
+  renameUser: (userId: number, nickname: string) => request<AdminUserDetail>('PATCH', `/api/admin/users/${userId}/nickname`, { nickname }),
+  resetUserLook: (userId: number) => request<AdminUserDetail>('POST', `/api/admin/users/${userId}/look/reset`),
+  setUserAdmin: (userId: number, admin: boolean) => request<AdminUserDetail>('PATCH', `/api/admin/users/${userId}/role`, { admin }),
+  kickUser: (userId: number) => request<void>('POST', `/api/admin/users/${userId}/kick`),
   shareStats: (sort: string, page: number) => request<AdminShareStats>('GET', `/api/admin/share-cards?${qs({ sort, page })}`),
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
   keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q })}`),
@@ -168,6 +228,9 @@ export const adminApi = {
   reports: (status: string, page: number) => request<AdminReportPage>('GET', `/api/admin/reports?${qs({ status, page })}`),
   setReportStatus: (id: number, status: string, sameTarget: boolean) =>
     request<{ changed: number }>('PATCH', `/api/admin/reports/${id}`, { status, sameTarget }),
+  /** 신고에서 바로 조치: 제재(없으면 null)·댓글 삭제 후 조치함으로(13.5) */
+  actReport: (id: number, a: { sanction: SanctionKind | null; days: number | null; reason: string; deleteContent: boolean; sameTarget: boolean }) =>
+    request<{ changed: number; report: AdminReport }>('POST', `/api/admin/reports/${id}/act`, a),
   settings: () => request<AdminSetting[]>('GET', '/api/admin/settings'),
   notices: () => request<AdminNotice[]>('GET', '/api/admin/notices'),
   createNotice: (n: AdminNoticeInput) => request<AdminNotice>('POST', '/api/admin/notices', n),

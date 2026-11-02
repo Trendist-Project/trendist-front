@@ -23,7 +23,7 @@ const SORT_LABEL: Record<SortKey, string> = { remaining: '남은 시간', recent
 /** 기준을 고르면 먼저 쓰는 방향: 최신·트렌드·남은 시간은 큰 것부터, 키워드는 가나다, 상태는 🔥부터 */
 const DEFAULT_DIR: Record<SortKey, SortDir> = { recent: 'desc', text: 'asc', state: 'asc', trend: 'desc', remaining: 'desc' };
 const STATE_ORDER: Record<string, number> = { 활성: 0, 비활성: 1, 금지: 2 };
-// 기본 정렬을 남은 시간으로 바꾸면서 키를 바꿨다. 예전 키에는 열기만 해도 최신순이 저장되어 있어서 새 기본값이 적용되지 않는다
+// 고른 정렬을 브라우저에 기억하는 키
 const SORT_STORE = 'trendist.mineSort.v2';
 
 function loadSort(): { key: SortKey; dir: SortDir } {

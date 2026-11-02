@@ -95,15 +95,33 @@ export interface TitleItem {
 }
 export interface TitleBox { activeTitleId: number | null; titles: TitleItem[] }
 
-/** 원의 꾸미기(4.9). borderWidth는 1~8단계, 테두리가 null이면 기본 테두리 */
-export interface Look { background: string; borderColor: string | null; borderWidth: number | null }
-/** 이동 효과(4.23). 잠긴 효과는 lockReason에 얻는 조건 안내 */
-export interface EffectItem {
-  id: number; code: string; name: string; description: string; unlockType: 'FREE' | 'LEVEL' | 'TITLE' | 'PURCHASE';
-  unlockValue: number | null; unlocked: boolean; lockReason: string | null; active: boolean;
+/**
+ * 원의 모습(4.9). borderEffect·trailEffect: 테두리·이동 효과 코드, nameColor·nameStyle: 이름표 글자색과 모양(RIBBON / GLOW),
+ * art: 픽셀 그림 이미지 주소. null이면 기본
+ */
+export interface Look {
+  background: string; borderColor: string | null; borderWidth: number | null; art?: string | null;
+  borderEffect?: string | null; nameColor?: string | null; nameStyle?: string | null; trailEffect?: string | null;
 }
-export interface EffectBox { activeEffectId: number | null; effects: EffectItem[] }
-export interface MyLook { look: Look; unlocked: boolean; unlockLevel: number; defaults: Look; presets: string[] }
+/** 픽셀 그림(4.9): palette는 #rrggbb, pixels는 32×32 = 1024글자(팔레트 번호 0-9a-v, '.' 투명) */
+export interface PixelArtData { palette: string[]; pixels: string }
+/** 고를 수 있는 효과 하나(이동·테두리). 잠겼으면 lockReason */
+export interface EffectOption { id: number; code: string; name: string; unlocked: boolean; lockReason: string | null }
+/** 꾸미기 프로필 한 칸. inner: 원 안에 그릴 것(GROWTH 성장 캐릭터 / PIXEL 내 그림) */
+export interface ProfileSlot {
+  slot: number; saved: boolean; equipped: boolean; inner: 'GROWTH' | 'PIXEL'; look: Look; art: PixelArtData | null;
+  trailEffectId: number | null; borderEffectId: number | null; savedAt: string | null;
+}
+/** 내 꾸미기 프로필 1~3번 칸. unlocked: 꾸밀 수 있는 레벨인지, canDraw: 그림을 저장할 수 있는지(로그인·정지 아님) */
+export interface ProfileBox {
+  slots: ProfileSlot[]; equippedSlot: number; unlocked: boolean; unlockLevel: number; defaults: Look; colors: string[]; nameStyles: string[];
+  canDraw: boolean; drawLockReason: string | null; artChangeableAt: string | null; artSize: number; maxColors: number;
+  trails: EffectOption[]; borders: EffectOption[];
+}
+export interface ProfileSave {
+  background: string; borderColor: string | null; borderWidth: number | null; nameColor: string | null; nameStyle: string | null;
+  inner: 'GROWTH' | 'PIXEL'; art: PixelArtData | null; trailEffectId: number | null; borderEffectId: number | null; equip: boolean;
+}
 
 /** 자랑하기 카드 공유 주소(4.24). url은 공유 페이지, imageUrl은 서버가 그린 카드 이미지 */
 /** totalViews·totalPlays: 내가 만든 모든 카드의 조회·[나도 플레이 하기] 클릭 합계 */

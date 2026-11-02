@@ -1,5 +1,4 @@
 import { getToken, resumeSession } from '../api/client';
-import { wsUrl } from '../platform';
 import { parseMinimap, parseSnapshot, type MinimapEntry, type ServerMessage, type Snapshot } from './protocol';
 
 export interface ConnectionHandlers {
@@ -36,7 +35,8 @@ export class GameConnection {
 
   private open() {
     this.handlers.onStatus('connecting');
-    const ws = new WebSocket(wsUrl('/ws'));
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
     ws.onopen = () => {
@@ -56,7 +56,7 @@ export class GameConnection {
     };
     ws.onclose = async (ev) => {
       this.handlers.onStatus('closed');
-      if (this.stopped) return;
+      if (this.stopped || ev.code === 4001) return; // 관리자가 내보낸 연결은 다시 붙지 않는다
       // 인증 실패면 토큰을 새로 받고 다시 연결한다
       if (ev.code === 1008) await resumeSession();
       const delay = Math.min(10000, 500 * 2 ** this.retry++);
