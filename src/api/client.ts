@@ -1,6 +1,6 @@
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
-  EffectBox, Look, MyLook, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
+  EffectBox, Look, ShareCardCreated, MyLook, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
 
 export class ApiFailure extends Error {
@@ -99,6 +99,8 @@ export const api = {
   search: (q: string) => request<SearchResult>('GET', `/api/keywords/search?q=${encodeURIComponent(q)}`),
   plus: (text: string) => request<PlusResult>('POST', '/api/keywords/plus', { text }),
   myKeywords: () => request<MyKeyword[]>('GET', '/api/me/keywords'),
+  /** 자랑하기 카드 공유 주소(4.24). 서버가 지금 값으로 저장하고 주소를 준다. 같은 값이면 같은 주소 */
+  createShareCard: () => request<ShareCardCreated>('POST', '/api/share-cards'),
   keyword: (id: number) => request<KeywordCard>('GET', `/api/keywords/${id}`),
   activity: (id: number, range: ActivityRange) => request<Activity>('GET', `/api/keywords/${id}/activity?range=${range}`),
   topComments: (id: number) => request<CommentItem[]>('GET', `/api/keywords/${id}/comments/top`),
@@ -152,7 +154,12 @@ export interface AdminGuideCategory { id: number; code: string; name: string; di
 export interface AdminGuideArticleInput { title: string; body: string }
 export interface AdminGuideArticle extends AdminGuideArticleInput { id: number; categoryId: number; sortOrder: number; createdAt: string; updatedAt: string }
 
+/** 관리자 공유 통계(13.8) */
+export interface AdminShareItem { code: string; url: string; nickname: string; views: number; plays: number; createdAt: string }
+export interface AdminShareStats { cards: number; cardsToday: number; views: number; plays: number; items: AdminShareItem[]; total: number; page: number; size: number }
+
 export const adminApi = {
+  shareStats: (sort: string, page: number) => request<AdminShareStats>('GET', `/api/admin/share-cards?${qs({ sort, page })}`),
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
   keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q })}`),
   addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: 'KR' }),

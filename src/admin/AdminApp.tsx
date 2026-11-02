@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   adminApi, resumeSession,
-  type AdminKeywordPage, type AdminKeywordQuery, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminStatus,
+  type AdminKeywordPage, type AdminKeywordQuery, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
 } from '../api/client';
 import { STATE_BADGE } from '../ui/keywordFormat';
 import { RichText } from '../ui/RichText';
@@ -13,8 +13,8 @@ import { errMsg, fmt } from './format';
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
-type Tab = 'keywords' | 'add' | 'reports' | 'notices' | 'guides' | 'settings';
-const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['settings', '설정']];
+type Tab = 'keywords' | 'add' | 'reports' | 'notices' | 'guides' | 'share' | 'settings';
+const TABS: [Tab, string][] = [['keywords', '키워드'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
 
 
 export function AdminApp() {
@@ -54,6 +54,7 @@ export function AdminApp() {
       {tab === 'reports' && <ReportsTab />}
       {tab === 'notices' && <NoticesTab />}
       {tab === 'guides' && <GuidesTab />}
+      {tab === 'share' && <ShareTab />}
       {tab === 'settings' && <SettingsTab />}
     </main>
   );
@@ -302,6 +303,62 @@ function ReportsTab() {
         ))}
         {data && data.items.length === 0 && <li className="muted">신고가 없어요</li>}
       </ul>
+      <div className="admin-pager">
+        <button disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>‹ 이전</button>
+        <span>{page + 1} / {pages}</span>
+        <button disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>다음 ›</button>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- 공유 통계(13.8)
+
+const SHARE_SORTS: [string, string][] = [['views', '조회순'], ['plays', '클릭순'], ['createdAt', '최신순']];
+
+function ShareTab() {
+  const [sort, setSort] = useState('views');
+  const [page, setPage] = useState(0);
+  const [data, setData] = useState<AdminShareStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminApi.shareStats(sort, page).then((d) => { setData(d); setError(null); }).catch((e) => setError(errMsg(e)));
+  }, [sort, page]);
+
+  const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
+  const rate = data && data.views > 0 ? `${((data.plays / data.views) * 100).toFixed(1)}%` : '-';
+
+  return (
+    <section className="admin-panel">
+      <div className="admin-stat-row">
+        <div className="admin-stat"><span>만든 카드</span><strong>{data?.cards.toLocaleString() ?? '-'}</strong><em>오늘 {data?.cardsToday.toLocaleString() ?? 0}</em></div>
+        <div className="admin-stat"><span>조회</span><strong>{data?.views.toLocaleString() ?? '-'}</strong><em>공유 페이지를 연 사람</em></div>
+        <div className="admin-stat"><span>[나도 겨뤄 보기]</span><strong>{data?.plays.toLocaleString() ?? '-'}</strong><em>게임으로 들어온 사람</em></div>
+        <div className="admin-stat"><span>클릭률</span><strong>{rate}</strong><em>클릭 ÷ 조회</em></div>
+      </div>
+      <p className="muted small admin-hint">같은 방문자는 카드마다 하루 1번만 세고, 메신저 미리보기 크롤러는 세지 않아요.</p>
+      <div className="admin-filter-box">
+        <ChipFilter label="정렬" options={SHARE_SORTS} value={sort} onChange={(v) => { setSort(v); setPage(0); }} />
+      </div>
+      {error && <p className="error">{error}</p>}
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead><tr><th>닉네임(공유한 때)</th><th>조회</th><th>클릭</th><th>만든 때</th><th>카드</th></tr></thead>
+          <tbody>
+            {data?.items.map((c) => (
+              <tr key={c.code}>
+                <td><strong>{c.nickname}</strong></td>
+                <td className="num">{c.views.toLocaleString()}</td>
+                <td className="num">{c.plays.toLocaleString()}</td>
+                <td>{fmt(c.createdAt)}</td>
+                <td><a href={c.url} target="_blank" rel="noreferrer">열기 ↗</a></td>
+              </tr>
+            ))}
+            {data && data.items.length === 0 && <tr><td colSpan={5} className="muted">아직 만든 카드가 없어요</td></tr>}
+          </tbody>
+        </table>
+      </div>
       <div className="admin-pager">
         <button disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>‹ 이전</button>
         <span>{page + 1} / {pages}</span>

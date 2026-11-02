@@ -166,3 +166,10 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
   .guide-admin-layout { grid-template-columns: 1fr; }
   .guide-admin-cats { position: static; }
 }
+
+/* 공유 통계(13.8) */
+.admin-stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.admin-stat { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #151d2a; }
+.admin-stat span { color: #9fb3c8; font-size: 0.85rem; }
+.admin-stat strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.admin-stat em { font-style: normal; color: #7d8ea3; font-size: 0.78rem; }
