@@ -2,10 +2,12 @@
  * 카카오톡 공유(4.24): 공유 주소(링크)만 카카오톡으로 보낸다. 이미지는 올리지 않는다.
  * 카카오가 그 주소의 OG 태그(카드 이미지·제목·설명)를 읽어 메시지를 만든다(스크랩).
  * 카카오 서버가 접속할 수 없는 로컬 주소(localhost)에서는 링크만 든 글 메시지로 보낸다.
- * 휴대폰은 카카오톡 앱이, PC는 카카오톡 공유 창이 열린다. 키가 없으면(VITE_KAKAO_JS_KEY) 카카오 공유를 숨긴다.
+ * 휴대폰은 카카오톡 앱이, PC는 카카오톡 공유 창이 열린다.
  * JavaScript 키는 화면에 그대로 실리는 공개 키다(카카오 개발자 콘솔에 등록한 사이트 도메인에서만 동작한다).
  */
-const KEY = (import.meta.env.VITE_KAKAO_JS_KEY as string | undefined) ?? '';
+/** 카카오 앱 JavaScript 키(공개 키). 빌드 환경 변수 VITE_KAKAO_JS_KEY가 있으면 그 값을 쓴다 */
+const DEFAULT_KEY = 'e815f4eff6479e3eebd1fa9e2f3a41fc';
+const KEY = (import.meta.env.VITE_KAKAO_JS_KEY as string | undefined) || DEFAULT_KEY;
 const SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
 
 interface KakaoSdk {
