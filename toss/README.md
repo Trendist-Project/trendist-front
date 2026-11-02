@@ -1,6 +1,6 @@
 # trendist-toss
 
-토스 미니앱(앱인토스)용 빌드. 게임 코드는 상위 폴더의 `src`를 그대로 쓰고, 이 폴더의 `.env`가 토스 모드(`VITE_PLATFORM=toss`)를 켠다. 자세한 내용은 백엔드 저장소 `docs/2-tech.md` 12절.
+토스 미니앱(앱인토스)용 빌드. 콘솔 입력값·출시 기록은 [TOSS.md](TOSS.md). 게임 코드는 상위 폴더의 `src`를 그대로 쓰고, 이 폴더의 `.env`가 토스 모드(`VITE_PLATFORM=toss`)를 켠다. 자세한 내용은 백엔드 저장소 `docs/2-tech.md` 12절.
 
 ```bash
 npm install
