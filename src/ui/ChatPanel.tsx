@@ -90,7 +90,7 @@ export const ChatPanel = forwardRef<HTMLInputElement, Props>(function ChatPanel(
       </form>
       {reporting && (
         <ReportDialog target="CHAT" targetId={reporting.id} preview={`${reporting.nickname}: ${reporting.text}`}
-                      onClose={() => setReporting(null)} onDone={(msg) => { setReporting(null); onNotice(msg); }} />
+                      onClose={() => setReporting(null)} onDone={(err) => { setReporting(null); if (err) onNotice(err); }} />
       )}
     </section>
   );

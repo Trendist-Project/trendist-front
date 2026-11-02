@@ -153,7 +153,7 @@ export function Comments({ keywordId, onError }: Props) {
       )}
       {reporting && (
         <ReportDialog target="COMMENT" targetId={reporting.id} preview={`${reporting.nickname}: ${reporting.body}`}
-                      onClose={() => setReporting(null)} onDone={(msg) => { setReporting(null); onError(msg); }} />
+                      onClose={() => setReporting(null)} onDone={(err) => { setReporting(null); if (err) onError(err); }} />
       )}
       {total > 0 && <p className="muted small disclaimer">사용자가 쓴 의견이며 사실 확인은 되지 않았어요</p>}
     </section>

@@ -3,6 +3,7 @@ import { adminApi, type AdminGuideArticle, type AdminGuideArticleInput, type Adm
 import { RichText } from '../ui/RichText';
 import { errMsg, fmt } from './format';
 import { MarkupEditor } from './MarkupEditor';
+import { successToast } from '../ui/toast';
 
 const NAME_MAX = 100, TITLE_MAX = 100, BODY_MAX = 20000;
 const chars = (s: string) => [...s.trim()].length; // 서버와 같이 글자(코드 포인트) 수로 센다
@@ -36,7 +37,7 @@ export function GuidesTab() {
     setBusy(true); setMessage(null);
     try {
       await act();
-      if (ok) setMessage({ text: ok, ok: true });
+      if (ok) successToast(ok);
       return true;
     } catch (e) {
       setMessage({ text: errMsg(e), ok: false });
@@ -167,7 +168,7 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
     setBusy(true); onMessage(null);
     try {
       await act();
-      if (ok) onMessage({ text: ok, ok: true });
+      if (ok) successToast(ok);
       return true;
     } catch (e) {
       onMessage({ text: errMsg(e), ok: false });

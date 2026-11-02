@@ -9,6 +9,7 @@ import { EffectsView } from './EffectsView';
 import { ShareCardView } from './ShareCardView';
 import { TitlesView } from './TitlesView';
 import { WithdrawDialog } from './WithdrawDialog';
+import { successToast } from './toast';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['all', '전체']];
 
@@ -64,7 +65,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
       const p = await api.changeNickname(nickname);
       onChanged(p);
       setNickname(p.nickname);
-      setMessage({ text: '닉네임을 바꿨어요', error: false });
+      successToast('닉네임을 바꿨어요');
     } catch (err) {
       setMessage({ text: err instanceof ApiFailure ? err.message : '닉네임을 바꾸지 못했어요', error: true });
     } finally {

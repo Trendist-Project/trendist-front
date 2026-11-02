@@ -659,3 +659,14 @@ button.link-back:hover { color: var(--text); }
 .share-card-actions button.kakao-share { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fee500; border-color: #fee500; color: #191919; font-weight: 700; }
 .share-card-actions button.kakao-share:disabled { opacity: 0.6; }
 .share-card-stats { margin: 4px 0 0; color: #9fe0c3; text-align: center; font-weight: 600; }
+
+/* 성공 알림(토스트, 8절): 화면 위 가운데, 창(모달)보다 위에. 잠깐 떴다가 저절로 사라진다 */
+.success-toasts { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 1000;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+.success-toast { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 12px;
+  background: #13281f; border: 1px solid var(--accent); color: #e8eef6; font-weight: 600; font-size: 0.95rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45); animation: toast-in 0.22s ease-out, toast-out 0.3s ease-in 2.1s forwards; }
+.success-toast span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #0d1420; font-size: 0.8rem; font-weight: 800; flex: none; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .success-toast { animation: none; } }

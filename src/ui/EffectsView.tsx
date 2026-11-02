@@ -6,6 +6,7 @@ import { drawTurtle, TURTLE_BASE } from '../game/turtle';
 import { GoogleButton } from './GoogleButton';
 import { loginEnabled } from '../platform';
 import { Modal } from './Modal';
+import { successToast } from './toast';
 
 interface Props { level: number; guest: boolean; onBack(): void; onClose(): void }
 
@@ -67,7 +68,7 @@ export function EffectsView({ level, guest, onBack, onClose }: Props) {
     setBusy(true); setMessage(null);
     try {
       setBox(await api.setEffect(id));
-      setMessage({ text: id === null ? '효과를 껐어요' : '효과를 적용했어요. 움직이면 보여요', error: false });
+      successToast(id === null ? '효과를 껐어요' : '효과를 적용했어요. 움직이면 보여요');
     } catch (e) {
       setMessage({ text: e instanceof ApiFailure ? e.message : '효과를 바꾸지 못했어요', error: true });
     } finally {

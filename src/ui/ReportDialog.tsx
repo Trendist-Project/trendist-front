@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
+import { successToast } from './toast';
 
 const REASONS = ['욕설·비방', '스팸·광고', '개인정보 노출', '음란·폭력', '기타'];
 
@@ -8,7 +9,8 @@ interface Props {
   targetId: number;
   /** 신고하는 글 미리보기(누가 뭐라고 썼는지) */
   preview: string;
-  onDone(message: string): void;
+  /** 끝나면 부른다. 성공은 여기서 토스트로 알리고, 실패면 오류 문구를 넘긴다 */
+  onDone(error?: string): void;
   onClose(): void;
 }
 
@@ -39,7 +41,8 @@ export function ReportDialog({ target, targetId, preview, onDone, onClose }: Pro
     setBusy(true);
     try {
       await api.report(target, targetId, reason);
-      onDone('신고했어요. 관리자가 확인할게요');
+      successToast('신고했어요. 관리자가 확인할게요');
+      onDone();
     } catch (err) {
       onDone(err instanceof ApiFailure ? err.message : '신고하지 못했어요');
     }

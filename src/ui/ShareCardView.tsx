@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { PlayerSummary, ShareCardCreated } from '../api/types';
 import { kakaoEnabled, prepareKakao, sendKakaoLink } from '../kakaoShare';
 import { Modal } from './Modal';
+import { successToast } from './toast';
 
 interface Props { player: PlayerSummary; onBack(): void; onClose(): void }
 
@@ -50,7 +51,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     setMessage(null);
     try {
       await navigator.clipboard.writeText(card.url);
-      setMessage({ text: '카드 링크를 복사했어요. 붙여 넣으면 카드가 미리 보여요', error: false });
+      successToast('카드 링크를 복사했어요');
     } catch {
       // 클립보드를 쓸 수 없는 브라우저(권한·http 주소)에서는 주소를 보여 줘서 직접 복사하게 한다
       setMessage({ text: card.url, error: false });
@@ -67,7 +68,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     }
     try {
       await navigator.clipboard.writeText(url);
-      setMessage({ text: copied, error: false });
+      successToast(copied);
     } catch {
       setMessage({ text: url, error: false });
     }
@@ -81,7 +82,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
         return;
       } catch { /* 아래 공유 시트로 */ }
     }
-    void shareOrCopy(card.url, `내 유행도 ${player.currentScore.toLocaleString()}! 나랑 겨뤄 볼래?`, '카드 링크를 복사했어요. 붙여 넣으면 카드가 미리 보여요');
+    void shareOrCopy(card.url, `내 유행도 ${player.currentScore.toLocaleString()}! 나랑 겨뤄 볼래?`, '카드 링크를 복사했어요');
   }
 
   function save() {
@@ -95,7 +96,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage({ text: '이미지를 저장했어요', error: false });
+    successToast('이미지를 저장했어요');
   }
 
   const stats = card && card.totalViews > 0
@@ -111,7 +112,6 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
         {!card && !message?.error && <span className="share-card-loading muted small">카드를 만드는 중…</span>}
       </div>
       {stats && <p className="share-card-stats small">👀 {stats}</p>}
-      <p className="muted small">지금 모습 그대로 저장돼요. 나중에 꾸미기를 바꿔도 이 카드는 그대로예요. 💤 키워드는 넣지 않아요.</p>
       {message && <p className={message.error ? 'error small' : 'ok small'} role="status">{message.text}</p>}
       <div className="share-card-actions">
         {kakaoEnabled && kakaoReady !== false

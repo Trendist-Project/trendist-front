@@ -105,7 +105,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
       </>)}
       {reporting && card && (
         <ReportDialog target="PLAYER" targetId={entityNo} preview={`플레이어: ${card.nickname}`}
-                      onDone={(m) => { setReporting(false); onNotice(m); }} onClose={() => setReporting(false)} />
+                      onDone={(err) => { setReporting(false); if (err) onNotice(err); }} onClose={() => setReporting(false)} />
       )}
     </Modal>
   );

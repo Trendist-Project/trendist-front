@@ -3,6 +3,7 @@ import { api, ApiFailure } from '../api/client';
 import type { Look, MyLook } from '../api/types';
 import { borderLineWidth, drawTurtle } from '../game/turtle';
 import { Modal } from './Modal';
+import { successToast } from './toast';
 
 interface Props { level: number; onBack(): void; onClose(): void }
 
@@ -79,7 +80,7 @@ export function CustomizeView({ level, onBack, onClose }: Props) {
     try {
       const m = await api.updateLook(draft);
       setMine(m); setDraft(m.look);
-      setMessage({ text: '저장했어요. 아레나의 내 원이 바로 바뀌어요', error: false });
+      successToast('저장했어요. 아레나의 내 원이 바로 바뀌어요');
     } catch (e) {
       setMessage({ text: e instanceof ApiFailure ? e.message : '저장하지 못했어요', error: true });
     } finally {

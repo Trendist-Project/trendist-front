@@ -7,6 +7,7 @@ import { STATE_BADGE } from '../ui/keywordFormat';
 import { RichText } from '../ui/RichText';
 import { GuidesTab } from './GuidesTab';
 import { MarkupEditor } from './MarkupEditor';
+import { successToast } from '../ui/toast';
 import { errMsg, fmt } from './format';
 
 /**
@@ -385,7 +386,8 @@ function SettingsTab() {
       const updated = await adminApi.updateSetting(s.name, value);
       setItems((list) => list?.map((x) => (x.name === s.name ? updated : x)) ?? null);
       setDraft((d) => { const n = { ...d }; delete n[s.name]; return n; });
-      setMsg((m) => ({ ...m, [s.name]: { ok: true, text: '저장했어요(바로 반영)' } }));
+      setMsg((m) => { const { [s.name]: _, ...rest } = m; return rest; });
+      successToast(`${s.name} 값을 저장했어요(바로 반영)`);
     } catch (e) {
       setMsg((m) => ({ ...m, [s.name]: { ok: false, text: errMsg(e) } }));
     }
@@ -456,7 +458,7 @@ function NoticesTab() {
     setBusy(true); setMessage(null);
     try {
       if (editing === null) await adminApi.createNotice(form); else await adminApi.updateNotice(editing, form);
-      setMessage({ text: editing === null ? '공지를 올렸어요' : '공지를 수정했어요', ok: true });
+      successToast(editing === null ? '공지를 올렸어요' : '공지를 수정했어요');
       setForm(EMPTY_NOTICE); setEditing(null);
       load();
     } catch (err) {
@@ -478,7 +480,7 @@ function NoticesTab() {
     try {
       await adminApi.deleteNotice(id);
       if (editing === id) { setEditing(null); setForm(EMPTY_NOTICE); }
-      setMessage({ text: '공지를 삭제했어요', ok: true });
+      successToast('공지를 삭제했어요');
       load();
     } catch (err) {
       setMessage({ text: errMsg(err), ok: false });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { TitleBox, TitleItem } from '../api/types';
 import { Modal } from './Modal';
+import { successToast } from './toast';
 
 interface Props { onBack(): void; onClose(): void }
 
@@ -31,7 +32,7 @@ export function TitlesView({ onBack, onClose }: Props) {
     try {
       setBox(await api.setTitle(id));
       // 장착은 목록 맨 위로 올라가 바로 보이므로 따로 알리지 않는다
-      setMessage(id === null ? { text: '칭호를 해제했어요', error: false } : null);
+      if (id === null) successToast('칭호를 해제했어요');
     } catch (e) {
       setMessage({ text: e instanceof ApiFailure ? e.message : '칭호를 바꾸지 못했어요', error: true });
     } finally {
