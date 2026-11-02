@@ -718,6 +718,9 @@ button.link-back:hover { color: var(--text); }
 .pixel-previews { display: flex; align-items: flex-end; gap: 8px; }
 .pixel-previews canvas { border-radius: 8px; }
 .pixel-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.pixel-actions button { min-width: 120px; height: 44px; padding: 0 18px; } /* [취소]와 [저장]은 같은 크기 */
+.pixel-actions .pixel-cancel { background: #2b3546; border-color: #3a4659; color: var(--text); font-weight: 600; }
+.pixel-actions .pixel-cancel:hover:not(:disabled) { background: #354157; }
 @media (max-width: 760px) {
   .pixel-main { grid-template-columns: 1fr; }
   .pixel-canvas { width: min(352px, calc(100vw - 48px)) !important; height: auto !important; aspect-ratio: 1; }
@@ -755,7 +758,13 @@ button.link-back:hover { color: var(--text); }
 /* 꾸미기 프로필(4.9) */
 .effect-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .effect-chips button:disabled { opacity: 0.5; cursor: not-allowed; }
-.profile-editor { display: grid; gap: 12px; }
+/* 꾸미기 창은 창 자체가 스크롤하지 않고, 프로필 칸·미리 보기(위)와 저장 버튼(아래)을 고정한 채 가운데 꾸밈 항목만 스크롤한다 */
+.customize-modal { max-height: min(92vh, 900px); }
+.customize-modal .modal-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.customize-locked, .customize-draw { min-height: 0; overflow: auto; }
+.profile-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.profile-top { flex: none; display: grid; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.profile-sections { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
 .profile-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .profile-tab { display: flex; align-items: center; gap: 8px; padding: 6px 8px; text-align: left; background: #151d2a; }
 .profile-tab canvas { border-radius: 10px; flex: none; }
@@ -765,12 +774,18 @@ button.link-back:hover { color: var(--text); }
 .profile-preview { position: relative; display: grid; justify-items: center; }
 .profile-preview canvas { border-radius: 12px; }
 .profile-dirty { position: absolute; top: 6px; right: 8px; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: rgba(255, 209, 102, 0.18); color: #ffd166; }
-.profile-sections { display: grid; gap: 12px; }
-.profile-actions { position: sticky; bottom: -1px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center;
-  padding: 10px 0 2px; background: var(--panel); border-top: 1px solid var(--line); }
+.profile-sections { display: grid; gap: 12px; align-content: start; }
+.profile-actions { flex: none; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center;
+  padding-top: 10px; background: var(--panel); border-top: 1px solid var(--line); }
 .profile-actions .error { flex-basis: 100%; margin: 0; }
-.customize-draw { display: grid; gap: 10px; }
+.customize-draw { display: grid; gap: 10px; align-content: start; }
 @media (max-width: 760px) {
-  .profile-tabs { grid-template-columns: 1fr; }
-  .profile-preview canvas { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
+  /* 좁은 화면: 칸 탭은 세 개를 한 줄에 작게, 미리 보기는 화면 높이의 1/4 정도로 줄여 꾸밈 항목이 보일 자리를 남긴다 */
+  .profile-tab { flex-direction: column; justify-content: center; gap: 4px; padding: 6px 4px; text-align: center; }
+  .profile-tab canvas { width: 36px !important; height: 36px !important; }
+  .profile-tab-text { justify-items: center; font-size: 0.8rem; }
+  .profile-tab .badge { justify-self: center; }
+  .profile-preview canvas { width: auto !important; max-width: 100%; height: min(180px, 24dvh) !important; aspect-ratio: 16 / 9; }
+  .pixel-actions button { flex: 1; min-width: 0; }
+  .customize-modal { max-height: 92dvh; }
 }

@@ -149,31 +149,34 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
         </div>
       ) : drawing ? (
         <div className="customize-draw">
-          <button className="link-back" onClick={() => setDrawing(false)}>‹ {slot}번 프로필로 돌아가기</button>
           <PixelEditor initial={initialCells} background={draft.background} borderColor={draft.borderColor} borderWidth={draft.borderWidth}
-                       presets={box.colors} maxColors={box.maxColors} busy={busy} changeableAt={box.artChangeableAt} saveLabel="이 그림 쓰기"
-                       onSave={(art) => { setDraft({ ...draft, art, artChanged: true, inner: 'PIXEL' }); setDrawing(false); }} />
-          <p className="muted small">[이 그림 쓰기]를 누른 뒤 프로필을 [저장]해야 그림이 저장돼요. 남의 얼굴이나 캐릭터, 불쾌한 그림은 그리지 마세요.</p>
+                       presets={box.colors} maxColors={box.maxColors} busy={busy} changeableAt={box.artChangeableAt}
+                       onSave={(art) => { setDraft({ ...draft, art, artChanged: true, inner: 'PIXEL' }); setDrawing(false); }}
+                       onCancel={() => setDrawing(false)} />
+          <p className="muted small">여기서 [저장]하면 {slot}번 프로필 미리 보기에 그림이 들어가요. 프로필 화면에서 한 번 더 [저장]해야 그림이 저장돼요. 남의 얼굴이나 캐릭터, 불쾌한 그림은 그리지 마세요.</p>
         </div>
       ) : (
         <div className="profile-editor">
-          <div className="profile-tabs" role="tablist" aria-label="꾸미기 프로필">
-            {box.slots.map((s) => (
-              <button key={s.slot} role="tab" aria-selected={slot === s.slot} className={slot === s.slot ? 'profile-tab on' : 'profile-tab'}
-                      onClick={() => pickSlot(s.slot)}>
-                <LookPreview look={s.look} level={level} art={s.inner === 'PIXEL' ? s.art : null} width={52} height={52} moving={false}
-                             label={`${s.slot}번 프로필`} />
-                <span className="profile-tab-text">
-                  <strong>{s.slot}번 프로필</strong>
-                  {s.equipped ? <span className="badge">장착 중</span> : !s.saved ? <span className="muted small">기본 모습</span> : <span className="muted small">저장됨</span>}
-                </span>
-              </button>
-            ))}
-          </div>
+          {/* 위: 프로필 칸과 미리 보기는 고정, 가운데 꾸밈 항목만 스크롤, 아래: 저장 버튼 고정 */}
+          <div className="profile-top">
+            <div className="profile-tabs" role="tablist" aria-label="꾸미기 프로필">
+              {box.slots.map((s) => (
+                <button key={s.slot} role="tab" aria-selected={slot === s.slot} className={slot === s.slot ? 'profile-tab on' : 'profile-tab'}
+                        onClick={() => pickSlot(s.slot)}>
+                  <LookPreview look={s.look} level={level} art={s.inner === 'PIXEL' ? s.art : null} width={52} height={52} moving={false}
+                               label={`${s.slot}번 프로필`} />
+                  <span className="profile-tab-text">
+                    <strong>{s.slot}번 프로필</strong>
+                    {s.equipped ? <span className="badge">장착 중</span> : !s.saved ? <span className="muted small">기본 모습</span> : <span className="muted small">저장됨</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-          <div className="profile-preview">
-            <LookPreview look={lookOf(draft, box)} level={level} art={draft.inner === 'PIXEL' ? draft.art : null} name={nickname} width={320} height={180} />
-            {dirty && <span className="profile-dirty">저장하지 않은 변경이 있어요</span>}
+            <div className="profile-preview">
+              <LookPreview look={lookOf(draft, box)} level={level} art={draft.inner === 'PIXEL' ? draft.art : null} name={nickname} width={320} height={180} />
+              {dirty && <span className="profile-dirty">저장하지 않은 변경이 있어요</span>}
+            </div>
           </div>
 
           <div className="profile-sections">

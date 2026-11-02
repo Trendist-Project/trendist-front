@@ -20,6 +20,8 @@ interface Props {
   /** 저장 가능 시각(이 시각 전에는 저장 버튼을 막는다) */
   changeableAt: string | null;
   onSave(art: { palette: string[]; pixels: string }): void;
+  /** 그림을 버리고 나간다([취소]) */
+  onCancel(): void;
   /** 저장 버튼 글자 */
   saveLabel?: string;
 }
@@ -39,7 +41,7 @@ const inCircle = (x: number, y: number) => {
   return cx * cx + cy * cy <= (N / 2) * (N / 2);
 };
 
-export function PixelEditor({ initial, background, borderColor, borderWidth, presets, maxColors, busy, changeableAt, onSave, saveLabel = '이 그림 쓰기' }: Props) {
+export function PixelEditor({ initial, background, borderColor, borderWidth, presets, maxColors, busy, changeableAt, onSave, onCancel, saveLabel = '저장' }: Props) {
   const [cells, setCells] = useState<Cells>(initial);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(presets[0] ?? '#ffffff');
@@ -323,7 +325,8 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
       <p className="muted small">점선 원 밖의 칸은 아레나에서 보이지 않아요. 비워 둔 칸에는 바탕색이 보여요. 작게 보여도 알아보기 쉽게 굵은 모양으로 그려 보세요.</p>
       <div className="pixel-actions">
         {waitMs > 0 && <span className="muted small">{Math.ceil(waitMs / 60000)}분 뒤에 다시 저장할 수 있어요</span>}
-        <button className="primary" disabled={!canSave} onClick={() => onSave(encodeArt(cells))}>
+        <button type="button" className="pixel-cancel" disabled={busy} onClick={onCancel}>취소</button>
+        <button type="button" className="primary" disabled={!canSave} onClick={() => onSave(encodeArt(cells))}>
           {busy ? '저장하는 중…' : saveLabel}
         </button>
       </div>
