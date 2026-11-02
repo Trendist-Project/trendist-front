@@ -7,6 +7,7 @@ import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
 import { startGoogleLogin } from '../googleAuth';
+import { loginEnabled } from '../platform';
 import { adminApi, api } from '../api/client';
 import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
@@ -522,7 +523,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
             {guest ? (
               // 누르면 바로 구글 계정 선택 페이지로(매번 계정을 고른다). 돌아오면 지금 기록에 연결된 채로 다시 게임에 들어온다
-              <button className="login-toggle" onClick={startGoogleLogin} aria-label="Google로 로그인" title="Google로 로그인">
+              loginEnabled && <button className="login-toggle" onClick={startGoogleLogin} aria-label="Google로 로그인" title="Google로 로그인">
                 🔑 <span className="tool-label">로그인</span>
               </button>
             ) : (
@@ -582,7 +583,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
               {isAdmin && <button onClick={() => { setMenuOpen(false); openAdmin(); }}><span aria-hidden="true">🛠</span>관리자 페이지</button>}
               <div className="mobile-menu-sep" />
               {guest
-                ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
+                ? loginEnabled && <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
                 : <button onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>로그아웃</button>}
             </nav>
           )}

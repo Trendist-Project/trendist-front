@@ -2,6 +2,7 @@ import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary,
   EffectBox, Look, ShareCardCreated, MyLook, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
+import { apiUrl } from '../platform';
 
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -17,7 +18,7 @@ async function raw<T>(method: string, path: string, body?: unknown, auth = true)
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),

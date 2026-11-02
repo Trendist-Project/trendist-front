@@ -1,4 +1,5 @@
 import { GoogleButton } from './GoogleButton';
+import { loginEnabled } from '../platform';
 
 /** loggedIn: 구글 계정으로 로그인한 상태면 true(구글 버튼을 숨긴다), 확인 중이면 null */
 interface Props { onStart(): void; error: string | null; loggedIn: boolean | null }
@@ -40,7 +41,7 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
         </ul>
         <button className="primary big" onClick={onStart} autoFocus>시작</button>
         {/* 이미 로그인한 계정이면 [시작]만(그 계정으로 이어 간다). 확인하는 동안에도 구글 버튼을 잠깐 띄웠다 숨기지 않게 기다린다 */}
-        {loggedIn === false && (<>
+        {loggedIn === false && loginEnabled && (<>
           <div className="or-divider" aria-hidden="true"><span>또는</span></div>
           <GoogleButton />
           <p className="muted small">로그인하면 다른 기기에서도 기록이 이어져요. 게스트로 하던 기록도 그대로 이어져요</p>

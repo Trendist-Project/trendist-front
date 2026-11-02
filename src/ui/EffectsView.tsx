@@ -4,6 +4,7 @@ import type { EffectBox, EffectItem } from '../api/types';
 import { Trails } from '../game/trails';
 import { drawTurtle, TURTLE_BASE } from '../game/turtle';
 import { GoogleButton } from './GoogleButton';
+import { loginEnabled } from '../platform';
 import { Modal } from './Modal';
 
 interface Props { level: number; guest: boolean; onBack(): void; onClose(): void }
@@ -86,7 +87,9 @@ export function EffectsView({ level, guest, onBack, onClose }: Props) {
         <p className="muted small">움직일 때 내 원 뒤에 남는 효과예요. 하나만 쓸 수 있고 모두에게 보여요.</p>
         {guest && (
           <div className="login-gate">
-            <span><strong>🔒 로그인하면 쓸 수 있어요</strong><span className="muted small">게스트는 미리 보기만 할 수 있어요. 처음 쓰는 Google 계정이면 지금 기록이 그대로 이어져요.</span></span>
+            {loginEnabled
+              ? <span><strong>🔒 로그인하면 쓸 수 있어요</strong><span className="muted small">게스트는 미리 보기만 할 수 있어요. 처음 쓰는 Google 계정이면 지금 기록이 그대로 이어져요.</span></span>
+              : <span><strong>🔒 로그인 사용자만 쓸 수 있어요</strong><span className="muted small">토스에서는 미리 보기만 할 수 있어요.</span></span>}
             <GoogleButton label="Google로 로그인" />
           </div>
         )}

@@ -1,0 +1,16 @@
+{
+  "name": "trendist-toss",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@apps-in-toss/web-framework": "^3.9.0"
+  },
+  "devDependencies": {
+    "node": "^22.23.4"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && ait build"
+  }
+}

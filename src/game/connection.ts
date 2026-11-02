@@ -1,4 +1,5 @@
 import { getToken, resumeSession } from '../api/client';
+import { wsUrl } from '../platform';
 import { parseMinimap, parseSnapshot, type MinimapEntry, type ServerMessage, type Snapshot } from './protocol';
 
 export interface ConnectionHandlers {
@@ -35,8 +36,7 @@ export class GameConnection {
 
   private open() {
     this.handlers.onStatus('connecting');
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    const ws = new WebSocket(wsUrl('/ws'));
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
     ws.onopen = () => {
