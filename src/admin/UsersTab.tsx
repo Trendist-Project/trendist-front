@@ -11,7 +11,6 @@ import { errMsg, fmt } from './format';
  * 조치: 제재(계정 금지 / 그림 저장 정지 / 댓글 작성 정지, 기간·사유)와 풀기, 닉네임 바꾸기, 꾸미기 초기화, 관리자 권한, 강제 퇴장.
  */
 const FILTERS: [string, string][] = [['all', '전체'], ['online', '🟢 접속 중'], ['google', 'Google'], ['guest', '게스트'], ['admin', '관리자'], ['banned', '⛔ 금지 중'], ['withdrawn', '탈퇴']];
-const SORTS: [string, string][] = [['seen', '최근 접속'], ['created', '가입순'], ['score', '유행도'], ['level', '레벨'], ['plus', '누적 추가']];
 const SANCTIONS: [SanctionKind, string, string][] = [
   ['BAN', '계정 금지', '입장·로그인을 막고 접속 중이면 내보내요'],
   ['UPLOAD', '그림 저장 정지', '픽셀 그림을 저장할 수 없어요'],
@@ -52,14 +51,28 @@ export function UsersTab({ initialUserId = null, initialFilter = 'all' }: { init
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(initialFilter);
   const [sort, setSort] = useState('seen');
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
   const [data, setData] = useState<AdminUserPage | null>(null);
   const [selected, setSelected] = useState<number | null>(initialUserId);
   const [error, setError] = useState<string | null>(null);
 
+  /** 정렬되는 열 제목. 다른 열을 누르면 내림차순으로 시작하고, 이미 고른 열을 다시 누르면 내림차순 ↔ 오름차순이 바뀐다 */
+  const sortTh = (k: string, children: string) => {
+    const on = sort === k;
+    return (
+      <th key={k} className="sortable" aria-sort={on ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+        <button type="button" className="th-sort" title={`${children} 순으로 정렬`}
+                onClick={() => { if (on) setDir((d) => (d === 'desc' ? 'asc' : 'desc')); else { setSort(k); setDir('desc'); } setPage(0); }}>
+          {children}<span className="th-arrow" aria-hidden="true">{on ? (dir === 'asc' ? '↑' : '↓') : '↕'}</span>
+        </button>
+      </th>
+    );
+  };
+
   const load = useCallback(() => {
-    adminApi.users({ q: query || undefined, filter, sort, page }).then((d) => { setData(d); setError(null); }).catch((e) => setError(errMsg(e)));
-  }, [query, filter, sort, page]);
+    adminApi.users({ q: query || undefined, filter, sort, dir, page }).then((d) => { setData(d); setError(null); }).catch((e) => setError(errMsg(e)));
+  }, [query, filter, sort, dir, page]);
   useEffect(load, [load]);
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
@@ -71,21 +84,27 @@ export function UsersTab({ initialUserId = null, initialFilter = 'all' }: { init
         <form className="admin-search" onSubmit={submit}>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="닉네임 또는 사용자·플레이어 번호" aria-label="사용자 찾기" />
           <button type="submit">찾기</button>
+          {data && (
+            // 거르거나 찾는 중이면 그 조건에 맞는 수, 아니면 전체 수
+            <span className="user-total" role="status">{filter === 'all' && !query ? '전체' : '조건에 맞는'} <strong>{data.total.toLocaleString()}</strong>명</span>
+          )}
         </form>
         <div className="admin-filters">
           {FILTERS.map(([v, l]) => <button key={v} className={filter === v ? 'on' : undefined} onClick={() => { setFilter(v); setPage(0); }}>{l}</button>)}
-        </div>
-        <div className="admin-filters">
-          <span className="muted small">정렬</span>
-          {SORTS.map(([v, l]) => <button key={v} className={sort === v ? 'on' : undefined} onClick={() => { setSort(v); setPage(0); }}>{l}</button>)}
-          <span className="muted small">{data ? `${data.total.toLocaleString()}명` : ''}</span>
         </div>
       </div>
       {error && <p className="error">{error}</p>}
       <div className="admin-users-layout">
         <div className="admin-table-wrap">
           <table className="admin-table admin-user-table">
-            <thead><tr><th>닉네임</th><th>레벨</th><th>유행도</th><th>보유</th><th>누적 추가</th><th>신고</th><th>최근 접속</th><th>가입</th></tr></thead>
+            <thead><tr>
+              <th>닉네임</th>
+              {sortTh('level', '레벨')}{sortTh('score', '유행도')}
+              <th>보유</th>
+              {sortTh('plus', '누적 추가')}
+              <th>신고</th>
+              {sortTh('seen', '최근 접속')}{sortTh('created', '가입')}
+            </tr></thead>
             <tbody>
               {data?.items.map((u) => (
                 <tr key={u.userId} className={selected === u.userId ? 'selected' : undefined} onClick={() => setSelected(u.userId)} tabIndex={0}

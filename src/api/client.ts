@@ -212,7 +212,7 @@ export const adminApi = {
   statsSummary: () => request<StatSummary>('GET', '/api/admin/stats/summary?country=KR'),
   statsHourly: (hours: number) => request<StatRow[]>('GET', `/api/admin/stats/hourly?${qs({ country: 'KR', hours })}`),
   statsDaily: (days: number) => request<StatRow[]>('GET', `/api/admin/stats/daily?${qs({ country: 'KR', days })}`),
-  users: (q: { q?: string; filter: string; sort: string; page: number }) => request<AdminUserPage>('GET', `/api/admin/users?${qs({ country: 'KR', ...q })}`),
+  users: (q: { q?: string; filter: string; sort: string; dir: 'asc' | 'desc'; page: number }) => request<AdminUserPage>('GET', `/api/admin/users?${qs({ country: 'KR', ...q })}`),
   user: (userId: number) => request<AdminUserDetail>('GET', `/api/admin/users/${userId}`),
   sanction: (userId: number, type: SanctionKind, days: number | null, reason: string) =>
     request<AdminUserDetail>('POST', `/api/admin/users/${userId}/sanctions`, { type, days, reason }),
