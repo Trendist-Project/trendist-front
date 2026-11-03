@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark; /* 이미 어두운 화면이라고 알려서, 폰 브라우저의 강제 다크모드가 색을 다시 바꾸지 않게 한다 */
   --bg: #0b0f17;
   --panel: #141b26;
   --line: #273244;
@@ -248,7 +249,7 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .chart-live-dot circle { animation: chart-blink 1.2s ease-in-out infinite; }
 @keyframes chart-blink { 50% { opacity: 0.25; } }
 .chart-peak circle { fill: #fff; stroke: #0b0f17; stroke-width: 2; }
-.chart-peak text { fill: #fff; font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #0b0f17; stroke-width: 3px; }
+.chart-peak text { fill: #fff; font-size: 11px; font-weight: 600; stroke: none; text-shadow: none; } /* 글자 둘레 테두리는 작은 글자가 빛 번지듯 보여 쓰지 않는다 */
 .chart-guide { stroke: rgba(232,237,245,0.35); stroke-width: 1; stroke-dasharray: 3 3; }
 .chart-hover-dot { stroke: #0b0f17; stroke-width: 2; }
 .chart-tooltip { position: absolute; top: 4px; transform: translateX(-50%); pointer-events: none; background: rgba(11,15,23,0.94);
