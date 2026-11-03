@@ -763,8 +763,8 @@ export class Arena {
     const wakeLen = e.r * 2.8 + 56 * px, wakeW = e.r * 0.95;
     const wx = e.x - dx * e.r * 0.4, wy = e.y - dy * e.r * 0.4, tx = wx - dx * wakeLen, ty = wy - dy * wakeLen;
     const wake = ctx.createLinearGradient(wx, wy, tx, ty);
-    wake.addColorStop(0, `rgba(127,219,255,${0.42 * k})`);
-    wake.addColorStop(0.5, `rgba(127,219,255,${0.17 * k})`);
+    wake.addColorStop(0, `rgba(127,219,255,${0.62 * k})`);
+    wake.addColorStop(0.5, `rgba(127,219,255,${0.3 * k})`);
     wake.addColorStop(1, 'rgba(127,219,255,0)');
     ctx.fillStyle = wake;
     ctx.beginPath();
