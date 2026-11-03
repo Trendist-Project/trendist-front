@@ -232,7 +232,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             window.setTimeout(() => setOrbReveal({ result: m, key }), 250);
             window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), 250 + ORB_REVEAL_MS);
             if (m.status === 'GAINED') arena.floatText(`+${m.gained ?? 0}`);
-            if (m.status === 'GAINED' || m.status === 'RENEWED') setRefreshKey((k) => k + 1); // 보관함 목록 새로고침(새 키워드, 또는 바뀐 만료 시각)
+            if (m.status === 'LOST' && m.gained) arena.floatText(`-${m.gained}`);
+            if (m.status === 'GAINED' || m.status === 'RENEWED' || m.status === 'LOST') setRefreshKey((k) => k + 1); // 보관함 목록 새로고침(새 키워드, 또는 바뀐 만료 시각)
             break;
           }
           case 'chat':
