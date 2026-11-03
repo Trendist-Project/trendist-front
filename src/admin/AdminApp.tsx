@@ -87,27 +87,6 @@ const SORTABLE = new Set(['trendValue', 'holderCount', 'totalPlusCount', 'search
 const STATES: [string, string][] = [['', '전체'], ['활성', '🔥 활성'], ['비활성', '💤 비활성'], ['금지', '⛔ 금지']];
 const SOURCES: [string, string][] = [['', '전체'], ['google', 'google'], ['admin', 'admin'], ['internal', 'internal']];
 
-/** 필터 한 줄: 이름표 + 하나만 고르는 칩(게임의 정렬 칩과 같은 모양). */
-function ChipFilter({ label, options, value, counts, onChange }: {
-  label: string; options: [string, string][]; value: string; counts?: Record<string, number>; onChange(v: string): void;
-}) {
-  const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : undefined;
-  return (
-    <div className="admin-chip-filter" role="radiogroup" aria-label={label}>
-      <span className="admin-chip-label">{label}</span>
-      {options.map(([v, text]) => {
-        const n = counts ? (v ? counts[v] ?? 0 : total) : undefined;
-        return (
-          <button key={v || 'all'} type="button" role="radio" aria-checked={value === v}
-                  className={`sort-chip${value === v ? ' active' : ''}`} onClick={() => onChange(v)}>
-            {text}{n !== undefined && <span className="chip-count">{n.toLocaleString()}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /** 필터 한 줄: 여러 개를 고를 수 있는 칩. 아무것도 안 고르면 [전체]. 눌러서 켜고 끈다. */
 function MultiChipFilter({ label, options, values, counts, onChange }: {
   label: string; options: [string, string][]; values: string[]; counts?: Record<string, number>; onChange(v: string[]): void;
@@ -457,31 +436,42 @@ function ShareTab() {
 
   return (
     <section className="admin-panel">
+      <header className="ap-head">
+        <div>
+          <h2>카드 공유</h2>
+          <p>같은 방문자는 카드마다 하루 1번만 세고, 메신저 미리보기 크롤러는 세지 않아요.</p>
+        </div>
+      </header>
       <div className="admin-stat-row">
         <div className="admin-stat"><span>만든 카드</span><strong>{data?.cards.toLocaleString() ?? '-'}</strong><em>오늘 {data?.cardsToday.toLocaleString() ?? 0}</em></div>
         <div className="admin-stat"><span>조회</span><strong>{data?.views.toLocaleString() ?? '-'}</strong><em>공유 페이지를 연 사람</em></div>
         <div className="admin-stat"><span>[플레이 하러 가기]</span><strong>{data?.plays.toLocaleString() ?? '-'}</strong><em>게임으로 들어온 사람</em></div>
-        <div className="admin-stat"><span>클릭률</span><strong>{rate}</strong><em>클릭 ÷ 조회</em></div>
+        <div className="admin-stat highlight"><span>클릭률</span><strong>{rate}</strong><em>클릭 ÷ 조회</em></div>
       </div>
-      <p className="muted small admin-hint">같은 방문자는 카드마다 하루 1번만 세고, 메신저 미리보기 크롤러는 세지 않아요.</p>
-      <div className="admin-filter-box">
-        <ChipFilter label="정렬" options={SHARE_SORTS} value={sort} onChange={(v) => { setSort(v); setPage(0); }} />
+      <div className="seg" role="tablist" aria-label="정렬">
+        {SHARE_SORTS.map(([v, l]) => (
+          <button key={v} role="tab" aria-selected={sort === v} className={sort === v ? 'on' : undefined} onClick={() => { setSort(v); setPage(0); }}>{l}</button>
+        ))}
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && <p className="ap-note error" role="alert">{error}</p>}
       <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead><tr><th>닉네임(공유한 때)</th><th>조회</th><th>클릭</th><th>만든 때</th><th>카드</th></tr></thead>
+        <table className="admin-table share-table">
+          <thead><tr><th>닉네임 <span className="muted small">(공유한 때)</span></th><th className="num">조회</th><th className="num">클릭</th><th className="num">클릭률</th><th>만든 때</th><th></th></tr></thead>
           <tbody>
-            {data?.items.map((c) => (
-              <tr key={c.code}>
-                <td><strong>{c.nickname}</strong></td>
-                <td className="num">{c.views.toLocaleString()}</td>
-                <td className="num">{c.plays.toLocaleString()}</td>
-                <td>{fmt(c.createdAt)}</td>
-                <td><a href={c.url} target="_blank" rel="noreferrer">열기 ↗</a></td>
-              </tr>
-            ))}
-            {data && data.items.length === 0 && <tr><td colSpan={5} className="muted">아직 만든 카드가 없어요</td></tr>}
+            {data?.items.map((c) => {
+              const r = c.views > 0 ? Math.min(100, (c.plays / c.views) * 100) : 0;
+              return (
+                <tr key={c.code}>
+                  <td><strong>{c.nickname}</strong></td>
+                  <td className="num">{c.views.toLocaleString()}</td>
+                  <td className="num">{c.plays.toLocaleString()}</td>
+                  <td className="num"><span className="rate-cell"><span className="rate-bar"><i style={{ width: `${r}%` }} /></span>{c.views > 0 ? `${r.toFixed(0)}%` : '-'}</span></td>
+                  <td className="muted">{fmt(c.createdAt)}</td>
+                  <td className="act"><a className="open-link" href={c.url} target="_blank" rel="noreferrer">열기 ↗</a></td>
+                </tr>
+              );
+            })}
+            {data && data.items.length === 0 && <tr><td colSpan={6} className="muted empty-cell">아직 만든 카드가 없어요</td></tr>}
           </tbody>
         </table>
       </div>
@@ -519,38 +509,51 @@ function SettingsTab() {
   };
 
   const shown = (items ?? []).filter((s) => !filter || s.name.includes(filter) || (s.description ?? '').includes(filter));
+  const dirtyCount = (items ?? []).filter((s) => draft[s.name] !== undefined && draft[s.name] !== s.value).length;
   return (
     <section className="admin-panel">
-      <div className="admin-filters">
+      <header className="ap-head">
+        <div>
+          <h2>게임 설정</h2>
+          <p>저장하면 서버가 바로 읽고, 게임 방에는 1초 안에 반영돼요. 범위를 벗어난 값은 저장되지 않아요.</p>
+        </div>
+        {items && <span className="ap-total" role="status"><strong>{shown.length}</strong>{filter ? ` / ${items.length}` : ''}개</span>}
+      </header>
+      <div className="set-toolbar">
         <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="이름·설명으로 찾기" aria-label="설정 찾기" />
-        <span className="muted small">저장하면 서버가 바로 읽고, 게임 방에는 1초 안에 반영돼요. 범위를 벗어난 값은 저장되지 않아요.</span>
+        {dirtyCount > 0 && <span className="set-dirty-note">저장하지 않은 변경 {dirtyCount}개</span>}
       </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table settings">
-          <thead><tr><th>설정</th><th>값</th><th>범위</th><th>기본값</th><th>수정 일시</th></tr></thead>
-          <tbody>
-            {shown.map((s) => {
-              const v = draft[s.name] ?? s.value;
-              const dirty = draft[s.name] !== undefined && draft[s.name] !== s.value;
-              return (
-                <tr key={s.name} className={dirty ? 'dirty' : undefined}>
-                  <td><code>{s.name}</code><div className="muted small">{s.description}</div></td>
-                  <td>
-                    <form className="setting-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
-                      <input value={v} inputMode="decimal" onChange={(e) => setDraft((d) => ({ ...d, [s.name]: e.target.value }))} aria-label={`${s.name} 값`} />
-                      <button type="submit" disabled={!dirty}>저장</button>
-                    </form>
-                    {msg[s.name] && <div className={msg[s.name].ok ? 'ok small' : 'error small'}>{msg[s.name].text}</div>}
-                  </td>
-                  <td className="small">{s.min ?? ''} ~ {s.max ?? ''}{s.type === 'INT' ? ' (정수)' : ''}</td>
-                  <td className="small">{s.defaultValue ?? '-'}</td>
-                  <td className="small">{fmt(s.updatedAt)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ul className="set-list">
+        {shown.map((s) => {
+          const v = draft[s.name] ?? s.value;
+          const dirty = draft[s.name] !== undefined && draft[s.name] !== s.value;
+          const isDefault = s.defaultValue != null && v === s.defaultValue;
+          return (
+            <li key={s.name} className={`set-row${dirty ? ' dirty' : ''}`}>
+              <div className="set-info">
+                <code>{s.name}</code>
+                <p>{s.description}</p>
+                <div className="set-meta">
+                  <span>범위 <b>{s.min ?? ''} ~ {s.max ?? ''}</b>{s.type === 'INT' ? ' · 정수' : ''}</span>
+                  <span>기본값 <b>{s.defaultValue ?? '-'}</b></span>
+                  <span>수정 {fmt(s.updatedAt)}</span>
+                </div>
+              </div>
+              <div className="set-edit-col">
+                <form className="set-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
+                  <input value={v} inputMode="decimal" onChange={(e) => setDraft((d) => ({ ...d, [s.name]: e.target.value }))} aria-label={`${s.name} 값`} />
+                  <button type="submit" className={dirty ? 'primary' : undefined} disabled={!dirty}>저장</button>
+                </form>
+                {s.defaultValue != null && !isDefault && (
+                  <button type="button" className="set-reset" onClick={() => setDraft((d) => ({ ...d, [s.name]: s.defaultValue as string }))}>기본값({s.defaultValue})으로</button>
+                )}
+                {msg[s.name] && <div className={msg[s.name].ok ? 'ok small' : 'error small'}>{msg[s.name].text}</div>}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {items && shown.length === 0 && <div className="ap-empty">찾는 설정이 없어요</div>}
     </section>
   );
 }
