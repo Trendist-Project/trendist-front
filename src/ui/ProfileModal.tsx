@@ -9,6 +9,7 @@ import { ShareCardView } from './ShareCardView';
 import { TitlesView } from './TitlesView';
 import { WithdrawDialog } from './WithdrawDialog';
 import { successToast } from './toast';
+import { LevelText } from './LevelText';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['all', '전체']];
 
@@ -87,7 +88,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
     <Modal title="내 정보" onClose={onClose}>
       <dl className="profile-stats">
         <div><dt>닉네임</dt><dd>{player.nickname}</dd></div>
-        <div><dt>레벨</dt><dd>🐢 {player.level}레벨</dd></div>
+        <div><dt>레벨</dt><dd><LevelText level={player.level} suffix="레벨" size={26} /></dd></div>
         <div><dt>EXP</dt><dd>{player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</dd></div>
         <div><dt>내 유행도</dt><dd>{Number(player.currentScore).toLocaleString()}</dd></div>
         <div><dt>보유 키워드</dt><dd>{player.holdCount}개</dd></div>

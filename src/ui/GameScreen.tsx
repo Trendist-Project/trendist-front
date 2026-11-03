@@ -14,6 +14,7 @@ import { hasUnread, markNoticesRead, NoticeModal, NoticePopup, popupNotices } fr
 import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
+import { LevelText } from './LevelText';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 
@@ -575,9 +576,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (E, 연 뒤 숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
         </div>
         <div className="hud-bottom">
+          <span><LevelText level={player.level} prefix="Lv." /></span>
           <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
-          <span>내 유행도 {Number(player.currentScore).toLocaleString()}</span>
-          <span>🐢 {player.level}레벨</span>
+          <span>유행도 {Number(player.currentScore).toLocaleString()}</span>
           <span className="muted hud-extra">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
           <span className="muted hud-extra">키워드 {player.holdCount}개</span>
         </div>

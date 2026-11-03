@@ -1,6 +1,6 @@
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
-  Look, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
+  Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
 
 export class ApiFailure extends Error {
@@ -91,6 +91,7 @@ export const api = {
   createPlayer: (nickname: string) => request<PlayerSummary>('POST', '/api/players', { nickname, countryCode: 'KR' }),
   changeNickname: (nickname: string) => request<PlayerSummary>('PATCH', '/api/me/nickname', { nickname }),
   titles: () => request<TitleBox>('GET', '/api/me/titles'),
+  levelBadges: () => request<LevelBadge[]>('GET', '/api/levels/badges'),
   setTitle: (titleId: number | null) => request<TitleBox>('PUT', '/api/me/title', { titleId }),
   /** 꾸미기 프로필(4.9): 1~3번 칸 저장(equip이면 저장 후 장착)과 장착 */
   profiles: () => request<ProfileBox>('GET', '/api/me/profiles'),

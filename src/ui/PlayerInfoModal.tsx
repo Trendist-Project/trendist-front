@@ -6,6 +6,7 @@ import { STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
 import { ReportDialog } from './ReportDialog';
 import { ScoreChart } from './ScoreChart';
+import { LevelText } from './LevelText';
 
 interface Props {
   entityNo: number;
@@ -49,7 +50,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
         </section>
         <dl className="kw-stats">
           <div><dt>현재 유행도</dt><dd>{bot.score.toLocaleString()}</dd></div>
-          <div><dt>레벨</dt><dd>🐢 {bot.level}</dd></div>
+          <div><dt>레벨</dt><dd><LevelText level={bot.level} size={26} /></dd></div>
           <div><dt>순위</dt><dd className="muted">집계 안 함</dd></div>
         </dl>
       </Modal>
@@ -78,7 +79,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
 
         <dl className="kw-stats">
           <div><dt>현재 유행도</dt><dd>{card.score.toLocaleString()}</dd></div>
-          <div><dt>레벨</dt><dd>🐢 {card.level}</dd></div>
+          <div><dt>레벨</dt><dd><LevelText level={card.level} size={26} /></dd></div>
           <div><dt>댓글 점수</dt><dd>{card.commentScore.toLocaleString()}</dd></div>
         </dl>
 

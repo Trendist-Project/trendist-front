@@ -1,10 +1,12 @@
 import { Fragment, type ReactNode } from 'react';
 import { GrowthIcons } from './GrowthIcons';
+import { LevelIconGallery } from './LevelText';
 import { ArenaLegend, Controls, KeywordStates, StartSteps } from './GuideArt';
 
 /** 본문에 넣을 수 있는 게임 그림. 이름이 틀리면 글자 그대로 보인다. */
 const EMBEDS: Record<string, () => ReactNode> = {
   '[[성장 아이콘]]': () => <GrowthIcons />,
+  '[[레벨 아이콘]]': () => <LevelIconGallery />,
   '[[시작 3단계]]': () => <StartSteps />,
   '[[조작]]': () => <Controls />,
   '[[키워드 상태]]': () => <KeywordStates />,

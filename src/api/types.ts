@@ -93,6 +93,8 @@ export interface TitleItem {
   id: number; name: string; description: string; conditionType: 'METRIC' | 'RANK'; metric: string;
   current: number; target: number; owned: boolean; acquiredAt: string | null; active: boolean;
 }
+/** 레벨 표시 옆 성장 아이콘의 바탕(4.9). color가 null이면 기본 거북이 색, alpha는 진하기 0~100(%), rainbow면 무지개 그라데이션 */
+export interface LevelBadge { level: number; color: string | null; alpha: number; rainbow: boolean }
 export interface TitleBox { activeTitleId: number | null; titles: TitleItem[] }
 
 /**

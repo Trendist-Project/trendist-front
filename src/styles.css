@@ -342,6 +342,14 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 .growth-icons li { display: grid; justify-items: center; gap: 4px; font-size: 0.78rem; color: var(--muted); }
 .growth-icons canvas { display: block; }
 
+/* 가이드: 레벨 표시 옆 아이콘 바탕 표(4.9) */
+.level-gallery { margin: 4px 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #1a2230; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.lg-grid { display: grid; grid-template-columns: auto repeat(10, minmax(0, 28px)); gap: 4px; align-items: center; justify-content: start; }
+.lg-grid canvas { display: block; width: 100% !important; height: auto !important; } /* 좁은 화면에서는 칸에 맞춰 줄어든다 */
+.guide-card, .guide-content .rich-text { min-width: 0; }
+.lg-head, .lg-row { font-size: 0.72rem; color: var(--muted); text-align: center; }
+.lg-row { text-align: right; padding-right: 4px; white-space: nowrap; }
+.lg-top { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 0.85rem; }
 /* ---------------------------------------------------------------- 모바일(작은 화면) 배치 */
 @media (max-width: 760px) {
   /* 아레나가 화면 대부분을 쓰고, 검색·보관함은 접히는 하단 시트 */
@@ -798,3 +806,5 @@ button.link-back:hover { color: var(--text); }
   .pixel-actions button { flex: 1; min-width: 0; }
   .customize-modal { max-height: 92dvh; }
 }
+.level-text { display: flex; align-items: center; gap: 6px; } /* 아이콘과 글자를 위아래 가운데로 맞춘다(inline이면 글줄 기준선 때문에 아이콘이 위로 뜬다) */
+.profile-stats dd .level-text, .kw-stats dd .level-text { margin: -3px 0; } /* 아이콘이 커도 칸 높이는 다른 칸과 같게(남는 부분은 칸 여백으로) */
