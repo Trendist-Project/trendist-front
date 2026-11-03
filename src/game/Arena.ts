@@ -757,17 +757,40 @@ export class Arena {
       ctx.lineWidth = w;
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + w / 2, 0, Math.PI * 2); ctx.stroke();
     }
-    // 속도선: 가는 반대쪽(원 뒤)으로 길이가 다른 줄 다섯 개. 진행 방향은 거북이 머리 방향(위쪽이 0)에서 구한다
+    // 속도선: 진행 방향은 거북이 머리 방향(위쪽이 0)에서 구한다. 뒤쪽으로 갈수록 가늘어지며 사라지는 꼬리 빛 위에,
+    // 끝이 뾰족한 선이 원 뒤에서 생겨 흘러가며 옅어지는 모양으로 속도감을 낸다(모션 줄이기면 멈춘 채 그린다)
     const ang = (this.headings.get(e.e)?.a ?? 0) - Math.PI / 2;
     const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
-    ctx.lineCap = 'round';
-    for (let i = 0; i < 5; i++) {
-      const off = (i - 2) * 0.32 * e.r;
-      const len = (e.r * (1.1 + 0.35 * ((i * 7) % 5) / 4) + 36 * px) * (0.85 + 0.15 * (this.reducedMotion ? 0 : Math.sin(now / 90 + i * 1.9)));
-      const sx = e.x + nx * off - dx * e.r * 0.7, sy = e.y + ny * off - dy * e.r * 0.7;
-      ctx.strokeStyle = `rgba(${i % 2 ? '255,255,255' : '127,219,255'},${0.6 * k})`;
-      ctx.lineWidth = Math.max(2.5 * px, e.r * 0.07);
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - dx * len, sy - dy * len); ctx.stroke();
+    const wakeLen = e.r * 2.8 + 56 * px, wakeW = e.r * 0.95;
+    const wx = e.x - dx * e.r * 0.4, wy = e.y - dy * e.r * 0.4, tx = wx - dx * wakeLen, ty = wy - dy * wakeLen;
+    const wake = ctx.createLinearGradient(wx, wy, tx, ty);
+    wake.addColorStop(0, `rgba(127,219,255,${0.3 * k})`);
+    wake.addColorStop(0.5, `rgba(127,219,255,${0.1 * k})`);
+    wake.addColorStop(1, 'rgba(127,219,255,0)');
+    ctx.fillStyle = wake;
+    ctx.beginPath();
+    ctx.moveTo(wx + nx * wakeW, wy + ny * wakeW); ctx.lineTo(tx + nx * wakeW * 0.2, ty + ny * wakeW * 0.2);
+    ctx.lineTo(tx - nx * wakeW * 0.2, ty - ny * wakeW * 0.2); ctx.lineTo(wx - nx * wakeW, wy - ny * wakeW);
+    ctx.closePath(); ctx.fill();
+    const LINES = [[-0.62, 1], [0.1, 0.8], [0.72, 1.15], [-0.24, 1.3], [0.4, 0.7], [-0.85, 0.75], [0.9, 0.9]] as const; // [옆 위치(반지름 배), 길이 배수]
+    const lw = Math.max(2.4 * px, e.r * 0.065);
+    for (let i = 0; i < LINES.length; i++) {
+      const [lat, lf] = LINES[i];
+      const u = this.reducedMotion ? (i * 0.37) % 1 : (now / 650 + i * 0.37) % 1; // 0→1로 원 뒤에서 멀어진다
+      const len = (e.r * 1.1 + 34 * px) * lf;
+      const a0 = e.r * 0.75 + u * e.r * 1.9; // 머리(원에 가까운 끝)의 뒤쪽 거리
+      const hx = e.x + nx * lat * e.r - dx * a0, hy = e.y + ny * lat * e.r - dy * a0;
+      const ex = hx - dx * len, ey = hy - dy * len;
+      const alpha = 0.85 * k * Math.sin(Math.PI * u) ** 0.8;
+      const g = ctx.createLinearGradient(hx, hy, ex, ey);
+      g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      g.addColorStop(0.45, `rgba(180,235,255,${alpha * 0.55})`);
+      g.addColorStop(1, 'rgba(127,219,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(hx + nx * lw, hy + ny * lw); ctx.lineTo(ex, ey); ctx.lineTo(hx - nx * lw, hy - ny * lw);
+      ctx.arc(hx, hy, lw, Math.atan2(-ny, -nx), Math.atan2(ny, nx), false); // 머리는 둥글게(진행 방향으로 볼록)
+      ctx.closePath(); ctx.fill();
     }
     // 시작 충격파: 0.5초 동안 퍼지며 옅어지는 고리
     if (t < 500) {
