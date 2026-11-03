@@ -107,6 +107,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
   const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number }>({ combo: 0, flameAt: 5, key: 0 }); // 4.25
   const [emoteOpen, setEmoteOpen] = useState(false); // 이모트 고르기(4.26)
+  const emoteOpenRef = useRef(false); // 키 입력 처리(한 번만 등록)에서 최신 값을 본다
+  emoteOpenRef.current = emoteOpen;
   const sendEmoteRef = useRef<(code: string) => void>(() => {});
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -449,10 +451,15 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         else (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
         return;
       }
-      // 1~8: 이모트(4.26)
-      if (/^Digit[1-8]$/.test(e.code) && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // E: 이모트 창 열기/닫기, 창이 열려 있을 때 1~8: 그 이모트를 보내고 창을 접는다(4.26). 한글 입력 상태(ㄷ)에서도 되게 code로 본다
+      if (e.code === 'KeyE' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setEmoteOpen((v) => !v);
+        return;
+      }
+      if (emoteOpenRef.current && /^Digit[1-8]$/.test(e.code) && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const em = EMOTES[Number(e.code.slice(5)) - 1];
         if (em) sendEmoteRef.current(em[0]);
+        setEmoteOpen(false);
         return;
       }
       if (!(e.code in KEYS)) return;
@@ -565,7 +572,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
               ))}
             </div>
           )}
-          <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
+          <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (E, 연 뒤 숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
         </div>
         <div className="hud-bottom">
           <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
