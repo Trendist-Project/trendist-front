@@ -5,6 +5,7 @@ import { ActivityChart } from './ActivityChart';
 import { Comments } from './Comments';
 import { remaining, STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
+import { successToast } from './toast';
 
 const RANGES: [ActivityRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['180d', '180일']];
 const HOLDERS_KEY = 'trendist.chartHolders';
@@ -30,6 +31,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
   const [showHolders, setShowHolders] = useState(() => { try { return localStorage.getItem(HOLDERS_KEY) === '1'; } catch { return false; } });
   const [busy, setBusy] = useState(false);
   const [shared, setShared] = useState(false); // 공유 직후 잠깐 버튼을 막는다(채팅은 1초에 1회)
+  const [aiBusy, setAiBusy] = useState(false);
 
   useEffect(() => {
     api.keyword(keywordId).then(setCard).catch(() => setFailed(true));
@@ -47,6 +49,21 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
   }, [loadActivity]);
 
   useEffect(() => { try { localStorage.setItem(HOLDERS_KEY, showHolders ? '1' : '0'); } catch { /* 이 브라우저에만 기억 */ } }, [showHolders]);
+
+  /** AI 설명이 맞지 않다고 갱신을 요청한다(4.12). 관리자가 먼저 확인한다 */
+  async function requestAi() {
+    if (!card || card.id === null || aiBusy || card.aiCommentRequested) return;
+    setAiBusy(true);
+    try {
+      await api.requestAiComment(card.id);
+      setCard((c) => (c ? { ...c, aiCommentRequested: true } : c));
+      successToast('갱신을 요청했어요. 관리자가 확인해요');
+    } catch (err) {
+      onError(err instanceof ApiFailure ? err.message : '요청하지 못했어요');
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   async function plus() {
     if (!card || busy) return;
@@ -74,6 +91,18 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
       {failed && <p className="muted">키워드를 불러오지 못했어요. 금지되었거나 다른 나라의 키워드일 수 있어요.</p>}
       {!failed && !card && <p className="muted">불러오는 중…</p>}
       {card && (<>
+        {card.aiComment && (
+          <section className="kw-ai" aria-label="AI 한 줄 설명">
+            <div className="kw-ai-head">
+              <span className="kw-ai-label">🤖 AI 한 줄 설명</span>
+              <button type="button" className="kw-ai-report" disabled={aiBusy || card.aiCommentRequested} onClick={requestAi}
+                      title="설명이 이상하면 관리자에게 갱신을 요청해요">
+                {card.aiCommentRequested ? '갱신 요청함' : '설명이 이상해요'}
+              </button>
+            </div>
+            <p>{card.aiComment}</p>
+          </section>
+        )}
         <section className="kw-hero">
           <div className="kw-hero-main">
             <span className={`badge state-${card.state}`}>{STATE_BADGE[card.state] ?? card.state}</span>

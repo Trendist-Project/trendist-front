@@ -203,6 +203,12 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 /* ---------------------------------------------------------------- 키워드 상세 창(4.12) */
 .keyword-modal { width: min(760px, 100%); max-height: min(88vh, 900px); }
 .keyword-modal .modal-head h2 { font-size: 1.35rem; }
+.kw-ai { display: grid; gap: 4px; padding: 10px 14px; border-radius: 12px; background: rgba(124, 196, 255, 0.08); border: 1px solid rgba(124, 196, 255, 0.28); }
+.kw-ai-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.kw-ai-label { font-size: 0.78rem; font-weight: 700; color: #7cc4ff; }
+.kw-ai p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.kw-ai-report { border: 0; background: transparent; color: var(--muted); font-size: 0.75rem; padding: 2px 6px; text-decoration: underline; text-underline-offset: 2px; }
+.kw-ai-report:disabled { text-decoration: none; opacity: 0.7; }
 .kw-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(63,182,139,0.16), rgba(90,169,230,0.08) 60%, transparent); border: 1px solid var(--line); }
 .kw-hero-main { display: grid; gap: 4px; justify-items: start; }

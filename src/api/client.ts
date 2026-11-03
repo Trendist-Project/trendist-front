@@ -1,6 +1,6 @@
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
-  Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
+  AiCommentPage, AiCommentRow, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
 
 export class ApiFailure extends Error {
@@ -103,6 +103,8 @@ export const api = {
   /** 자랑하기 카드 공유 주소(4.24). 서버가 지금 값으로 저장하고 주소를 준다. 같은 값이면 같은 주소 */
   createShareCard: () => request<ShareCardCreated>('POST', '/api/share-cards'),
   keyword: (id: number) => request<KeywordCard>('GET', `/api/keywords/${id}`),
+  /** AI 한 줄 설명이 맞지 않다는 갱신 요청(4.12) */
+  requestAiComment: (id: number) => request<void>('POST', `/api/keywords/${id}/ai-comment/request`),
   activity: (id: number, range: ActivityRange) => request<Activity>('GET', `/api/keywords/${id}/activity?range=${range}`),
   topComments: (id: number) => request<CommentItem[]>('GET', `/api/keywords/${id}/comments/top`),
   comments: (id: number, page: number) => request<CommentPage>('GET', `/api/keywords/${id}/comments?page=${page}&size=20`),
@@ -224,6 +226,10 @@ export const adminApi = {
   kickUser: (userId: number) => request<void>('POST', `/api/admin/users/${userId}/kick`),
   shareStats: (sort: string, page: number) => request<AdminShareStats>('GET', `/api/admin/share-cards?${qs({ sort, page })}`),
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
+  aiComments: (filter: string, page: number) => request<AiCommentPage>('GET', `/api/admin/ai-comments?${qs({ country: 'KR', filter, page })}`),
+  aiRegenerate: (id: number) => request<AiCommentRow>('POST', `/api/admin/ai-comments/${id}/regenerate`),
+  aiEdit: (id: number, comment: string) => request<AiCommentRow>('PUT', `/api/admin/ai-comments/${id}`, { comment }),
+  aiDismiss: (id: number) => request<AiCommentRow>('POST', `/api/admin/ai-comments/${id}/dismiss`),
   keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q, state: q.state?.join(','), source: q.source?.join(',') })}`),
   addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: 'KR' }),
   ban: (id: number, banned: boolean) => request<AdminKeywordRow>('POST', `/api/admin/keywords/${id}/${banned ? 'ban' : 'unban'}`),

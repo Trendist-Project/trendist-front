@@ -36,7 +36,17 @@ export interface KeywordCard {
   searchCount: number;
   plusedByMe: boolean;
   myExpiresAt: string | null;
+  /** AI 한 줄 설명(4.12). 아직 없으면 null. aiCommentRequested: 내가 갱신 요청을 해 둔 상태 */
+  aiComment: string | null;
+  aiCommentRequested: boolean;
 }
+
+/** 관리자 AI 한 줄 설명(13.12) */
+export interface AiCommentRow {
+  keywordId: number; text: string; state: string; comment: string | null; by: 'AI' | 'ADMIN' | null; commentedAt: string | null;
+  attempts: number; openRequests: number; lastRequestedAt: string | null;
+}
+export interface AiCommentPage { items: AiCommentRow[]; total: number; page: number; size: number; aiEnabled: boolean }
 
 export interface SearchResult { status: 'FOUND' | 'NEW' | 'BANNED'; keyword: KeywordCard | null }
 

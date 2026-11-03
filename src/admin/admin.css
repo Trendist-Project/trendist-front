@@ -23,6 +23,11 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 .admin-table th { position: sticky; top: 0; background: #151d2a; font-weight: 600; color: #9fb3c8; }
 .admin-table th.sortable { cursor: pointer; user-select: none; }
 .admin-table th.sortable:hover { color: #fff; }
+.ai-table td { white-space: normal; }
+.ai-comment-cell { min-width: 260px; max-width: 520px; }
+.ai-edit { display: grid; gap: 4px; }
+.ai-edit textarea { width: 100%; resize: vertical; }
+.ai-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .user-total { margin-left: 6px; font-size: 1rem; color: var(--text); white-space: nowrap; }
 .user-total strong { font-size: 1.25rem; color: var(--accent); }
 .th-sort { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: inherit; font: inherit; }
