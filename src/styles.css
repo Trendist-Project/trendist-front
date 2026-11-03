@@ -456,7 +456,7 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
   .arena-tools .tool-row .inspect-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.05rem; }
   .arena-tools .tool-row { gap: 6px; }
-  .mobile-menu { display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
+  .mobile-menu { position: relative; z-index: 8; /* 채팅 위로 */ display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
     border-radius: 14px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
   .mobile-menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; border: 0; border-radius: 10px;
     background: transparent; padding: 0 12px; font-size: 0.95rem; text-align: left; }
