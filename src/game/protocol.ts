@@ -67,6 +67,7 @@ export type ServerMessage =
   | { type: 'spectating'; country: string; spectators: number } // 관전 접속이 받아들여짐(관리자 관전, 13.13)
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
+  | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
   | { type: 'roster'; players: RosterEntry[]; flameAt?: number }
   | { type: 'emote'; e: number; code: string } // 이모트(4.26)
   // 연속 빼앗기 콤보(4.25). event: up(+1) / start(flameAt에 닿아 불꽃이 붙음) / reset(잃어서 콤보 끝) / broken(잃어서 불꽃까지 꺼짐, by가 끈 사람)

@@ -815,3 +815,11 @@ button.link-back:hover { color: var(--text); }
 }
 .level-text { display: flex; align-items: center; gap: 6px; } /* 아이콘과 글자를 위아래 가운데로 맞춘다(inline이면 글줄 기준선 때문에 아이콘이 위로 뜬다) */
 .profile-stats dd .level-text, .kw-stats dd .level-text { margin: -3px 0; } /* 아이콘이 커도 칸 높이는 다른 칸과 같게(남는 부분은 칸 여백으로) */
+
+/* 대시 표시(4.27): 아래 내 정보 줄. 준비되면 옅게 빛나고, 대시 중에는 노랗게, 쿨타임에는 남은 만큼 막대가 줄어든다 */
+.dash-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; border: 1px solid transparent; }
+.dash-chip.ready { color: #ffe08a; border-color: rgba(255,224,138,0.45); background: rgba(255,200,74,0.12); }
+.dash-chip.active { color: #1d1300; background: linear-gradient(90deg, #ffd166, #ffae42); animation: dash-glow 0.6s ease-in-out infinite alternate; }
+.dash-chip.cool { color: var(--muted); border-color: var(--line); background: linear-gradient(90deg, rgba(148,163,184,0.28) var(--p, 100%), transparent var(--p, 100%)); }
+@keyframes dash-glow { from { box-shadow: 0 0 0 rgba(255,200,74,0); } to { box-shadow: 0 0 10px rgba(255,200,74,0.8); } }
+@media (prefers-reduced-motion: reduce) { .dash-chip.active { animation: none; } }

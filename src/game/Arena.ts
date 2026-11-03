@@ -131,6 +131,8 @@ export class Arena {
   private bubbles = new Map<number, { text: string; at: number }>();
   /** 길게 누르는 중인 다른 원(정보 팝업, 4.11): 그 원 둘레에 링이 ms 동안 차오른다 */
   /** 서버가 알려 준 내 튕김(4.3): 전체 밀려날 거리와 남은 시간. 서버 Room.move와 같은 식으로 예측에 더한다 */
+  private dashLeft = 0; // 대시가 남은 시간(초)과 속도 배수(4.27). 서버가 대시를 시작했다고 알리면 예측도 같은 속도로 간다
+  private dashMult = 1;
   private knock: { dx: number; dy: number; total: number; left: number } | null = null;
   private ripples: Ripple[] = [];
   private orbs = new Map<number, Orb>();
@@ -191,6 +193,11 @@ export class Arena {
     this.predictUntil(performance.now());
     this.input = { dx, dy };
     if (dx || dy) this.target = null;
+  }
+  /** 대시가 시작됐다(서버 Room.dash가 알림, 4.27). */
+  startDash(ms: number, mult: number) {
+    this.predictUntil(performance.now());
+    this.dashLeft = ms / 1000; this.dashMult = mult;
   }
   /** 새 목표가 이전 목표와 방향키 입력을 모두 대신한다(서버 Room.setTarget과 같게). 서버로 보낼 때 부른다. */
   setTarget(x: number, y: number) {
@@ -422,7 +429,7 @@ export class Arena {
     const serverMoving = prev !== null && Math.hypot(e.x - prev.x, e.y - prev.y) > 0.5;
     this.serverMoving = serverMoving;
     const meMoving = this.isMeMoving();
-    const speed = this.tuning?.maxSpeed ?? 240;
+    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1);
     const tolerance = serverMoving || meMoving ? speed * (MOVING_TOLERANCE_SEC + this.rtt) : CORRECT_WHEN_STOPPED;
     if (err > SNAP_DISTANCE) {
       this.resetMe(e.e, e.x, e.y);
@@ -455,7 +462,8 @@ export class Arena {
 
   /** 서버 Room.move와 같은 규칙으로 내 위치를 미리 움직인다(속도·감속·가속이 같아야 보정이 생기지 않는다). */
   private predictMe(dt: number) {
-    const speed = this.tuning?.maxSpeed ?? 240; // 크기와 관계없이 같다
+    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1); // 크기와 관계없이 같다. 대시 중이면 배수
+    if (this.dashLeft > 0) this.dashLeft = Math.max(0, this.dashLeft - dt);
     let wantX = 0, wantY = 0;
     if (this.input.dx || this.input.dy) {
       const len = Math.hypot(this.input.dx, this.input.dy);

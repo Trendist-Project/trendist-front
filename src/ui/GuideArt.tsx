@@ -32,11 +32,11 @@ export function Controls() {
           <span className="key-row"><kbd>W</kbd></span>
           <span className="key-row"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
         </div>
-        <figcaption><strong>PC</strong><span className="muted small">방향키·WASD 또는 클릭</span></figcaption>
+        <figcaption><strong>PC</strong><span className="muted small">방향키·WASD 또는 클릭 · Space 대시</span></figcaption>
       </figure>
       <figure>
         <div className="joystick" aria-hidden="true"><span /></div>
-        <figcaption><strong>모바일</strong><span className="muted small">누른 채 끌어서 이동</span></figcaption>
+        <figcaption><strong>모바일</strong><span className="muted small">누른 채 끌어서 이동 · 다른 손가락 탭 대시</span></figcaption>
       </figure>
       <figure>
         <div className="keys" aria-hidden="true"><span className="key-row"><kbd>M</kbd><kbd>L</kbd><kbd>C</kbd></span></div>

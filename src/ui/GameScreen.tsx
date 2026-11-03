@@ -15,6 +15,7 @@ import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
 import { LevelText } from './LevelText';
+import { DashChip, type DashState } from './DashChip';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 
@@ -78,6 +79,7 @@ function saveChatView(v: ChatView) {
  * 터치 이동: 누른 지점으로 가고 누르고 있으면 계속 따라간다(마우스 클릭과 같다). 이 브라우저에 기억한다.
  */
 const TOUCH_CONTROL_KEY = 'trendist.touchControl';
+const DASH_HINT_KEY = 'trendist.dashHint'; // 대시 사용법 안내를 이미 보여 줬는지
 type TouchControl = 'joystick' | 'tap';
 function loadTouchControl(): TouchControl {
   try { return localStorage.getItem(TOUCH_CONTROL_KEY) === 'tap' ? 'tap' : 'joystick'; } catch { return 'joystick'; }
@@ -112,6 +114,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   emoteOpenRef.current = emoteOpen;
   const sendEmoteRef = useRef<(code: string) => void>(() => {});
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
+  const [dash, setDash] = useState<DashState | null>(null); // 대시 남은 시간·쿨타임(4.27)
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
@@ -290,12 +293,28 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           }
           case 'shield': arena.showShield(m.e, m.ms); break;
           case 'knock': arena.applyKnock(m.dx, m.dy, m.ms); break;
+          case 'dash': {
+            // 대시 시작(4.27): 예측을 같은 속도로 올리고 아래 표시줄에 남은 시간·쿨타임을 보여 준다
+            arena.startDash(m.ms, m.mult);
+            const t = performance.now();
+            setDash({ until: t + m.ms, readyAt: t + m.cooldownMs });
+            break;
+          }
         }
       },
     });
     connRef.current = conn;
     sendEmoteRef.current = (code: string) => { if (ready) conn.send({ type: 'emote', code }); };
+    // 대시(4.27): 쿨타임·움직이는 중인지는 서버가 보고, 시작하면 {type: 'dash'}로 알려 온다
+    const sendDash = () => { if (ready) conn.send({ type: 'dash' }); };
     conn.start();
+    // 터치 기기에는 대시 방법을 처음 한 번만 알려 준다(조이스틱을 쥔 채 다른 손가락 탭)
+    let dashHint: number | null = null;
+    try {
+      if (window.matchMedia('(pointer: coarse)').matches && !localStorage.getItem(DASH_HINT_KEY)) {
+        dashHint = window.setTimeout(() => { showToast('⚡ 조이스틱을 쥔 채 다른 손가락으로 화면을 탭하면 대시!'); try { localStorage.setItem(DASH_HINT_KEY, '1'); } catch { /* 저장 못 해도 된다 */ } }, 5000);
+      }
+    } catch { /* 저장소를 못 쓰면 안내만 건너뛴다 */ }
     // 서버 왕복 시간을 2초마다 잰다(내 원 보정 허용 오차에 쓴다)
     const pingTimer = window.setInterval(() => conn.send({ type: 'ping', t: performance.now() }), 2000);
     // 페이지를 떠날 때(구글 로그인으로 이동, 새로고침, 탭 닫기) 서버에 알려 바로 방에서 빠진다. 닫힘 신호가 늦거나 안 와도 유령으로 남지 않게
@@ -385,6 +404,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         setInspect(false);
         return;
       }
+      // 이미 한 손가락으로 조이스틱(또는 터치 이동)을 쥐고 있을 때 다른 손가락으로 화면 어디든 탭하면 대시(4.27). 오른손·왼손 어느 쪽이든 쓸 수 있다
+      if (e.pointerType === 'touch' && (joy || hold)) { sendDash(); return; }
       try { canvas.setPointerCapture(e.pointerId); } catch { /* 이미 뗐다 */ }
       if (e.pointerType === 'touch' && touchControlRef.current === 'joystick') {
         // 조이스틱: 누른 자리에 판이 생기고, 끌기 전까지는 움직이지 않는다. 두 번째 손가락은 무시한다
@@ -463,6 +484,11 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         setEmoteOpen(false);
         return;
       }
+      // 스페이스바: 대시(4.27). 쿨타임과 움직이는 중인지는 서버가 본다. 버튼에 포커스가 있어도 눌리지 않게 막는다
+      if (e.code === 'Space') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); if (!e.repeat) sendDash(); }
+        return;
+      }
       if (!(e.code in KEYS)) return;
       // Ctrl·Alt·Cmd와 함께 누른 키는 단축키다. 이때는 떼는 신호가 오지 않는 브라우저가 있어 이동으로 쓰지 않는다
       if (e.ctrlKey || e.metaKey || e.altKey) { releaseAll(); return; }
@@ -471,6 +497,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       pressed.add(e.code); sendDir();
     };
     const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !typing(e)) e.preventDefault(); // 포커스된 버튼이 스페이스로 눌리지 않게
       if (e.key === 'Meta' || e.key === 'Control' || e.key === 'Alt') { releaseAll(); return; }
       if (pressed.delete(e.code)) sendDir();
     };
@@ -499,6 +526,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       if (movePending !== null) clearTimeout(movePending);
       clearInterval(pingTimer);
       window.removeEventListener('pagehide', bye);
+      if (dashHint !== null) window.clearTimeout(dashHint);
       bye(); // 로그아웃 등으로 게임 화면을 나갈 때도
       conn.stop();
       arena.stop();
@@ -579,6 +607,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           <span><LevelText level={player.level} prefix="Lv." /></span>
           <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
           <span>유행도 {Number(player.currentScore).toLocaleString()}</span>
+          <DashChip dash={dash} />
           <span className="muted hud-extra">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
           <span className="muted hud-extra">키워드 {player.holdCount}개</span>
         </div>
@@ -666,6 +695,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                 <li><strong>모바일</strong> 누른 자리에 생기는 조이스틱을 끌어서 움직여요. 메뉴의 [이동 방식]에서 누른 곳으로 가는 터치 이동으로 바꿀 수 있어요.</li>
                 <li><strong>다른 사람 정보</strong> PC는 그 원을 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭해요. </li>
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
+                <li><strong>⚡ 대시</strong> PC는 스페이스바, 모바일은 조이스틱을 쥔 채 다른 손가락으로 화면을 탭하면 잠깐 빨라져요. 아래 ⚡에서 쿨타임을 볼 수 있어요.</li>
                 <li><strong>세이프존</strong> 파란 칸(가운데, 항상 있음)과 연두색 칸(5분 동안) 안에서는 부딪히지 않고 키워드도 잃지 않아요.</li>
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
