@@ -36,7 +36,7 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
           <li>🕹&nbsp; 모바일은 조이스틱, PC는 클릭·방향키로 이동</li>
           <li>⭕ 큰 원이 작은 원을 튕김</li>
           <li>💥 지면 키워드 1개를 잃고, 이기면 그 키워드를 뺏음</li>
-          <li>🔥 5콤보 불꽃 원에 닿으면 키워드 전부 잃음 (불꽃끼리는 점수 대결)</li>
+          <li>🔥 5콤보 불꽃에 닿으면 키워드 전부 잃음</li>
           <li>🛡&nbsp; 키워드 잃으면 3초 무적 · 세이프존 안은 안전</li>
         </ul>
         <button className="primary big" onClick={onStart} autoFocus>시작</button>
