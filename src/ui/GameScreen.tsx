@@ -104,7 +104,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
-  const [myCombo, setMyCombo] = useState<{ combo: number; orbits: number; orbitAt: number; key: number }>({ combo: 0, orbits: 0, orbitAt: 5, key: 0 }); // 4.25
+  const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number }>({ combo: 0, flameAt: 5, key: 0 }); // 4.25
   const [emoteOpen, setEmoteOpen] = useState(false); // 이모트 고르기(4.26)
   const sendEmoteRef = useRef<(code: string) => void>(() => {});
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
@@ -202,8 +202,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             conn.send({ type: 'ping', t: performance.now() });
             break;
           case 'tuning': arena.setTuning(m); break;
-          case 'titleGranted': showTitleAlert(m.name, m.description); break;
-          case 'roster': arena.setRoster(m.players); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
+          case 'titleGranted': showTitleAlert(m.titleId, m.name, m.description); break;
+          case 'roster': arena.setRoster(m.players, m.flameAt); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
           case 'score':
             setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));
             break;
@@ -238,17 +238,14 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           case 'kicked': conn.stop(); setKicked(m.message); break;
           case 'emote': arena.showEmote(m.e, m.code); break;
           case 'combo': {
-            // 연속 빼앗기 콤보와 궤도 위성(4.25)
-            arena.setCombo(m.e, m.combo, m.orbits);
+            // 연속 빼앗기 콤보와 불꽃(4.25). 콤보 수는 화면 위 카드로만 보이고, 원 위로 떠오르는 글자는 띄우지 않는다(점수 글자와 겹치지 않게)
+            arena.setCombo(m.e, m.combo, m.flameAt);
             const mine = m.e === myEntity;
-            if (mine) setMyCombo((c) => ({ combo: m.combo, orbits: m.orbits, orbitAt: m.orbitAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
-            if (m.event === 'up' && mine) arena.floatText(`⚔️ ${m.combo} Combo!`, '#ff9f43');
-            else if (m.event === 'start') showToast(mine ? `🛰 ${m.combo} Combo! 위성이 생기기 시작해요. 키워드를 잃으면 사라져요`
-              : `🛰 ${m.nickname} ${m.combo} Combo! 위성이 생겼어요`);
-            else if (m.event === 'orbit' && mine) arena.floatText(`🛰 +1`, '#ffd166');
+            if (mine) setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
+            if (m.event === 'start') { if (!mine) showToast(`🔥 ${m.nickname} ${m.combo} Combo! 불타오르고 있어요`); } // 내 불꽃은 원과 콤보 카드로 보이므로 안내를 띄우지 않는다
             else if (m.event === 'broken') {
-              if (mine) showToast(`💥 ${m.by ?? '누군가'}에게 져서 위성이 모두 깨졌어요`);
-              else if (m.byE === myEntity) showToast(`🎯 ${m.nickname}의 위성을 깨뜨렸어요!`);
+              if (mine) showToast(`💨 ${m.by ?? '누군가'}에게 져서 불꽃이 꺼졌어요`);
+              else if (m.byE === myEntity) showToast(`🎯 ${m.nickname}의 불꽃을 껐어요!`);
             }
             break;
           }
@@ -548,12 +545,6 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           </span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}
         </div>
-        {myCombo.combo >= 1 && (
-          <div key={myCombo.key} className={myCombo.orbits > 0 ? 'combo-hud orbiting' : 'combo-hud'} role="status" aria-live="polite">
-            <strong>⚔️ {myCombo.combo} Combo</strong>
-            {myCombo.orbits > 0 && <span>🛰 위성 {myCombo.orbits}개</span>}
-          </div>
-        )}
         <div className="emote-dock">
           {emoteOpen && (
             <div className="emote-palette" role="menu" aria-label="이모트">
@@ -642,6 +633,12 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             </nav>
           )}
           {showLeaderboard && <Leaderboard myPlayerId={player.id} />}
+          {/* 내 콤보(4.25): 위쪽 가운데는 구슬 결과와 겹쳐서 오른쪽 도구 줄, 리더보드 아래에 둔다 */}
+          {myCombo.combo >= 1 && (
+            <div key={myCombo.key} className={myCombo.combo >= myCombo.flameAt ? 'combo-hud on-fire' : 'combo-hud'} role="status" aria-live="polite">
+              <strong>{myCombo.combo >= myCombo.flameAt ? '🔥' : '⚔️'} {myCombo.combo} Combo</strong>
+            </div>
+          )}
           {showHelp && (
             <section id="controls-help" className="help-card" aria-label="조작 설명">
               <h3>이렇게 놀아요</h3>
@@ -654,8 +651,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
-                <li><strong>콤보</strong> 부딪혀 키워드를 연속으로 빼앗으면 Combo가 쌓이고, 5 Combo면 원 둘레에 위성이 생겨요. 한 번이라도 빼앗기면 사라져요.</li>
-                <li><strong>1~8 · 😀</strong> 이모트를 원 위에 띄워요.</li>
+                <li><strong>콤보</strong> 부딪혀 키워드를 연속으로 빼앗으면 Combo가 쌓이고, 5 Combo면 원 둘레가 불타올라요. 한 번이라도 빼앗기면 꺼져요.</li>
+                <li><strong>E · 😀</strong> 이모트 창을 열고 1~8로 골라 원 위에 띄워요.</li>
                 <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, C로 끄고 켤 수 있어요.</li>
               </ul>
               <div className="help-actions">

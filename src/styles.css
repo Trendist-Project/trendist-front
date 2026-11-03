@@ -733,17 +733,17 @@ button.link-back:hover { color: var(--text); }
 .kicked-box h2 { margin: 0; }
 
 /* 연속 빼앗기 콤보(4.25) */
-.combo-hud { position: absolute; left: 50%; top: 56px; transform: translateX(-50%); z-index: 4; pointer-events: none;
+.combo-hud { pointer-events: none; /* 오른쪽 도구 줄 안, 리더보드 아래(4.25) */
   display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 999px; background: rgba(20, 27, 38, 0.82);
   border: 1px solid #ff9f43; color: #ffd8a8; animation: combo-pop 0.35s ease-out; white-space: nowrap; }
 .combo-hud strong { font-size: 1.05rem; color: #ffb366; }
-.combo-hud.orbiting { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.25), 0 0 18px rgba(255, 209, 102, 0.35); }
-.combo-hud.orbiting strong { color: #ffd166; }
+.combo-hud.on-fire { border-color: #ff6a2b; box-shadow: 0 0 0 2px rgba(255, 106, 43, 0.25), 0 0 18px rgba(255, 106, 43, 0.45); }
+.combo-hud.on-fire strong { color: #ffd166; }
 .combo-dots { display: inline-flex; align-items: center; gap: 4px; }
 .combo-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
 .combo-dots i.on { background: #ff9f43; box-shadow: 0 0 6px #ff9f43; }
 .combo-dots em { font-style: normal; font-size: 0.8rem; margin-left: 4px; color: var(--muted); }
-@keyframes combo-pop { 0% { transform: translateX(-50%) scale(0.7); opacity: 0.2; } 60% { transform: translateX(-50%) scale(1.12); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
+@keyframes combo-pop { 0% { transform: scale(0.7); opacity: 0.2; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .combo-hud { animation: none; } }
 
 /* 이모트(4.26) */

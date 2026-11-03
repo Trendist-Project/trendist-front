@@ -59,17 +59,17 @@ export interface RosterEntry {
   title?: string | null; bg?: string; borderColor?: string | null; borderWidth?: number | null; trail?: string | null;
   /** 픽셀 그림 이미지 주소(4.9). 있으면 성장 캐릭터 대신 그린다 */
   art?: string | null;
-  /** 테두리 효과 코드, 이름표 글자색·모양(4.9), 연속 빼앗기 콤보와 위성 수(4.25) */
-  borderEffect?: string | null; nameColor?: string | null; nameStyle?: string | null; combo?: number; orbits?: number;
+  /** 테두리 효과 코드, 이름표 글자색·모양(4.9), 연속 빼앗기 콤보(4.25) */
+  borderEffect?: string | null; nameColor?: string | null; nameStyle?: string | null; combo?: number;
 }
 
 export type ServerMessage =
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
-  | { type: 'roster'; players: RosterEntry[] }
+  | { type: 'roster'; players: RosterEntry[]; flameAt?: number }
   | { type: 'emote'; e: number; code: string } // 이모트(4.26)
-  // 연속 빼앗기 콤보(4.25). event: up(+1) / start(위성 시작) / orbit(위성 +1) / reset(잃어서 콤보 끝) / broken(잃어서 위성까지 깨짐, by가 깬 사람)
-  | { type: 'combo'; e: number; nickname: string; combo: number; orbits: number; event: 'up' | 'start' | 'orbit' | 'reset' | 'broken'; orbitAt: number; by?: string; byE?: number }
+  // 연속 빼앗기 콤보(4.25). event: up(+1) / start(flameAt에 닿아 불꽃이 붙음) / reset(잃어서 콤보 끝) / broken(잃어서 불꽃까지 꺼짐, by가 끈 사람)
+  | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken'; flameAt: number; by?: string; byE?: number }
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; name: string; description: string } // 새 칭호를 받았다(4.10)
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }

@@ -1,7 +1,7 @@
 import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
 import { borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
 import { artImage, drawArt } from './pixelArt';
-import { drawBorderEffect, drawNameTag, drawOrbits, EMOTE_CHAR } from './skin';
+import { drawBorderEffect, drawComboFlames, drawNameTag, EMOTE_CHAR } from './skin';
 
 const EMOTE_MS = 2500;
 import { Trails } from './trails';
@@ -86,8 +86,12 @@ export class Arena {
   private entities = new Map<number, Interp>();
   private names = new Map<number, {
     nickname: string; level: number; bot: boolean; title: string | null; bg: string; borderColor: string | null; borderWidth: number | null;
-    trail: string | null; art: string | null; borderEffect: string | null; nameColor: string | null; nameStyle: string | null; combo: number; orbits: number;
+    trail: string | null; art: string | null; borderEffect: string | null; nameColor: string | null; nameStyle: string | null; combo: number;
   }>();
+  /** 이 콤보부터 원 둘레에 불꽃을 그린다(4.25, 서버 설정 combo_flame_at) */
+  private flameAt = 5;
+  /** 미니맵 한 변(px). 바뀌면 부모에 CSS 변수 --minimap-size로 알려 이모트·도구 창이 피해 간다 */
+  private minimapSize = 0;
   /** 이모트(4.26): 원 위에 2.5초 뜨는 이모지 */
   private emotes = new Map<number, { code: string; at: number }>();
   /** 엔티티마다 머리 방향(라디안, 0 = 위)과 지난 프레임 위치 */
@@ -162,12 +166,13 @@ export class Arena {
   }
   /** 입력·목표를 비운다. 연결이 끊기면 서버도 더 이상 움직이지 않으므로 예측도 멈춘다. */
   clearControl() { this.input = { dx: 0, dy: 0 }; this.target = null; }
-  setRoster(players: RosterEntry[]) {
+  setRoster(players: RosterEntry[], flameAt?: number) {
+    if (flameAt) this.flameAt = flameAt;
     this.names = new Map(players.map((p) => [p.e, {
       nickname: p.nickname, level: p.level, bot: !!p.bot, title: p.title ?? null,
       bg: p.bg ?? TURTLE_BASE, borderColor: p.borderColor ?? null, borderWidth: p.borderWidth ?? null, trail: p.trail ?? null,
       art: p.art ?? null, borderEffect: p.borderEffect ?? null, nameColor: p.nameColor ?? null, nameStyle: p.nameStyle ?? null,
-      combo: p.combo ?? 0, orbits: p.orbits ?? 0,
+      combo: p.combo ?? 0,
     }]));
     for (const p of players) if (p.art) artImage(p.art); // 그림을 미리 받아 둔다
   }
@@ -241,10 +246,11 @@ export class Arena {
   }
   setMinimapVisible(visible: boolean) { this.minimapVisible = visible; }
   /** 채팅을 끄면 말풍선도 그리지 않는다. */
-  /** 연속 빼앗기 콤보와 위성 수가 바뀌었다(4.25). */
-  setCombo(e: number, combo: number, orbits: number) {
+  /** 연속 빼앗기 콤보가 바뀌었다(4.25). */
+  setCombo(e: number, combo: number, flameAt: number) {
+    this.flameAt = flameAt;
     const n = this.names.get(e);
-    if (n) { n.combo = combo; n.orbits = orbits; }
+    if (n) n.combo = combo;
   }
   showEmote(e: number, code: string) { this.emotes.set(e, { code, at: performance.now() }); }
   setBubblesVisible(visible: boolean) { this.bubblesVisible = visible; if (!visible) this.bubbles.clear(); }
@@ -603,6 +609,9 @@ export class Arena {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath(); ctx.arc(e.x, e.y + e.r * 0.05 + 1 / this.zoom, e.r + 3 / this.zoom, 0, Math.PI * 2); ctx.fill();
     const look = this.names.get(e.e);
+    const t = performance.now() / 1000;
+    // 콤보 불꽃(4.25): 원보다 먼저 그려 둘레 바깥으로만 타오르게 한다
+    if (look && !look.bot && look.combo >= this.flameAt) drawComboFlames(ctx, e.x, e.y, e.r, t, 1 / this.zoom);
     // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(11레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
     ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
@@ -614,11 +623,9 @@ export class Arena {
     ctx.strokeStyle = look?.borderColor ?? '#11372a';
     ctx.lineWidth = borderLineWidth(e.r, look?.borderWidth ?? null);
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke();
-    const t = performance.now() / 1000;
     if (look && !look.bot) {
-      // 테두리 효과(4.9)와 궤도 위성(4.25)
+      // 테두리 효과(4.9)
       drawBorderEffect(ctx, look.borderEffect, e.x, e.y, e.r, look.bg, look.borderColor ?? '#ffffff', ctx.lineWidth as number, t, 1 / this.zoom);
-      drawOrbits(ctx, e.x, e.y, e.r, look.orbits, t, 1 / this.zoom);
     }
     if (e.me) {
       ctx.strokeStyle = '#ffffff';
@@ -628,23 +635,11 @@ export class Arena {
     const info = this.names.get(e.e);
     if (info) {
       const fs = Math.max(12 / this.zoom, Math.min(e.r * 0.45, 40));
-      const nameY = e.y + e.r + 4 / this.zoom + (info.orbits > 0 ? e.r * 0.35 + 10 / this.zoom : 0); // 위성 궤도 아래로
+      const nameY = e.y + e.r + 4 / this.zoom;
       // 닉네임은 항상 텍스트로만 그린다. 글자색·모양은 꾸미기(4.9)
       drawNameTag(ctx, info.nickname, e.x, nameY, fs, info.bot ? null : info.nameColor, info.bot ? null : info.nameStyle,
         info.borderColor ?? '#11372a');
-      let lineY = nameY + fs * 1.15;
-      if (info.combo >= 2) {
-        // 연속 빼앗기 콤보(4.25)
-        const cs = fs * 0.72;
-        ctx.font = `800 ${cs}px "Noto Sans KR", system-ui, sans-serif`;
-        ctx.lineWidth = cs / 5;
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillStyle = info.orbits > 0 ? '#ffd166' : '#ff9f43';
-        const ct = `⚔️ ${info.combo} Combo`;
-        ctx.strokeText(ct, e.x, lineY);
-        ctx.fillText(ct, e.x, lineY);
-        lineY += cs * 1.15;
-      }
+      const lineY = nameY + fs * 1.15;
       if (info.title) {
         // 활성 칭호는 닉네임 바로 아래 작은 글씨(4.10)
         const ts = fs * 0.72;

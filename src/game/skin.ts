@@ -1,5 +1,5 @@
 /**
- * 원 꾸미기 그리기(4.9, 4.25, 4.26): 테두리 효과, 이름표, 궤도 위성, 이모트.
+ * 원 꾸미기 그리기(4.9, 4.25, 4.26): 테두리 효과, 이름표, 콤보 불꽃, 이모트.
  * 아레나·꾸미기 미리 보기가 같은 함수를 쓴다. t는 초 단위 시각(performance.now() / 1000).
  */
 
@@ -123,31 +123,42 @@ export function drawNameTag(ctx: CanvasRenderingContext2D, label: string, x: num
 }
 
 /**
- * 궤도 위성(4.25): 연속 빼앗기로 얻은 위성이 원 둘레를 돈다. n개가 같은 간격으로 늘어서고, 꼬리 빛을 남긴다.
+ * 콤보 불꽃(4.25): 연속으로 빼앗아 기준 콤보에 닿은 원은 둘레가 불꽃 혀로 빈틈없이 둘러싸여 천천히 돌며 일렁인다.
+ * 원(바탕)보다 먼저 그려 둘레 바깥으로만 보이게 한다. 바깥 주황 → 가운데 노랑 순서로 세 겹을 칠한다(한 겹에 경로 하나).
  * minPx는 화면에서 최소 크기(월드 단위).
  */
-export function drawOrbits(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, n: number, t: number, minPx = 1) {
-  if (n <= 0) return;
-  const orbit = r * 1.35 + minPx * 10;
-  const size = Math.max(r * 0.09, minPx * 4);
-  const speed = 1.6 * (60 / Math.max(60, r)) ** 0.4; // 큰 원은 조금 느리게 돌아야 자연스럽다
+export function drawComboFlames(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, minPx = 1) {
+  const len = Math.max(r * 0.5, minPx * 14); // 불꽃 길이
+  const n = Math.max(12, Math.min(36, Math.round((Math.PI * 2 * r) / Math.max(r * 0.3, minPx * 8))));
+  const spin = t * 0.5;
+  const da = (Math.PI / n) * 1.35; // 이웃 불꽃과 겹쳐 빈틈이 없게
+  const P = (a: number, d: number): [number, number] => [x + Math.cos(a) * d, y + Math.sin(a) * d];
   ctx.save();
-  // 궤도 선
-  ctx.strokeStyle = 'rgba(255,215,120,0.18)';
-  ctx.lineWidth = Math.max(1, minPx);
-  ctx.beginPath(); ctx.ellipse(x, y, orbit, orbit, 0, 0, Math.PI * 2); ctx.stroke();
-  for (let i = 0; i < n; i++) {
-    const a = t * speed + (i / n) * Math.PI * 2;
-    for (let k = 4; k >= 1; k--) { // 꼬리
-      const ta = a - k * 0.09;
-      ctx.fillStyle = `rgba(255,209,102,${0.12 * (5 - k) / 4})`;
-      ctx.beginPath(); ctx.arc(x + Math.cos(ta) * orbit, y + Math.sin(ta) * orbit, size * (1 - k * 0.12), 0, Math.PI * 2); ctx.fill();
+  // 둘레의 은은한 열기
+  const glow = ctx.createRadialGradient(x, y, r * 0.9, x, y, r + len * 1.1);
+  glow.addColorStop(0, 'rgba(255,120,30,0.45)'); glow.addColorStop(1, 'rgba(255,60,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(x, y, r + len * 1.1, 0, Math.PI * 2); ctx.fill();
+  const layers: [number, number, string][] = [[1, 1, '#ff4d1a'], [0.7, 0.7, '#ff9f1c'], [0.4, 0.45, '#ffe066']]; // 길이, 폭, 색
+  for (const [ls, ws, color] of layers) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = spin + (i / n) * Math.PI * 2;
+      const base = 0.85 + 0.3 * Math.sin(i * 2.399) ** 2; // 불꽃마다 길이가 조금씩 달라 톱니처럼 보이지 않게
+      const f = base * (0.7 + 0.22 * Math.sin(t * 8 + i * 1.7) + 0.08 * Math.sin(t * 13.3 + i * 2.9)); // 일렁임
+      const tipD = r + len * f * ls;
+      const w = da * ws;
+      const bend = w * 0.35 * Math.sin(t * 5 + i); // 끝이 살짝 흔들린다
+      const [lx, ly] = P(a - w, r * 0.92), [rx, ry] = P(a + w, r * 0.92);
+      const [tx, ty] = P(a + bend, tipD);
+      const [c1x, c1y] = P(a - w * 0.9, r + (tipD - r) * 0.45), [c2x, c2y] = P(a + w * 0.9, r + (tipD - r) * 0.45);
+      ctx.moveTo(lx, ly);
+      ctx.quadraticCurveTo(c1x, c1y, tx, ty);
+      ctx.quadraticCurveTo(c2x, c2y, rx, ry);
+      ctx.closePath();
     }
-    const sx = x + Math.cos(a) * orbit, sy = y + Math.sin(a) * orbit;
-    const g = ctx.createRadialGradient(sx - size * 0.3, sy - size * 0.3, size * 0.1, sx, sy, size);
-    g.addColorStop(0, '#fffbe6'); g.addColorStop(0.5, '#ffd166'); g.addColorStop(1, '#ff9f1c');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(sx, sy, size, 0, Math.PI * 2); ctx.fill();
+    ctx.fill();
   }
   ctx.restore();
 }
