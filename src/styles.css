@@ -297,7 +297,7 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .mine-chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1.2rem; }
 
 /* ---------------------------------------------------------------- 채팅(4.13): 아레나 왼쪽 아래, 내 정보 줄 위 */
-.chat { position: absolute; left: 12px; bottom: 56px; width: min(360px, calc(100% - 24px)); display: grid; grid-template-rows: 1fr auto;
+.chat { position: absolute; left: 12px; bottom: 68px; /* 아래 내 정보 줄(높이 약 44px, 레벨 아이콘 때문) 위로 12px 띄운다 */ width: min(360px, calc(100% - 24px)); display: grid; grid-template-rows: 1fr auto;
   height: 220px; background: rgba(11,15,23,0.72); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .chat-log { list-style: none; margin: 0; padding: 6px 10px; overflow-y: auto; display: grid; gap: 3px; align-content: start; font-size: 0.85rem; }
 .chat-log li { overflow-wrap: anywhere; line-height: 1.4; position: relative; padding-right: 34px; border-radius: 6px; }
@@ -378,7 +378,7 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .hud-extra { display: none; }
 
   /* 채팅: 미니맵(오른쪽 아래)을 피해 왼쪽 아래 좁게 */
-  .chat { left: 8px; bottom: 44px; width: min(280px, calc(100% - 140px)); height: 130px; }
+  .chat { left: 8px; bottom: 58px; /* 내 정보 줄(약 42px) 위로 8px */ width: min(280px, calc(100% - 140px)); height: 130px; }
   .chat.collapsed { height: auto; }
   .chat-log { font-size: 0.8rem; }
 
