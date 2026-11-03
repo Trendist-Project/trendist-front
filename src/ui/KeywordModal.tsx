@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { Activity, ActivityRange, KeywordCard, PlayerSummary } from '../api/types';
 import { ActivityChart } from './ActivityChart';
+import { GeminiIcon } from './GeminiIcon';
 import { Comments } from './Comments';
 import { remaining, STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
@@ -94,7 +95,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
         {card.aiComment && (
           <section className="kw-ai" aria-label="AI 한 줄 설명">
             <div className="kw-ai-head">
-              <span className="kw-ai-label">🤖 AI 한 줄 설명</span>
+              <span className="kw-ai-label"><GeminiIcon /> AI 한 줄 설명</span>
               <button type="button" className="kw-ai-report" disabled={aiBusy || card.aiCommentRequested} onClick={requestAi}
                       title="설명이 이상하면 관리자에게 갱신을 요청해요">
                 {card.aiCommentRequested ? '갱신 요청함' : '설명이 이상해요'}
