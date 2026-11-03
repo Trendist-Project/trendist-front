@@ -14,7 +14,8 @@ export class GameConnection {
   private stopped = false;
   private retry = 0;
 
-  constructor(private handlers: ConnectionHandlers) {}
+  /** spectate가 있으면 플레이어로 들어가는 대신 관전자로 들어간다(관리자만, 13.13). country는 방(나라) 코드 */
+  constructor(private handlers: ConnectionHandlers, private spectate?: { country: string }) {}
 
   start() {
     this.stopped = false;
@@ -41,7 +42,7 @@ export class GameConnection {
     this.ws = ws;
     ws.onopen = () => {
       this.retry = 0;
-      ws.send(JSON.stringify({ type: 'auth', token: getToken() }));
+      ws.send(JSON.stringify(this.spectate ? { type: 'spectate', token: getToken(), country: this.spectate.country } : { type: 'auth', token: getToken() }));
       this.handlers.onStatus('open');
     };
     ws.onmessage = (ev) => {

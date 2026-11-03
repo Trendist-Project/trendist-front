@@ -112,6 +112,13 @@ export class Arena {
   private input = { dx: 0, dy: 0 };
   private target: { x: number; y: number } | null = null;
   private zoom = 1;
+  /**
+   * 관전 모드(13.13, 관리자 모니터링): 내 원이 없고 카메라를 직접 움직인다. x·y는 카메라 중심, zoom은 확대 배율,
+   * follow는 따라가는 원의 번호, fit이 true면 아레나 전체가 한눈에 들어오게 맞춘다.
+   */
+  private spec: { x: number; y: number; zoom: number; follow: number | null; fit: boolean } | null = null;
+  /** 마지막으로 그린 미니맵 자리(클릭하면 카메라가 그리로 간다) */
+  private minimapRect: { x0: number; y0: number; size: number } | null = null;
   private raf = 0;
   private last = performance.now();
   /** 내 위치 예측이 계산된 시각(ms). 조작이 바뀌는 순간까지 먼저 움직여 두고 바꿔서, 프레임 경계로 반올림되지 않게 한다. */
@@ -255,6 +262,87 @@ export class Arena {
   showEmote(e: number, code: string) { this.emotes.set(e, { code, at: performance.now() }); }
   setBubblesVisible(visible: boolean) { this.bubblesVisible = visible; if (!visible) this.bubbles.clear(); }
   /** ping 왕복 시간(ms)을 반영한다. 튀는 값에 흔들리지 않게 조금씩 따라간다. */
+  // ------------------------------------------------------------ 관전(13.13)
+
+  enableSpectator() { this.spec = { x: 0, y: 0, zoom: 0.05, follow: null, fit: true }; }
+
+  /** 아레나 전체가 화면에 들어오는 배율 */
+  private fitZoom() {
+    const w = this.canvas.clientWidth || 1, h = this.canvas.clientHeight || 1;
+    return (Math.min(w, h) / (this.half * 2)) * 0.96;
+  }
+
+  private specZoomLimits() { const f = this.fitZoom(); return { min: f * 0.7, max: 3 }; }
+
+  /** 아레나 전체 보기 */
+  spectatorFit() { if (this.spec) { this.spec.fit = true; this.spec.follow = null; } }
+
+  /** 한 원을 따라간다(null이면 해제). 따라가면 확대는 그대로 두고 중심만 그 원으로 옮긴다 */
+  spectatorFollow(e: number | null) { if (this.spec) { this.spec.follow = e; if (e !== null) this.spec.fit = false; } }
+
+  /** 화면에서 손가락·마우스로 끈 만큼(px) 카메라를 옮긴다 */
+  spectatorPan(dxPx: number, dyPx: number) {
+    const sp = this.spec;
+    if (!sp) return;
+    sp.fit = false; sp.follow = null;
+    sp.x = Math.max(-this.half, Math.min(this.half, sp.x - dxPx / this.zoom));
+    sp.y = Math.max(-this.half, Math.min(this.half, sp.y - dyPx / this.zoom));
+  }
+
+  /** 배율을 factor배로 바꾼다. 화면 좌표(clientX, clientY) 아래의 월드 점이 그대로 그 자리에 있게 한다(없으면 화면 가운데) */
+  spectatorZoomBy(factor: number, clientX?: number, clientY?: number) {
+    const sp = this.spec;
+    if (!sp) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const px = clientX ?? rect.left + rect.width / 2, py = clientY ?? rect.top + rect.height / 2;
+    const anchor = this.screenToWorld(px, py);
+    const { min, max } = this.specZoomLimits();
+    const z = Math.max(min, Math.min(max, this.zoom * factor));
+    sp.fit = false;
+    sp.zoom = z; this.zoom = z;
+    if (sp.follow !== null) return; // 따라가는 중에는 그 원이 중심이다
+    sp.x = anchor.x - (px - rect.left - rect.width / 2) / z;
+    sp.y = anchor.y - (py - rect.top - rect.height / 2) / z;
+    this.view = { x: sp.x, y: sp.y };
+  }
+
+  /** 정확한 배율로 바꾼다(1 = 실제 크기). 화면 가운데 기준 */
+  spectatorSetZoom(z: number) { this.spectatorZoomBy(z / this.zoom); }
+
+  /** 미니맵 위를 눌렀으면 카메라를 그 자리로 옮기고 true */
+  spectatorJumpFromMinimap(clientX: number, clientY: number): boolean {
+    const sp = this.spec, r = this.minimapRect;
+    if (!sp || !r) return false;
+    const rect = this.canvas.getBoundingClientRect();
+    const x = clientX - rect.left, y = clientY - rect.top;
+    if (x < r.x0 || y < r.y0 || x > r.x0 + r.size || y > r.y0 + r.size) return false;
+    sp.fit = false; sp.follow = null;
+    sp.x = ((x - r.x0) / r.size) * this.half * 2 - this.half;
+    sp.y = ((y - r.y0) / r.size) * this.half * 2 - this.half;
+    return true;
+  }
+
+  spectatorState() { return { zoom: this.zoom, follow: this.spec?.follow ?? null, fit: this.spec?.fit ?? false, half: this.half }; }
+
+  /** 방에 있는 모든 원(점수 높은 순). 관전 화면의 목록에 쓴다 */
+  spectatorList() {
+    const out: { e: number; nickname: string; level: number; bot: boolean; score: number; r: number; combo: number; title: string | null }[] = [];
+    for (const [e, i] of this.entities) {
+      const n = this.names.get(e);
+      out.push({ e, nickname: n?.nickname ?? `#${e}`, level: n?.level ?? i.cur.level, bot: !!n?.bot, score: Math.round(i.cur.score),
+        r: Math.round(i.cur.r), combo: n?.combo ?? 0, title: n?.title ?? null });
+    }
+    return out.sort((a, b) => b.score - a.score);
+  }
+
+  /** 한 원의 지금 위치(카메라를 옮길 때) */
+  spectatorPosition(e: number) {
+    const i = this.entities.get(e);
+    if (!i) return null;
+    const c = this.current(i, performance.now());
+    return { x: c.x, y: c.y };
+  }
+
   updateRtt(ms: number) {
     if (!Number.isFinite(ms) || ms < 0 || ms > 5000) return;
     this.rtt += (ms / 1000 - this.rtt) * 0.2;
@@ -414,9 +502,9 @@ export class Arena {
     const dt = Math.min(0.1, (rafTime - this.last) / 1000);
     this.last = rafTime;
     const now = rafTime;
-    this.predictUntil(performance.now()); // 조작 시각과 같은 시계로 잰다
+    if (!this.spec) this.predictUntil(performance.now()); // 조작 시각과 같은 시계로 잰다
     // 보정 오프셋은 움직이는 동안(또는 크게 어긋났을 때)만 줄인다. 멈춘 상태에서 작은 보정이 눈에 보이지 않게 하려는 것이다
-    if (this.isMeMoving() || this.serverMoving || Math.hypot(this.offset.x, this.offset.y) > HIDDEN_OFFSET_LIMIT) {
+    if (!this.spec && this.isMeMoving() || this.serverMoving || Math.hypot(this.offset.x, this.offset.y) > HIDDEN_OFFSET_LIMIT) {
       const decay = Math.exp(-dt / SMOOTH_TAU);
       this.offset.x *= decay; this.offset.y *= decay;
     }
@@ -437,10 +525,11 @@ export class Arena {
     // 작은 화면(모바일)은 짧은 변 비율만큼 더 줌아웃하고, 내 원이 짧은 변의 25%를 넘지 않게 한다
     const minR = this.tuning?.minRadius ?? 16;
     const short = Math.min(w, h);
+    if (this.spec) this.updateSpectatorCamera(dt);
     const viewScale = Math.max(VIEW_MIN_SCALE, Math.min(1, short / VIEW_REF_SHORT));
     const radiusZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 170));
     const targetZoom = Math.min(radiusZoom * viewScale, (short * ME_MAX_SHARE) / (2 * Math.max(this.me.r, 1)));
-    this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * 6);
+    if (!this.spec) this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * 6);
 
     // 아레나 바깥은 어둡게
     ctx.fillStyle = '#0b0f17';
@@ -466,6 +555,7 @@ export class Arena {
     const list = [...this.entities.values()].map((i) => {
       const s = this.current(i, now);
       const r = s.r * this.gulpScale(s.e, now);
+      if (this.spec) return { ...s, r: Math.max(r, 3 / this.zoom) }; // 멀리서 봐도 점이 보이게
       return s.me ? { ...s, x: this.view.x, y: this.view.y, r } : { ...s, r };
     }).sort((a, b) => b.r - a.r);
     const viewHalfW = w / 2 / this.zoom, viewHalfH = h / 2 / this.zoom;
@@ -487,8 +577,23 @@ export class Arena {
     this.drawEmotes(ctx, now);
     this.drawShields(ctx, now);
     ctx.restore();
-    this.drawFloatTexts(ctx, w, h, now);
-    if (this.minimapVisible && this.me.initialized) this.drawMinimap(ctx, w, h);
+    if (!this.spec) this.drawFloatTexts(ctx, w, h, now);
+    if (this.minimapVisible && (this.me.initialized || this.spec)) this.drawMinimap(ctx, w, h);
+  }
+
+  /** 관전 카메라: 전체 보기면 아레나 전체, 따라가기면 그 원, 아니면 사용자가 둔 자리. 배율은 바로 적용한다(손에 붙는 확대) */
+  private updateSpectatorCamera(dt: number) {
+    const sp = this.spec;
+    if (!sp) return;
+    const { min, max } = this.specZoomLimits();
+    if (sp.fit) { sp.x = 0; sp.y = 0; sp.zoom = this.fitZoom(); }
+    if (sp.follow !== null) {
+      const p = this.spectatorPosition(sp.follow);
+      if (p) { const k = Math.min(1, dt * 8); sp.x += (p.x - sp.x) * k; sp.y += (p.y - sp.y) * k; } else sp.follow = null; // 나갔으면 해제
+    }
+    sp.zoom = Math.max(min, Math.min(max, sp.zoom));
+    this.zoom = sp.zoom;
+    this.view = { x: sp.x, y: sp.y };
   }
 
   /** 미니맵(4.2): 활동 영역 전체에 큰 아이콘 상위 20명, 내 위치, 지금 화면에 보이는 범위를 그린다. */
@@ -499,6 +604,7 @@ export class Arena {
       this.canvas.parentElement?.style.setProperty('--minimap-size', `${size}px`);
     }
     const x0 = w - size - MINIMAP_MARGIN, y0 = h - size - MINIMAP_MARGIN;
+    this.minimapRect = { x0, y0, size };
     const s = size / (this.half * 2);
     const toX = (wx: number) => x0 + (wx + this.half) * s;
     const toY = (wy: number) => y0 + (wy + this.half) * s;
@@ -540,11 +646,13 @@ export class Arena {
       ctx.fillStyle = this.names.get(m.e)?.bot ? 'rgba(217,83,79,0.85)' : 'rgba(200,215,235,0.75)'; // 봇은 빨간 점
       ctx.beginPath(); ctx.arc(toX(p.x), toY(p.y), Math.max(2, p.r * s), 0, Math.PI * 2); ctx.fill();
     }
-    ctx.fillStyle = '#3fb68b';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(toX(this.view.x), toY(this.view.y), Math.max(3, this.me.r * s), 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
+    if (!this.spec) {
+      ctx.fillStyle = '#3fb68b';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(toX(this.view.x), toY(this.view.y), Math.max(3, this.me.r * s), 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -631,13 +739,15 @@ export class Arena {
       // 테두리 효과(4.9)
       drawBorderEffect(ctx, look.borderEffect, e.x, e.y, e.r, look.bg, look.borderColor ?? '#ffffff', ctx.lineWidth as number, t, 1 / this.zoom);
     }
-    if (e.me) {
+    if (e.me || (this.spec && this.spec.follow === e.e)) {
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = Math.max(2, 3 / this.zoom);
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4 / this.zoom, 0, Math.PI * 2); ctx.stroke();
     }
     const info = this.names.get(e.e);
-    if (info) {
+    // 관전 중 멀리서는 이름이 겹쳐 지저분하니 화면에서 반지름 7px 이상이거나 따라가는 원만 보인다
+    const showName = !this.spec || e.r * this.zoom >= 7 || this.spec.follow === e.e;
+    if (info && showName) {
       const fs = Math.max(12 / this.zoom, Math.min(e.r * 0.45, 40));
       const nameY = e.y + e.r + 4 / this.zoom;
       // 닉네임은 항상 텍스트로만 그린다. 글자색·모양은 꾸미기(4.9)

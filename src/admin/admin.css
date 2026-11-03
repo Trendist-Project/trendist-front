@@ -401,3 +401,43 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .share-table td { vertical-align: middle; }
 .admin { grid-template-columns: minmax(0, 1fr); } .admin-panel { min-width: 0; }
 @media (max-width: 760px) { .rate-bar { display: none; } .share-table td, .share-table th { padding: 10px; } }
+
+/* ------------------------------------------------------------------ 아레나 관전(13.13) */
+.mon-status { flex: none; font-size: 0.82rem; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
+.mon-status.open { color: #9fe0c3; border-color: rgba(63,182,139,0.55); }
+.mon-status.closed { color: #ffd48a; border-color: rgba(255,176,32,0.5); }
+.mon-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+.mon-stage { position: relative; height: clamp(380px, 74vh, 820px); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #0b0f17; }
+.mon-canvas { cursor: grab; }
+.mon-canvas:active { cursor: grabbing; }
+.mon-tools { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: calc(100% - 20px); }
+.mon-tools button { background: rgba(11,15,23,0.78); padding: 6px 12px; font-size: 0.85rem; min-width: 36px; backdrop-filter: blur(2px); }
+.mon-tools button.on { border-color: var(--accent); color: var(--accent); }
+.mon-zoom { min-width: 52px; text-align: center; font-size: 0.82rem; font-variant-numeric: tabular-nums; padding: 6px 8px; border-radius: 10px; background: rgba(11,15,23,0.78); border: 1px solid var(--line); }
+.mon-hint { position: absolute; left: 10px; bottom: 10px; margin: 0; padding: 4px 10px; border-radius: 999px; background: rgba(11,15,23,0.72); font-size: 0.74rem; color: rgba(200,215,235,0.85); pointer-events: none; max-width: calc(100% - 220px); }
+.mon-side { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.mon-counts { display: flex; gap: 14px; align-items: baseline; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); font-size: 0.85rem; color: var(--muted); }
+.mon-counts b { font-size: 1.25rem; color: var(--text); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.mon-follow { display: grid; gap: 2px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 12px; background: rgba(63,182,139,0.08); }
+.mon-follow span { font-size: 0.8rem; color: #b8c4d4; }
+.mon-search { display: flex; gap: 8px; align-items: center; }
+.mon-search input[type="text"], .mon-search input:not([type]) { flex: 1; min-width: 0; }
+.mon-check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.mon-list { list-style: none; margin: 0; padding: 4px; max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.mon-list button { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; text-align: left; font-size: 0.85rem; }
+.mon-list button:hover { background: rgba(255,255,255,0.05); }
+.mon-list button.on { background: rgba(63,182,139,0.18); }
+.mon-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon-lv { font-size: 0.76rem; color: var(--muted); }
+.mon-score { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; color: #9fe0c3; }
+.mon-empty { padding: 14px 10px; text-align: center; font-size: 0.85rem; color: var(--muted); }
+.mon-chat-title { margin: 4px 0 0; font-size: 0.9rem; color: var(--muted); }
+.mon-chat { list-style: none; margin: 0; padding: 8px 10px; max-height: 200px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: grid; gap: 4px; font-size: 0.83rem; line-height: 1.4; overflow-wrap: anywhere; }
+.mon-chat time { color: var(--muted); font-size: 0.72rem; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.mon-chat b { color: #9fe0c3; font-weight: 600; }
+@media (max-width: 960px) {
+  .mon-layout { grid-template-columns: minmax(0, 1fr); }
+  .mon-stage { height: clamp(320px, 60vh, 560px); }
+  .mon-hint { max-width: calc(100% - 20px); bottom: 6px; font-size: 0.7rem; }
+  .mon-list { max-height: 240px; }
+}

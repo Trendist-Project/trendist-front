@@ -64,6 +64,7 @@ export interface RosterEntry {
 }
 
 export type ServerMessage =
+  | { type: 'spectating'; country: string; spectators: number } // 관전 접속이 받아들여짐(관리자 관전, 13.13)
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
   | { type: 'roster'; players: RosterEntry[]; flameAt?: number }

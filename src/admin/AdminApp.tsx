@@ -8,6 +8,7 @@ import { RichText } from '../ui/RichText';
 import { GuidesTab } from './GuidesTab';
 import { DashboardTab } from './DashboardTab';
 import { StatsTab } from './StatsTab';
+import { SpectateTab } from './SpectateTab';
 import { AiCommentsTab } from './AiCommentsTab';
 import { UsersTab } from './UsersTab';
 import { MarkupEditor } from './MarkupEditor';
@@ -18,8 +19,8 @@ import { errMsg, fmt } from './format';
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
-type Tab = 'dashboard' | 'stats' | 'users' | 'keywords' | 'ai' | 'add' | 'reports' | 'notices' | 'guides' | 'share' | 'settings';
-const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['users', '사용자'], ['keywords', '키워드'], ['ai', 'AI 설명'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
+type Tab = 'dashboard' | 'stats' | 'spectate' | 'users' | 'keywords' | 'ai' | 'add' | 'reports' | 'notices' | 'guides' | 'share' | 'settings';
+const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['spectate', '관전'], ['users', '사용자'], ['keywords', '키워드'], ['ai', 'AI 설명'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
 
 
 export function AdminApp() {
@@ -64,6 +65,7 @@ export function AdminApp() {
       </header>
       {tab === 'dashboard' && <DashboardTab onGo={go} />}
       {tab === 'stats' && <StatsTab />}
+      {tab === 'spectate' && <SpectateTab />}
       {tab === 'users' && <UsersTab key={jump.key} initialUserId={jump.userId} initialFilter={jump.filter} />}
       {tab === 'keywords' && <KeywordsTab />}
       {tab === 'ai' && <AiCommentsTab />}
