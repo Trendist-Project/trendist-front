@@ -9,6 +9,7 @@
 export const TRAIL_CODES = [
   'afterimage', 'sparkle', 'flame', 'bubble', 'rainbow', 'footprint', 'petal',
   'heart', 'note', 'bolt', 'smoke', 'snow',
+  'pawprint', 'birdprint', 'bearprint', 'rabbitprint',
 ] as const;
 export type TrailCode = (typeof TRAIL_CODES)[number];
 
@@ -56,6 +57,10 @@ const SPEC: Record<TrailCode, { gap: number; minGap: number; life: number; rate:
   bolt: { gap: 0.25, minGap: 9, life: 260, rate: 18 },
   smoke: { gap: 0.3, minGap: 9, life: 1300, rate: 16 },
   snow: { gap: 0.4, minGap: 12, life: 1600, rate: 10 },
+  pawprint: { gap: 0.6, minGap: 14, life: 1700, rate: 2.5 }, // 동물 발자국은 거북이 발자국과 같은 간격
+  birdprint: { gap: 0.6, minGap: 14, life: 1700, rate: 2.5 },
+  bearprint: { gap: 0.6, minGap: 14, life: 1700, rate: 2.5 },
+  rabbitprint: { gap: 0.6, minGap: 14, life: 1700, rate: 2.5 },
 };
 
 export function isTrailCode(code: string | null | undefined): code is TrailCode {
@@ -145,7 +150,7 @@ export class Trails {
           size: s * rnd(0.1, 0.22), born: now, life: life * rnd(0.75, 1.15), rot: rnd(0, Math.PI * 2), vr: rnd(2, 4), hue: 0 };
         break;
       }
-      case 'footprint': {
+      case 'footprint': case 'pawprint': case 'birdprint': case 'bearprint': case 'rabbitprint': {
         t.step ^= 1;
         const side = (t.step ? 1 : -1) * r * 0.32;
         p = { x: x - ux * (tail + s * 0.2) + px * side, y: y - uy * (tail + s * 0.2) + py * side, vx: 0, vy: 0,
@@ -254,6 +259,18 @@ function heartPath(ctx: CanvasRenderingContext2D, s: number) {
   ctx.closePath();
 }
 
+/** 발자국류 공통: 입자마다 찍힌 자리에서 가는 방향으로 돌려 모양(shape)을 칠하고, 찍힌 직후 나타났다 옅어진다 */
+function drawSteps(ctx: CanvasRenderingContext2D, t: Track, now: number, shape: (ctx: CanvasRenderingContext2D, s: number) => void) {
+  ctx.fillStyle = 'rgba(10,20,15,0.55)';
+  for (const p of t.parts) {
+    const a = age(p.born, now, p.life);
+    ctx.globalAlpha = a < 0.1 ? a / 0.1 : 1 - (a - 0.1) / 0.9;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    shape(ctx, p.size);
+    ctx.restore();
+  }
+}
+
 const DRAW: Record<TrailCode, Drawer> = {
   /** 지나온 자리에 원 모양 그림자가 흐려지며 작아진다. 생길 때는 옅게 시작해 툭 나타나지 않는다 */
   afterimage(ctx, t, now) {
@@ -333,18 +350,35 @@ const DRAW: Record<TrailCode, Drawer> = {
     }
   },
   /** 좌우로 번갈아 찍히는 작은 발자국(발바닥 + 발가락 셋) */
-  footprint(ctx, t, now) {
-    ctx.fillStyle = 'rgba(10,20,15,0.55)';
-    for (const p of t.parts) {
-      const a = age(p.born, now, p.life);
-      ctx.globalAlpha = a < 0.1 ? a / 0.1 : 1 - (a - 0.1) / 0.9;
-      const s = p.size;
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-      ctx.beginPath(); ctx.ellipse(0, 0, s * 0.7, s, 0, 0, Math.PI * 2); ctx.fill();
-      for (const tx of [-0.55, 0, 0.55]) { ctx.beginPath(); ctx.arc(tx * s, -s * 1.35, s * 0.28, 0, Math.PI * 2); ctx.fill(); }
-      ctx.restore();
-    }
-  },
+  footprint(ctx, t, now) { drawSteps(ctx, t, now, (c, s) => {
+    c.beginPath(); c.ellipse(0, 0, s * 0.7, s, 0, 0, Math.PI * 2); c.fill();
+    for (const tx of [-0.55, 0, 0.55]) { c.beginPath(); c.arc(tx * s, -s * 1.35, s * 0.28, 0, Math.PI * 2); c.fill(); }
+  }); },
+  /** 고양이·강아지 발바닥: 둥근 큰 바닥 + 발가락 넷 */
+  pawprint(ctx, t, now) { drawSteps(ctx, t, now, (c, s) => {
+    c.beginPath(); c.ellipse(0, s * 0.3, s * 0.85, s * 0.68, 0, 0, Math.PI * 2); c.fill();
+    for (const [tx, ty] of [[-1.05, -0.5], [-0.4, -1.1], [0.4, -1.1], [1.05, -0.5]]) { c.beginPath(); c.ellipse(tx * s, ty * s, s * 0.27, s * 0.34, 0, 0, Math.PI * 2); c.fill(); }
+  }); },
+  /** 새 발자국: 앞으로 뻗은 발가락 셋과 뒤로 난 발가락 하나(Y자) */
+  birdprint(ctx, t, now) { drawSteps(ctx, t, now, (c, s) => {
+    c.strokeStyle = c.fillStyle; c.lineWidth = s * 0.3; c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0, s * 0.2); c.lineTo(0, -s * 1.6);
+    c.moveTo(0, s * 0.2); c.lineTo(-s * 1.15, -s * 1.1);
+    c.moveTo(0, s * 0.2); c.lineTo(s * 1.15, -s * 1.1);
+    c.moveTo(0, s * 0.2); c.lineTo(0, s * 1.0);
+    c.stroke();
+  }); },
+  /** 곰 발자국: 크고 넓은 바닥 + 발가락 다섯 */
+  bearprint(ctx, t, now) { drawSteps(ctx, t, now, (c, s) => {
+    c.beginPath(); c.ellipse(0, s * 0.35, s * 1.0, s * 0.85, 0, 0, Math.PI * 2); c.fill();
+    for (const [tx, ty] of [[-1.2, -0.45], [-0.65, -0.95], [0, -1.15], [0.65, -0.95], [1.2, -0.45]]) { c.beginPath(); c.arc(tx * s, ty * s, s * 0.27, 0, Math.PI * 2); c.fill(); }
+  }); },
+  /** 토끼 발자국: 길쭉한 뒷발 둘 + 앞발 둘(점) */
+  rabbitprint(ctx, t, now) { drawSteps(ctx, t, now, (c, s) => {
+    for (const tx of [-0.55, 0.55]) { c.beginPath(); c.ellipse(tx * s, s * 0.6, s * 0.3, s * 0.95, 0, 0, Math.PI * 2); c.fill(); }
+    for (const tx of [-0.3, 0.3]) { c.beginPath(); c.arc(tx * s, -s * 1.1, s * 0.26, 0, Math.PI * 2); c.fill(); }
+  }); },
   /** 팔랑이며(돌며 납작해졌다 펴지며) 흩날리는 분홍 꽃잎 */
   petal(ctx, t, now) {
     for (const p of t.parts) {
