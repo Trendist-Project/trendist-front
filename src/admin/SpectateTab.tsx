@@ -42,7 +42,7 @@ export function SpectateTab() {
           case 'tuning': arena.setTuning(m); break;
           case 'roster': arena.setRoster(m.players, m.flameAt); break;
           case 'orbs': arena.setOrbs(m.orbs); break;
-          case 'orbSpawn': arena.addOrb(m.id, m.x, m.y); break;
+          case 'orbSpawn': arena.addOrb(m.id, m.x, m.y, m.prize); break;
           case 'orbEaten': arena.eatOrb(m.id, m.e); break;
           case 'safeZones': arena.setSafeZones(m.center, m.zones); break;
           case 'shield': arena.showShield(m.e, m.ms); break;

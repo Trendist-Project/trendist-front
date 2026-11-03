@@ -74,16 +74,16 @@ export type ServerMessage =
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
-  | { type: 'lost'; by: string; keyword: string; score: number; stolen?: boolean } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
+  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로.
   // BOT = 봇을 이겨 🔥 키워드를 새로 얻음, BOT_RENEWED = 봇을 이겼는데 이미 가진 키워드라 남은 시간만 24시간으로
-  | { type: 'hit'; target: string; keyword?: string; score: number; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number }
+  | { type: 'hit'; target: string; keyword?: string; score: number; wiped?: number; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number }
   | { type: 'shield'; e: number; ms: number }                         // 키워드를 잃은 원의 무적 시간(카운트다운)
   | { type: 'knock'; dx: number; dy: number; ms: number }             // 내 원이 튕김: 전체 밀려날 거리와 시간
   | { type: 'pong'; t: number }
-  | { type: 'orbs'; orbs: [number, number, number][] }
-  | { type: 'orbSpawn'; id: number; x: number; y: number }
+  | { type: 'orbs'; orbs: [number, number, number, number?][] } // 마지막 값 1이면 ! 구슬
+  | { type: 'orbSpawn'; id: number; x: number; y: number; prize?: boolean } // prize: ! 구슬
   | { type: 'orbEaten'; id: number; e: number }
   | { type: 'safeZones'; center: number; zones: [number, number, number, number, number][] } // 세이프존(4.22): 가운데 한 변, [번호, x, y, 한 변, 남은 ms]
   | ChatMessage

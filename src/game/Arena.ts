@@ -51,8 +51,9 @@ const ORB_RADIUS = 14;
 const ORB_GROW_MS = 350;   // 생길 때 커지는 시간
 const ORB_EAT_MS = 380;    // 먹힐 때 원 안으로 빨려 들어가는 시간
 const GULP_MS = 320;       // 먹은 원이 한 번 부풀었다 돌아오는 시간
-interface Orb { x: number; y: number; born: number; phase: number }
-interface EatenOrb { x: number; y: number; e: number; at: number }
+/** prize: ! 구슬(불꽃에게 키워드를 모두 잃은 자리에 떨어짐, 4.20). 아니면 ? 구슬 */
+interface Orb { x: number; y: number; born: number; phase: number; prize: boolean }
+interface EatenOrb { x: number; y: number; e: number; at: number; prize: boolean }
 
 /** 미니맵: 오른쪽 아래, 화면 짧은 변의 24%(110~180px). */
 const BUBBLE_MS = 3000;
@@ -145,7 +146,7 @@ export class Arena {
   private zones: Zone[] = [];
   /** 서버 시각(틱 × 50ms)과 이 브라우저 시각의 차이. 가장 빨리 도착한 스냅샷 기준으로 잡는다 */
   private clockOffset: number | null = null;
-  private orbSprite: HTMLCanvasElement | null = null;
+  private orbSprites: (HTMLCanvasElement | null)[] = [null, null]; // [? 구슬, ! 구슬]
   private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -209,12 +210,12 @@ export class Arena {
     this.zones = list.map(([id, x, y, size, ms]) => ({ id, x, y, size, until: now + ms }));
   }
   /** 입장할 때 받은 구슬 전체 목록. */
-  setOrbs(list: [number, number, number][]) {
+  setOrbs(list: [number, number, number, number?][]) {
     const now = performance.now();
-    this.orbs = new Map(list.map(([id, x, y]) => [id, { x, y, born: now - ORB_GROW_MS, phase: Math.random() * Math.PI * 2 }]));
+    this.orbs = new Map(list.map(([id, x, y, kind]) => [id, { x, y, born: now - ORB_GROW_MS, phase: Math.random() * Math.PI * 2, prize: kind === 1 }]));
   }
-  addOrb(id: number, x: number, y: number) {
-    this.orbs.set(id, { x, y, born: performance.now(), phase: Math.random() * Math.PI * 2 });
+  addOrb(id: number, x: number, y: number, prize = false) {
+    this.orbs.set(id, { x, y, born: performance.now(), phase: Math.random() * Math.PI * 2, prize });
   }
   /** 누가(e) 구슬을 먹었다. e가 0이면 영역 밖으로 사라진 것이라 그냥 지운다. */
   eatOrb(id: number, e: number) {
@@ -222,7 +223,7 @@ export class Arena {
     this.orbs.delete(id);
     if (!o || e === 0) return;
     const now = performance.now();
-    this.eatenOrbs.push({ x: o.x, y: o.y, e, at: now });
+    this.eatenOrbs.push({ x: o.x, y: o.y, e, at: now, prize: o.prize });
     this.gulps.set(e, now);
   }
   floatText(text: string, color = '#ffd166') { this.floatTexts.push({ text, at: performance.now(), color }); }
@@ -631,10 +632,10 @@ export class Arena {
       const zs = Math.max(2, z.size * s);
       ctx.fillRect(toX(z.x) - zs / 2, toY(z.y) - zs / 2, zs, zs);
     }
-    // ? 구슬은 작은 금색 점으로
-    ctx.fillStyle = 'rgba(255,200,74,0.9)';
+    // ? 구슬은 작은 금색 점, ! 구슬은 붉은 점으로
     for (const o of this.orbs.values()) {
-      ctx.beginPath(); ctx.arc(toX(o.x), toY(o.y), 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = o.prize ? 'rgba(255,90,90,0.95)' : 'rgba(255,200,74,0.9)';
+      ctx.beginPath(); ctx.arc(toX(o.x), toY(o.y), o.prize ? 2.2 : 1.6, 0, Math.PI * 2); ctx.fill();
     }
     ctx.fillStyle = 'rgba(200,215,235,0.75)';
     const now = performance.now();
@@ -949,47 +950,50 @@ export class Arena {
       const bob = this.reducedMotion ? 0 : Math.sin(now / 520 + o.phase) * 4; // 둥실둥실
       const pulse = this.reducedMotion ? 1 : 1 + Math.sin(now / 300 + o.phase) * 0.06;
       const r = Math.max(ORB_RADIUS, 9 / z) * pop * pulse; // 멀리서 봐도 보이게
-      this.drawOrbBall(ctx, o.x, o.y + bob, r, 1);
+      this.drawOrbBall(ctx, o.x, o.y + bob, r, 1, o.prize);
     }
   }
 
   /** 구슬 그림은 한 번만 그려 두고 크기만 바꿔 찍는다(매 프레임 구슬마다 그라데이션을 만들지 않게). */
-  private drawOrbBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number) {
-    if (!this.orbSprite) {
+  private drawOrbBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number, prize = false) {
+    const kind = prize ? 1 : 0;
+    let sprite = this.orbSprites[kind];
+    if (!sprite) {
       const base = 32, size = Math.ceil(base * 2.2 * 2);
       const c = document.createElement('canvas');
       c.width = size; c.height = size;
       const g = c.getContext('2d');
       if (!g) return;
-      this.paintOrb(g, size / 2, size / 2, base);
-      this.orbSprite = c;
+      this.paintOrb(g, size / 2, size / 2, base, prize);
+      sprite = this.orbSprites[kind] = c;
     }
     const R = r * 2.2;
     ctx.globalAlpha = alpha;
-    ctx.drawImage(this.orbSprite, x - R, y - R, R * 2, R * 2);
+    ctx.drawImage(sprite, x - R, y - R, R * 2, R * 2);
     ctx.globalAlpha = 1;
   }
 
-  private paintOrb(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  /** prize면 ! 구슬: 금색 ? 구슬과 구별되게 붉은 빛과 몸통으로 그린다 */
+  private paintOrb(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, prize = false) {
     const glow = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 2.2);
-    glow.addColorStop(0, 'rgba(255,209,102,0.55)');
-    glow.addColorStop(1, 'rgba(255,209,102,0)');
+    glow.addColorStop(0, prize ? 'rgba(255,90,90,0.6)' : 'rgba(255,209,102,0.55)');
+    glow.addColorStop(1, prize ? 'rgba(255,90,90,0)' : 'rgba(255,209,102,0)');
     ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, Math.PI * 2); ctx.fill();
     const body = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
-    body.addColorStop(0, '#fff3c4');
-    body.addColorStop(0.55, '#ffc84a');
-    body.addColorStop(1, '#e08a00');
+    body.addColorStop(0, prize ? '#ffd6d6' : '#fff3c4');
+    body.addColorStop(0.55, prize ? '#ff5a5a' : '#ffc84a');
+    body.addColorStop(1, prize ? '#b81d1d' : '#e08a00');
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     ctx.lineWidth = Math.max(1.5, r * 0.12);
     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
     ctx.stroke();
-    ctx.fillStyle = '#5a3200';
+    ctx.fillStyle = prize ? '#ffffff' : '#5a3200';
     ctx.font = `800 ${Math.round(r * 1.25)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('?', x, y + r * 0.06);
+    ctx.fillText(prize ? '!' : '?', x, y + r * 0.06);
     ctx.textBaseline = 'alphabetic';
   }
 
@@ -1005,7 +1009,7 @@ export class Arena {
         const tx = target ? target.x : o.x, ty = target ? target.y : o.y;
         const x = this.reducedMotion ? o.x : o.x + (tx - o.x) * ease;
         const y = this.reducedMotion ? o.y : o.y + (ty - o.y) * ease;
-        this.drawOrbBall(ctx, x, y, Math.max(ORB_RADIUS, 9 / z) * (1 - ease * 0.85), 1 - t * 0.5);
+        this.drawOrbBall(ctx, x, y, Math.max(ORB_RADIUS, 9 / z) * (1 - ease * 0.85), 1 - t * 0.5, o.prize);
       }
       // 먹은 원 둘레에서 금빛 고리가 퍼지며 사라진다
       const tr = (now - o.at - ORB_EAT_MS * 0.6) / 420;

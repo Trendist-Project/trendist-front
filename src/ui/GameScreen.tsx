@@ -223,7 +223,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             break;
           case 'pong': arena.updateRtt(performance.now() - m.t); break;
           case 'orbs': arena.setOrbs(m.orbs); break;
-          case 'orbSpawn': arena.addOrb(m.id, m.x, m.y); break;
+          case 'orbSpawn': arena.addOrb(m.id, m.x, m.y, m.prize); break;
           case 'orbEaten': arena.eatOrb(m.id, m.e); break;
           case 'safeZones': arena.setSafeZones(m.center, m.zones); break;
           case 'orbResult': {
@@ -263,7 +263,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           }
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
-            showToast(m.stolen ? `${m.by}에게 '${m.keyword}' ${m.score}점짜리 키워드를 빼앗겼어요`
+            showToast(m.wiped ? `불꽃에 키워드 ${m.wiped}개를 모두 잃었어요!`
+              : m.stolen ? `${m.by}에게 '${m.keyword}' ${m.score}점짜리 키워드를 빼앗겼어요`
               : `${m.by}와 부딪혀 '${m.keyword}' ${m.score}점짜리 키워드를 잃었어요`);
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
@@ -273,7 +274,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             // 사람에게서 이기면 그 키워드를 빼앗는다: 없던 키워드는 보관함에 추가, 이미 있던 키워드는 남은 시간 갱신(4.3)
             // 봇을 이기면 봇의 키워드 대신 무작위 🔥 키워드를 얻는다. 이미 가진 키워드면 남은 시간 갱신(4.21)
             const key = performance.now();
-            const text = m.stolen === 'BOT' ? `${m.target}을 이겨 '${m.keyword}' ${m.score}점 키워드를 얻었어요!`
+            const text = m.wiped ? `🔥 불꽃으로 ${m.target}의 키워드 ${m.wiped}개를 모두 날려 버렸어요!`
+              : m.stolen === 'BOT' ? `${m.target}을 이겨 '${m.keyword}' ${m.score}점 키워드를 얻었어요!`
               : m.stolen === 'BOT_RENEWED' ? `${m.target}을 이겨 '${m.keyword}' 키워드를 갱신하였어요!`
               : m.stolen === 'ADDED' ? `${m.target}의 '${m.keyword}' ${m.score}점을 빼앗아 보관함에 넣었어요!`
               : m.stolen === 'RENEWED' ? `${m.target}의 '${m.keyword}' 키워드를 빼앗아 갱신하였어요!`
@@ -668,7 +670,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
                 <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
-                <li><strong>콤보</strong> 부딪혀 키워드를 연속으로 빼앗으면 Combo가 쌓이고, 5 Combo면 원 둘레가 불타올라요. 한 번이라도 빼앗기면 꺼져요.</li>
+                <li><strong>콤보</strong> 부딪혀 키워드를 연속으로 빼앗으면 Combo가 쌓이고, 5 Combo면 원 둘레가 불타올라요. 한 번이라도 빼앗기면 꺼져요. 불꽃으로 불꽃 없는 사람에게 닿으면 그 사람은 키워드를 전부 잃고, 그 자리에 ! 구슬이 떨어져요(먹으면 무조건 키워드 획득).</li>
                 <li><strong>E · 😀</strong> 이모트 창을 열고 1~8로 골라 원 위에 띄워요.</li>
                 <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, C로 끄고 켤 수 있어요.</li>
               </ul>
