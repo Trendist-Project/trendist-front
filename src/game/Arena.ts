@@ -127,6 +127,7 @@ export class Arena {
   private floatTexts: { text: string; at: number; color: string }[] = [];
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
   private shields = new Map<number, number>();
+  private dashFx = new Map<number, { at: number; ms: number }>(); // 대시 중인 원 번호 → 시작 시각, 지속 ms(4.27)
   /** 채팅 말풍선(4.13): 보낸 사람 아이콘 위에 3초 */
   private bubbles = new Map<number, { text: string; at: number }>();
   /** 길게 누르는 중인 다른 원(정보 팝업, 4.11): 그 원 둘레에 링이 ms 동안 차오른다 */
@@ -236,6 +237,8 @@ export class Arena {
   floatText(text: string, color = '#ffd166') { this.floatTexts.push({ text, at: performance.now(), color }); }
 
   /** e 원에 ms 동안 무적 표시(보호막 + 카운트다운)를 띄운다. */
+  /** 누군가(e) 대시를 시작했다. 그 원에 충격파·속도선·하늘색 빛을 ms 동안 그린다(4.27). */
+  showDashFx(e: number, ms: number) { this.dashFx.set(e, { at: performance.now(), ms }); }
   showShield(e: number, ms: number) { this.shields.set(e, performance.now() + ms); }
 
   /** 내 원이 부딪혀 튕겼다. 서버처럼 목표를 지우고, 같은 거리를 같은 감속으로 예측에도 밀어 준다(크게 밀려도 화면이 순간 이동하지 않게). */
@@ -724,6 +727,58 @@ export class Arena {
     }
   }
 
+  /**
+   * 대시 강조(4.27): 누구 화면에서나 보이게 하늘색·흰색으로(콤보 불꽃의 주황과 구분). 둘레 빛, 뒤로 늘어나는 속도선, 시작할 때 퍼지는
+   * 충격파 고리는 원 뒤에(front=false), 시작할 때 튀어 오르는 ⚡는 원 위에(front=true) 그린다. 멀리서도 보이게 최소 두께를 화면 픽셀로 잡는다.
+   * 모션 줄이기 설정과 관계없이 그리되(알아볼 수 있어야 하므로), 깜빡임 없이 부드럽게 나타나고 사라진다.
+   */
+  private drawDashFx(ctx: CanvasRenderingContext2D, e: EntityState, front: boolean) {
+    const fx = this.dashFx.get(e.e);
+    if (!fx) return;
+    const now = performance.now(), t = now - fx.at;
+    if (t >= fx.ms) { if (front) this.dashFx.delete(e.e); return; }
+    const px = 1 / this.zoom;
+    if (front) {
+      if (t < 700) {
+        const s = t / 700;
+        ctx.globalAlpha = 1 - s * s;
+        ctx.font = `${Math.max(18 * px, e.r * 0.8)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText('⚡', e.x, e.y - e.r - (8 + 34 * (1 - (1 - s) ** 2)) * px);
+        ctx.globalAlpha = 1;
+      }
+      return;
+    }
+    const k = Math.min(1, t / 150) * Math.min(1, (fx.ms - t) / 350); // 나타나고 사라질 때 부드럽게
+    const wob = this.reducedMotion ? 0 : Math.sin(now / 140);
+    // 둘레 빛: 넓고 옅은 띠 + 좁고 진한 띠
+    for (const [w, a] of [[Math.max(16 * px, e.r * 0.5), 0.16], [Math.max(6 * px, e.r * 0.18), 0.42]] as const) {
+      ctx.strokeStyle = `rgba(127,219,255,${a * k * (0.88 + 0.12 * wob)})`;
+      ctx.lineWidth = w;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r + w / 2, 0, Math.PI * 2); ctx.stroke();
+    }
+    // 속도선: 가는 반대쪽(원 뒤)으로 길이가 다른 줄 다섯 개. 진행 방향은 거북이 머리 방향(위쪽이 0)에서 구한다
+    const ang = (this.headings.get(e.e)?.a ?? 0) - Math.PI / 2;
+    const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const off = (i - 2) * 0.32 * e.r;
+      const len = (e.r * (1.1 + 0.35 * ((i * 7) % 5) / 4) + 36 * px) * (0.85 + 0.15 * (this.reducedMotion ? 0 : Math.sin(now / 90 + i * 1.9)));
+      const sx = e.x + nx * off - dx * e.r * 0.7, sy = e.y + ny * off - dy * e.r * 0.7;
+      ctx.strokeStyle = `rgba(${i % 2 ? '255,255,255' : '127,219,255'},${0.6 * k})`;
+      ctx.lineWidth = Math.max(2.5 * px, e.r * 0.07);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - dx * len, sy - dy * len); ctx.stroke();
+    }
+    // 시작 충격파: 0.5초 동안 퍼지며 옅어지는 고리
+    if (t < 500) {
+      const s = t / 500, ease = 1 - (1 - s) ** 3;
+      ctx.strokeStyle = `rgba(190,238,255,${0.9 * (1 - s)})`;
+      ctx.lineWidth = Math.max(2 * px, e.r * 0.09) * (1 - s * 0.6);
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r + (10 * px + e.r * 0.9) * ease, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
   private drawEntity(ctx: CanvasRenderingContext2D, e: EntityState) {
     const lvl = Math.min(e.level, 10);
     // 옅은 그림자는 shadowBlur 대신 살짝 큰 반투명 원으로 그린다(shadowBlur는 휴대폰에서 매우 느리다)
@@ -733,6 +788,7 @@ export class Arena {
     const t = performance.now() / 1000;
     // 콤보 불꽃(4.25): 원보다 먼저 그려 둘레 바깥으로만 타오르게 한다
     if (look && !look.bot && look.combo >= this.flameAt) drawComboFlames(ctx, e.x, e.y, e.r, t, 1 / this.zoom);
+    this.drawDashFx(ctx, e, false); // 대시: 빛·속도선·충격파는 원 뒤(4.27)
     // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(11레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
     ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
@@ -753,6 +809,7 @@ export class Arena {
       ctx.lineWidth = Math.max(2, 3 / this.zoom);
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4 / this.zoom, 0, Math.PI * 2); ctx.stroke();
     }
+    this.drawDashFx(ctx, e, true); // 대시 시작할 때 튀어 오르는 ⚡(4.27)
     const info = this.names.get(e.e);
     // 관전 중 멀리서는 이름이 겹쳐 지저분하니 화면에서 반지름 7px 이상이거나 따라가는 원만 보인다
     const showName = !this.spec || e.r * this.zoom >= 7 || this.spec.follow === e.e;
