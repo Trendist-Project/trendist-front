@@ -126,5 +126,5 @@ export interface ProfileSave {
 }
 
 /** 자랑하기 카드 공유 주소(4.24). url은 공유 페이지, imageUrl은 서버가 그린 카드 이미지 */
-/** totalViews·totalPlays: 내가 만든 모든 카드의 조회·[나도 플레이 하기] 클릭 합계 */
+/** totalViews·totalPlays: 내가 만든 모든 카드의 조회·[플레이 하러 가기] 클릭 합계 */
 export interface ShareCardCreated { code: string; url: string; imageUrl: string; totalViews: number; totalPlays: number }

@@ -458,7 +458,7 @@ function ShareTab() {
       <div className="admin-stat-row">
         <div className="admin-stat"><span>만든 카드</span><strong>{data?.cards.toLocaleString() ?? '-'}</strong><em>오늘 {data?.cardsToday.toLocaleString() ?? 0}</em></div>
         <div className="admin-stat"><span>조회</span><strong>{data?.views.toLocaleString() ?? '-'}</strong><em>공유 페이지를 연 사람</em></div>
-        <div className="admin-stat"><span>[나도 플레이 하기]</span><strong>{data?.plays.toLocaleString() ?? '-'}</strong><em>게임으로 들어온 사람</em></div>
+        <div className="admin-stat"><span>[플레이 하러 가기]</span><strong>{data?.plays.toLocaleString() ?? '-'}</strong><em>게임으로 들어온 사람</em></div>
         <div className="admin-stat"><span>클릭률</span><strong>{rate}</strong><em>클릭 ÷ 조회</em></div>
       </div>
       <p className="muted small admin-hint">같은 방문자는 카드마다 하루 1번만 세고, 메신저 미리보기 크롤러는 세지 않아요.</p>

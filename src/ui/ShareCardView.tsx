@@ -100,7 +100,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
   }
 
   const stats = card && card.totalViews > 0
-    ? `내 카드를 지금까지 ${card.totalViews.toLocaleString()}명이 봤고${card.totalPlays > 0 ? ` ${card.totalPlays.toLocaleString()}명이 게임에 들어왔어요` : '어요'}`
+    ? `내 카드를 지금까지 ${card.totalViews.toLocaleString()}명이 ${card.totalPlays > 0 ? `봤고 ${card.totalPlays.toLocaleString()}명이 게임에 들어왔어요` : '봤어요'}`
     : null;
 
   return (
