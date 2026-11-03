@@ -255,10 +255,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             arena.setCombo(m.e, m.combo, m.flameAt);
             const mine = m.e === myEntity;
             if (mine) setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
-            if (m.event === 'start') { if (!mine) showToast(`🔥 ${m.nickname} ${m.combo} Combo! 불타오르고 있어요`); } // 내 불꽃은 원과 콤보 카드로 보이므로 안내를 띄우지 않는다
-            else if (m.event === 'broken') {
+            // 다른 사람이 불꽃을 얻었다는 안내는 띄우지 않는다(불꽃은 그 원 둘레로 보인다)
+            if (m.event === 'broken') {
               if (mine) showToast(`💨 ${m.by ?? '누군가'}에게 져서 불꽃이 꺼졌어요`);
-              else if (m.byE === myEntity) showToast(`🎯 ${m.nickname}의 불꽃을 껐어요!`);
             }
             break;
           }
