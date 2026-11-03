@@ -494,6 +494,10 @@ export class Arena {
   /** 미니맵(4.2): 활동 영역 전체에 큰 아이콘 상위 20명, 내 위치, 지금 화면에 보이는 범위를 그린다. */
   private drawMinimap(ctx: CanvasRenderingContext2D, w: number, h: number) {
     const size = Math.round(Math.max(MINIMAP_MIN, Math.min(MINIMAP_MAX, Math.min(w, h) * 0.24)));
+    if (size !== this.minimapSize) {
+      this.minimapSize = size;
+      this.canvas.parentElement?.style.setProperty('--minimap-size', `${size}px`);
+    }
     const x0 = w - size - MINIMAP_MARGIN, y0 = h - size - MINIMAP_MARGIN;
     const s = size / (this.half * 2);
     const toX = (wx: number) => x0 + (wx + this.half) * s;

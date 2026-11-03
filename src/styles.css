@@ -72,13 +72,22 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .hud-bottom { bottom: 12px; }
 .arena-wrap.with-minimap .hud-bottom { max-width: calc(100% - 220px); } /* 오른쪽 아래 미니맵과 겹치지 않게 */
 /* 아레나 오른쪽 위 도구: 공지사항, 가이드·FAQ, 미니맵, 조작 설명(?) */
-.arena-tools { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: calc(100% - 180px); }
+.arena-tools { position: absolute; top: 12px; right: 12px; bottom: var(--tools-bottom); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: calc(100% - 180px);
+  pointer-events: none; } /* 빈 자리는 아레나 클릭을 막지 않는다 */
+.arena-tools > * { pointer-events: auto; flex: none; }
+.arena-tools > .combo-hud { pointer-events: none; transform-origin: right center; }
+/* 오른쪽 아래는 미니맵, 그 위에 이모트 버튼(44px). 도구 창(조작 설명)은 그 위까지만 내려온다 */
+.arena-wrap { --dock-bottom: 12px; --tools-bottom: calc(var(--dock-bottom) + 44px + 12px); }
+.arena-wrap.with-minimap { --dock-bottom: calc(var(--minimap-size, 180px) + 24px); }
 .tool-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .arena-tools button { background: rgba(11, 15, 23, 0.7); padding: 6px 10px; font-size: 0.85rem; }
 .icon-button { width: 32px; height: 32px; padding: 0; display: inline-grid; place-items: center; border-radius: 50%; font-weight: 700; }
 .arena-tools .help-toggle { width: 32px; padding: 0; }
 .help-toggle[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.arena-tools > .help-card { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .help-card { width: min(320px, calc(100vw - 48px)); background: rgba(20, 27, 38, 0.94); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; font-size: 0.9rem; }
+.help-card ul { min-height: 0; overflow-y: auto; overscroll-behavior: contain; } /* 창이 낮으면 설명만 스크롤, 버튼은 항상 보인다 */
+.help-card h3, .help-actions { flex: none; }
 .help-card h3 { margin: 0 0 8px; font-size: 1rem; }
 .help-card ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 .help-card strong { color: var(--accent); margin-right: 4px; }
@@ -747,13 +756,13 @@ button.link-back:hover { color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .combo-hud { animation: none; } }
 
 /* 이모트(4.26) */
-.emote-dock { position: absolute; right: 12px; bottom: 64px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.emote-dock { position: absolute; right: 12px; bottom: var(--dock-bottom); z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .emote-toggle { width: 44px; height: 44px; border-radius: 50%; padding: 0; font-size: 1.4rem; background: rgba(20, 27, 38, 0.85); }
 .emote-toggle[aria-expanded="true"] { border-color: var(--accent); }
 .emote-palette { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; padding: 8px; border-radius: 14px; background: rgba(20, 27, 38, 0.94); border: 1px solid var(--line); }
 .emote-palette button { position: relative; width: 44px; height: 44px; padding: 0; font-size: 1.45rem; background: #1d2635; }
 .emote-palette kbd { position: absolute; right: 2px; bottom: 1px; font-size: 0.6rem; color: var(--muted); background: none; border: none; padding: 0; }
-@media (max-width: 760px) { .emote-dock { bottom: 120px; right: 8px; } .emote-palette kbd { display: none; } }
+@media (max-width: 760px) { .emote-dock { right: 8px; } .emote-palette kbd { display: none; } }
 
 /* 꾸미기 프로필(4.9) */
 .effect-chips { display: flex; flex-wrap: wrap; gap: 6px; }
