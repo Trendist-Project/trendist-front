@@ -7,7 +7,9 @@ import { borderLineWidth, drawTurtle } from '../game/turtle';
 
 /**
  * 꾸미기 미리 보기(4.9): 작은 아레나에서 원이 8자로 돌며 고른 이동 효과를 남기고, 바탕색·테두리·테두리 효과·이름표·그림을
- * 아레나와 같은 그림 코드로 보여 준다. moving이 false면 가운데에 멈춘 원(작은 칸 미리 보기). prefers-reduced-motion이면 멈춘 한 장.
+ * 아레나와 같은 그림 코드로 보여 준다. moving이 false면 가운데에 멈춘 원(작은 칸 미리 보기).
+ * 모션 줄이기 설정(prefers-reduced-motion)은 따르지 않는다: 갤럭시 등에서 '애니메이션 효과 제거'·절전 모드가 켜져 있으면 이 값이 켜져
+ * 이동 효과를 볼 수 없게 되는데, 이 화면은 효과를 확인하려고 일부러 여는 작은 미리 보기라서 항상 움직인다.
  */
 export function LookPreview({ look, level, art, name, width = 300, height = 170, moving = true, label = '꾸미기 미리 보기' }: {
   look: Look; level: number; art?: PixelArtData | null; name?: string; width?: number; height?: number; moving?: boolean; label?: string;
@@ -20,7 +22,7 @@ export function LookPreview({ look, level, art, name, width = 300, height = 170,
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     c.width = width * dpr; c.height = height * dpr;
     const ctx = c.getContext('2d')!;
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || !moving;
+    const still = !moving;
     const trails = new Trails();
     const r = moving ? Math.min(width, height) * 0.13 : Math.min(width, height) * 0.3;
     let raf = 0, last = performance.now(), heading = 0, px = 0, py = 0, first = true;
