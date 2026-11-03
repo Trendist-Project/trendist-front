@@ -231,10 +231,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             const key = performance.now();
             window.setTimeout(() => setOrbReveal({ result: m, key }), 250);
             window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), 250 + ORB_REVEAL_MS);
-            if (m.status === 'GAINED') {
-              arena.floatText(`+${m.gained ?? 0}`);
-              setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
-            }
+            if (m.status === 'GAINED') arena.floatText(`+${m.gained ?? 0}`);
+            if (m.status === 'GAINED' || m.status === 'RENEWED') setRefreshKey((k) => k + 1); // 보관함 목록 새로고침(새 키워드, 또는 바뀐 만료 시각)
             break;
           }
           case 'chat':
@@ -276,9 +274,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             // 봇을 이기면 봇의 키워드 대신 무작위 🔥 키워드를 얻는다. 이미 가진 키워드면 남은 시간 갱신(4.21)
             const key = performance.now();
             const text = m.stolen === 'BOT' ? `${m.target}을 이겨 '${m.keyword}' ${m.score}점 키워드를 얻었어요!`
-              : m.stolen === 'BOT_RENEWED' ? `${m.target}을 이겨 '${m.keyword}'의 남은 시간을 24시간으로 늘렸어요!`
+              : m.stolen === 'BOT_RENEWED' ? `${m.target}을 이겨 '${m.keyword}' 키워드를 갱신하였어요!`
               : m.stolen === 'ADDED' ? `${m.target}의 '${m.keyword}' ${m.score}점을 빼앗아 보관함에 넣었어요!`
-              : m.stolen === 'RENEWED' ? `${m.target}의 '${m.keyword}'를 빼앗아 남은 시간을 24시간으로 늘렸어요!`
+              : m.stolen === 'RENEWED' ? `${m.target}의 '${m.keyword}' 키워드를 빼앗아 갱신하였어요!`
               : m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}을 이겼어요!`;
             setHit({ text, key });
             if (m.stolen) {

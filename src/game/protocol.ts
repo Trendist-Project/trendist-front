@@ -93,10 +93,10 @@ export type ServerMessage =
 /** 채팅 한 줄(4.13). e는 보낸 사람의 세션 엔티티 번호, at은 보낸 시각(ms). */
 export interface ChatMessage { type: 'chat'; id: number; e: number; nickname: string; text: string; at: number }
 
-/** ? 구슬을 먹은 결과(4.20). GAINED: 새로 보관함에, DUPLICATE: 이미 가진 키워드(변화 없음), MISS: 꽝, NONE: 🔥 키워드가 없음 */
+/** ? 구슬을 먹은 결과(4.20). GAINED: 새로 보관함에, RENEWED: 이미 가진 키워드(만료시간만 갱신), MISS: 꽝, NONE: 🔥 키워드가 없음 */
 export interface OrbResult {
   type: 'orbResult';
-  status: 'GAINED' | 'DUPLICATE' | 'MISS' | 'NONE';
+  status: 'GAINED' | 'RENEWED' | 'MISS' | 'NONE';
   text?: string;
   state?: string;
   trendValue?: number;
