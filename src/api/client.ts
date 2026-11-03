@@ -142,7 +142,8 @@ export interface AdminSetting {
   name: string; value: string; type: string; min: number | null; max: number | null; description: string | null;
   defaultValue: string | null; updatedAt: string;
 }
-export interface AdminKeywordQuery { state?: string; source?: string; q?: string; sort: string; dir: 'asc' | 'desc'; page: number }
+/** state·source는 여러 개를 고를 수 있다(비어 있으면 전체) */
+export interface AdminKeywordQuery { state?: string[]; source?: string[]; q?: string; sort: string; dir: 'asc' | 'desc'; page: number }
 
 const qs = (o: Record<string, string | number | undefined>) =>
   new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString();
@@ -223,7 +224,7 @@ export const adminApi = {
   kickUser: (userId: number) => request<void>('POST', `/api/admin/users/${userId}/kick`),
   shareStats: (sort: string, page: number) => request<AdminShareStats>('GET', `/api/admin/share-cards?${qs({ sort, page })}`),
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
-  keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q })}`),
+  keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q, state: q.state?.join(','), source: q.source?.join(',') })}`),
   addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: 'KR' }),
   ban: (id: number, banned: boolean) => request<AdminKeywordRow>('POST', `/api/admin/keywords/${id}/${banned ? 'ban' : 'unban'}`),
   reports: (status: string, page: number) => request<AdminReportPage>('GET', `/api/admin/reports?${qs({ status, page })}`),

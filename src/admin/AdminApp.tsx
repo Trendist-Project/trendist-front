@@ -106,6 +106,33 @@ function ChipFilter({ label, options, value, counts, onChange }: {
   );
 }
 
+/** 필터 한 줄: 여러 개를 고를 수 있는 칩. 아무것도 안 고르면 [전체]. 눌러서 켜고 끈다. */
+function MultiChipFilter({ label, options, values, counts, onChange }: {
+  label: string; options: [string, string][]; values: string[]; counts?: Record<string, number>; onChange(v: string[]): void;
+}) {
+  const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : undefined;
+  const toggle = (v: string) => {
+    if (!v) return onChange([]);
+    const next = values.includes(v) ? values.filter((x) => x !== v) : [...values, v];
+    onChange(next.length === options.length - 1 ? [] : next); // 전부 골랐으면 전체와 같다
+  };
+  return (
+    <div className="admin-chip-filter" role="group" aria-label={label}>
+      <span className="admin-chip-label">{label}</span>
+      {options.map(([v, text]) => {
+        const on = v ? values.includes(v) : values.length === 0;
+        const n = counts ? (v ? counts[v] ?? 0 : total) : undefined;
+        return (
+          <button key={v || 'all'} type="button" role="checkbox" aria-checked={on}
+                  className={`sort-chip${on ? ' active' : ''}`} onClick={() => toggle(v)}>
+            {text}{n !== undefined && <span className="chip-count">{n.toLocaleString()}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function KeywordsTab() {
   const [query, setQuery] = useState<AdminKeywordQuery>({ sort: 'trendValue', dir: 'desc', page: 0 });
   const [qInput, setQInput] = useState('');
@@ -131,16 +158,15 @@ function KeywordsTab() {
   return (
     <section className="admin-panel">
       <div className="admin-filter-box">
-        <ChipFilter label="상태" options={STATES} value={query.state ?? ''} counts={data?.stateCounts}
-                    onChange={(v) => setQuery((q) => ({ ...q, page: 0, state: v }))} />
-        <ChipFilter label="소스" options={SOURCES} value={query.source ?? ''}
-                    onChange={(v) => setQuery((q) => ({ ...q, page: 0, source: v }))} />
         <form className="admin-search" onSubmit={(e: FormEvent) => { e.preventDefault(); setQuery((q) => ({ ...q, page: 0, q: qInput.trim() })); }}>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)} placeholder="🔍 키워드 검색" aria-label="키워드 검색" />
           <button type="submit" className="primary">검색</button>
           <span className="muted small">{data ? `${data.total.toLocaleString()}개` : ''}</span>
         </form>
-        {!query.state && <p className="muted small admin-hint">상태 전체에서는 금지 키워드를 맨 위에 모아 보여 줘요.</p>}
+        <MultiChipFilter label="상태" options={STATES} values={query.state ?? []} counts={data?.stateCounts}
+                         onChange={(v) => setQuery((q) => ({ ...q, page: 0, state: v }))} />
+        <MultiChipFilter label="소스" options={SOURCES} values={query.source ?? []}
+                         onChange={(v) => setQuery((q) => ({ ...q, page: 0, source: v }))} />
       </div>
       {error && <p className="error">{error}</p>}
       <div className="admin-table-wrap">
