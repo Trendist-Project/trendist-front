@@ -7,7 +7,7 @@ import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
 import { startGoogleLogin } from '../googleAuth';
-import { adminApi, api } from '../api/client';
+import { adminApi, api, ApiFailure } from '../api/client';
 import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
 import { hasUnread, markNoticesRead, NoticeModal, NoticePopup, popupNotices } from './NoticeModal';
@@ -15,6 +15,7 @@ import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
 import { EMOTES } from '../game/skin';
+import { successToast } from './toast';
 
 interface Props {
   initialPlayer: PlayerSummary;
@@ -158,10 +159,10 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const openAdmin = useCallback(() => { window.open('/admin/', '_blank', 'noopener'); }, []);
 
   // 새 칭호 알림(4.10): 화면 위에 카드로 띄우고 6초 뒤 저절로 사라진다. 한꺼번에 여러 개 받으면 차례로 보여 준다
-  const [titleAlerts, setTitleAlerts] = useState<{ name: string; description: string; key: number }[]>([]);
+  const [titleAlerts, setTitleAlerts] = useState<{ titleId: number; name: string; description: string; key: number }[]>([]);
   const titleAlert = titleAlerts[0] ?? null;
-  const showTitleAlert = useCallback((name: string, description: string) => {
-    setTitleAlerts((q) => [...q, { name, description, key: Date.now() + Math.random() }]);
+  const showTitleAlert = useCallback((titleId: number, name: string, description: string) => {
+    setTitleAlerts((q) => [...q, { titleId, name, description, key: Date.now() + Math.random() }]);
   }, []);
   const dismissTitleAlert = useCallback(() => setTitleAlerts((q) => q.slice(1)), []);
   useEffect(() => {
@@ -170,6 +171,16 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     return () => clearTimeout(t);
   }, [titleAlert, dismissTitleAlert]);
   const [profileView, setProfileView] = useState<'main' | 'titles'>('main');
+  /** 알림의 [장착하기]: 받은 칭호를 바로 활성 칭호로 바꾼다(4.10). 이름표 아래 칭호는 서버가 방에 알려 바뀐다 */
+  const equipTitle = useCallback(async (titleId: number, name: string) => {
+    dismissTitleAlert();
+    try {
+      await api.setTitle(titleId);
+      successToast(`'${name}' 칭호를 장착했어요`);
+    } catch (e) {
+      showToast(e instanceof ApiFailure ? e.message : '칭호를 장착하지 못했어요');
+    }
+  }, [dismissTitleAlert]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -679,7 +690,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
               <span className="muted small">{titleAlert.description}</span>
             </div>
             <div className="title-alert-actions">
-              <button className="primary" onClick={() => { dismissTitleAlert(); setProfileView('titles'); setPanel('profile'); }}>칭호 보기</button>
+              <button className="primary" onClick={() => equipTitle(titleAlert.titleId, titleAlert.name)}>장착하기</button>
               <button className="icon-button" onClick={dismissTitleAlert} aria-label="알림 닫기">✕</button>
             </div>
             <span className="title-alert-timer" aria-hidden="true" />

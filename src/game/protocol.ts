@@ -71,7 +71,7 @@ export type ServerMessage =
   // 연속 빼앗기 콤보(4.25). event: up(+1) / start(flameAt에 닿아 불꽃이 붙음) / reset(잃어서 콤보 끝) / broken(잃어서 불꽃까지 꺼짐, by가 끈 사람)
   | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken'; flameAt: number; by?: string; byE?: number }
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
-  | { type: 'titleGranted'; name: string; description: string } // 새 칭호를 받았다(4.10)
+  | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
   | { type: 'lost'; by: string; keyword: string; score: number; stolen?: boolean } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
