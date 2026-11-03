@@ -772,6 +772,7 @@ button.link-back:hover { color: var(--text); }
 
 /* 이모트(4.26) */
 .emote-dock { position: absolute; right: 12px; bottom: var(--dock-bottom); z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.emote-row { display: flex; align-items: center; gap: 8px; } /* 대시 표시(⚡)는 이모트 버튼 왼쪽(4.27) */
 .emote-toggle { width: 44px; height: 44px; border-radius: 50%; padding: 0; font-size: 1.4rem; background: rgba(20, 27, 38, 0.85); }
 .emote-toggle[aria-expanded="true"] { border-color: var(--accent); }
 .emote-palette { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; padding: 8px; border-radius: 14px; background: rgba(20, 27, 38, 0.94); border: 1px solid var(--line); }

@@ -601,13 +601,15 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
               ))}
             </div>
           )}
-          <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (E, 연 뒤 숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
+          <div className="emote-row">
+            <DashChip dash={dash} />
+            <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (E, 연 뒤 숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
+          </div>
         </div>
         <div className="hud-bottom">
           <span><LevelText level={player.level} prefix="Lv." /></span>
           <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
           <span>유행도 {Number(player.currentScore).toLocaleString()}</span>
-          <DashChip dash={dash} />
           <span className="muted hud-extra">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
           <span className="muted hud-extra">키워드 {player.holdCount}개</span>
         </div>
@@ -695,7 +697,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                 <li><strong>모바일</strong> 누른 자리에 생기는 조이스틱을 끌어서 움직여요. 메뉴의 [이동 방식]에서 누른 곳으로 가는 터치 이동으로 바꿀 수 있어요.</li>
                 <li><strong>다른 사람 정보</strong> PC는 그 원을 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭해요. </li>
                 <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
-                <li><strong>⚡ 대시</strong> PC는 스페이스바, 모바일은 조이스틱을 쥔 채 다른 손가락으로 화면을 탭하면 잠깐 빨라져요. 아래 ⚡에서 쿨타임을 볼 수 있어요.</li>
+                <li><strong>⚡ 대시</strong> PC는 스페이스바, 모바일은 조이스틱을 쥔 채 다른 손가락으로 화면을 탭하면 잠깐 빨라져요. 이모트 버튼 왼쪽 ⚡에서 쿨타임을 볼 수 있어요.</li>
                 <li><strong>세이프존</strong> 파란 칸(가운데, 항상 있음)과 연두색 칸(5분 동안) 안에서는 부딪히지 않고 키워드도 잃지 않아요.</li>
                 <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
                 <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
