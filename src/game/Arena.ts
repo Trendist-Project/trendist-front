@@ -540,7 +540,7 @@ export class Arena {
     const short = Math.min(w, h);
     if (this.spec) this.updateSpectatorCamera(dt);
     const viewScale = Math.max(VIEW_MIN_SCALE, Math.min(1, short / VIEW_REF_SHORT));
-    const radiusZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 170));
+    const radiusZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 280));
     const targetZoom = Math.min(radiusZoom * viewScale, (short * ME_MAX_SHARE) / (2 * Math.max(this.me.r, 1)));
     if (!this.spec) this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * 6);
 
@@ -717,8 +717,10 @@ export class Arena {
     const vw = w / 2 / this.zoom, vh = h / 2 / this.zoom;
     const x0 = Math.max(-half, this.view.x - vw), x1 = Math.min(half, this.view.x + vw);
     const y0 = Math.max(-half, this.view.y - vh), y1 = Math.min(half, this.view.y + vh);
-    for (const [step, width] of [[GRID_SMALL, 1], [GRID_BIG, 2]] as const) {
-      if (step * this.zoom < 6) continue; // 너무 촘촘하면 생략
+    // 줌아웃해도 화면 간격이 40px 아래로 촘촘해지지 않게 격자 간격을 2배씩 키운다(바닥이 지나가는 속도감 유지, 4.2).
+    let mul = 1;
+    while (GRID_SMALL * mul * this.zoom < 40 && mul < 1024) mul *= 2;
+    for (const [step, width] of [[GRID_SMALL * mul, 1], [GRID_BIG * mul, 2]] as const) {
       ctx.strokeStyle = 'rgba(220,230,255,0.15)';
       ctx.lineWidth = width / this.zoom;
       ctx.beginPath();
