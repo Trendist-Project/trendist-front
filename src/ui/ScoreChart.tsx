@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ScoreHistory } from '../api/types';
 import { niceMax, smoothPath } from './chartMath';
+import { intlLocale } from './keywordFormat';
+import { fmtNumber, t } from '../i18n';
 
 const HEIGHT = 170;
 const PAD = { top: 16, right: 12, bottom: 24, left: 40 };
@@ -28,8 +30,8 @@ export function ScoreChart({ history }: { history: ScoreHistory }) {
 
   const fmt = useMemo(() => {
     const tz = history.timezone;
-    const tick = new Intl.DateTimeFormat('ko-KR', hourly ? { hour: 'numeric', timeZone: tz } : { month: 'numeric', day: 'numeric', timeZone: tz });
-    const full = new Intl.DateTimeFormat('ko-KR', hourly ? { month: 'numeric', day: 'numeric', hour: 'numeric', timeZone: tz } : { month: 'long', day: 'numeric', weekday: 'short', timeZone: tz });
+    const tick = new Intl.DateTimeFormat(intlLocale(), hourly ? { hour: 'numeric', timeZone: tz } : { month: 'numeric', day: 'numeric', timeZone: tz });
+    const full = new Intl.DateTimeFormat(intlLocale(), hourly ? { month: 'numeric', day: 'numeric', hour: 'numeric', timeZone: tz } : { month: 'long', day: 'numeric', weekday: 'short', timeZone: tz });
     return { tick: (t: string) => tick.format(new Date(t)), full: (t: string) => full.format(new Date(t)) };
   }, [history.timezone, hourly]);
 
@@ -60,12 +62,12 @@ export function ScoreChart({ history }: { history: ScoreHistory }) {
         {[0, 0.5, 1].map((f) => (
           <g key={f}>
             <line x1={PAD.left} x2={width - PAD.right} y1={PAD.top + innerH * (1 - f)} y2={PAD.top + innerH * (1 - f)} className="chart-grid" />
-            <text x={PAD.left - 6} y={PAD.top + innerH * (1 - f) + 4} className="chart-axis" textAnchor="end">{(yMax * f).toLocaleString()}</text>
+            <text x={PAD.left - 6} y={PAD.top + innerH * (1 - f) + 4} className="chart-axis" textAnchor="end">{fmtNumber(yMax * f)}</text>
           </g>
         ))}
         {points.map((p, i) => (i % labelEvery === 0 || i === last) && (
           <text key={p.t} x={x(i)} y={HEIGHT - 6} className="chart-axis" textAnchor={i === 0 ? 'start' : i === last ? 'end' : 'middle'}>
-            {p.live ? (hourly ? '지금' : '오늘') : fmt.tick(p.t)}
+            {p.live ? (hourly ? t('chart.now') : t('chart.today')) : fmt.tick(p.t)}
           </text>
         ))}
         <path d={area} fill="url(#grad-score)" />
@@ -83,8 +85,8 @@ export function ScoreChart({ history }: { history: ScoreHistory }) {
       </svg>
       {hp && hover !== null && (
         <div className="chart-tooltip" style={{ left: Math.min(Math.max(x(hover), 60), width - 60) }}>
-          <strong>{fmt.full(hp.t)}{hp.live ? ' · 지금' : ''}</strong>
-          <span><i style={{ background: COLOR }} />유행도 {hp.score.toLocaleString()}</span>
+          <strong>{fmt.full(hp.t)}{hp.live ? t('chart.liveNow') : ''}</strong>
+          <span><i style={{ background: COLOR }} />{t('chart.score', { n: fmtNumber(hp.score) })}</span>
         </div>
       )}
       <p className="chart-summary">{summary(history, fmt.full)}</p>
@@ -95,8 +97,8 @@ export function ScoreChart({ history }: { history: ScoreHistory }) {
 /** 요약 문장: "7일 전 120점 → 지금 148점" */
 function summary(h: ScoreHistory, full: (t: string) => string) {
   const first = h.points[0], now = h.points[h.points.length - 1];
-  const label = { '24h': '24시간 전', '7d': '7일 전', '30d': '30일 전', all: `${full(first.t)}` }[h.range];
+  const label = { '24h': t('chart.ago24h'), '7d': t('chart.ago7d'), '30d': t('chart.ago30d'), all: `${full(first.t)}` }[h.range];
   const diff = now.score - first.score;
-  const change = diff === 0 ? '그대로예요' : diff > 0 ? `${diff.toLocaleString()}점 올랐어요` : `${(-diff).toLocaleString()}점 내려갔어요`;
-  return `${label} ${first.score.toLocaleString()}점 → 지금 ${now.score.toLocaleString()}점, ${change}.`;
+  const change = diff === 0 ? t('chart.unchanged') : diff > 0 ? t('chart.up', { n: fmtNumber(diff) }) : t('chart.down', { n: fmtNumber(-diff) });
+  return t('chart.scoreSummary', { label, from: fmtNumber(first.score), to: fmtNumber(now.score), change });
 }

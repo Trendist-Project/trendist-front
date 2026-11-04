@@ -3,8 +3,11 @@ import { api } from '../api/client';
 import type { Notice } from '../api/types';
 import { Modal } from './Modal';
 import { RichText } from './RichText';
+import { intlLocale } from './keywordFormat';
+import { getLang } from '../country';
+import { t } from '../i18n';
 
-const dateFormat = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeZone: 'Asia/Seoul' });
+const dateFormat = new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'medium', timeZone: getLang() === 'ko' ? 'Asia/Seoul' : undefined });
 
 // 이 브라우저에서 본 공지(4.16). 팝업은 띄운 공지 번호들, 빨간 점은 목록을 열었을 때 본 가장 큰 번호로 판단한다
 const POPUP_SEEN_KEY = 'trendist.noticePopupSeen';
@@ -37,12 +40,12 @@ function NoticeHead({ n }: { n: Notice }) {
   return (<>
     {(n.pinned || n.fresh) && (
       <div className="notice-article-badges">
-        {n.pinned && <span className="notice-badge pin">📌 고정</span>}
+        {n.pinned && <span className="notice-badge pin">{t('notice.pinned')}</span>}
         {n.fresh && <span className="notice-badge new">NEW</span>}
       </div>
     )}
     <h3 className="notice-article-title">{n.title}</h3>
-    <span className="notice-article-date">{dateFormat.format(new Date(n.createdAt))}{n.edited ? ' · 수정됨' : ''}</span>
+    <span className="notice-article-date">{dateFormat.format(new Date(n.createdAt))}{n.edited ? t('notice.edited') : ''}</span>
   </>);
 }
 
@@ -57,10 +60,10 @@ export function NoticeModal({ onClose, onRead }: { onClose(): void; onRead?(): v
   }, []);
 
   return (
-    <Modal title="📢 공지사항" onClose={onClose} className="notice-modal">
-      {error && <p className="muted">공지를 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>}
-      {!error && notices === null && <p className="muted">불러오는 중…</p>}
-      {notices?.length === 0 && <div className="notice-empty-user"><span aria-hidden="true">📭</span><p className="muted">아직 공지가 없어요.</p></div>}
+    <Modal title={t('notice.title')} onClose={onClose} className="notice-modal">
+      {error && <p className="muted">{t('notice.loadFailed')}</p>}
+      {!error && notices === null && <p className="muted">{t('common.loading')}</p>}
+      {notices?.length === 0 && <div className="notice-empty-user"><span aria-hidden="true">📭</span><p className="muted">{t('notice.empty')}</p></div>}
       {notices && notices.length > 0 && (
         <div className="notice-cards">
           {notices.map((n, i) => (
@@ -94,7 +97,7 @@ export function NoticePopup({ notices, onClose }: { notices: Notice[]; onClose()
   const n = notices[index];
   const many = notices.length > 1;
   return (
-    <Modal title="📢 새 소식" onClose={onClose} className="notice-popup">
+    <Modal title={t('notice.newsTitle')} onClose={onClose} className="notice-popup">
       <article className="notice-popup-article" aria-live="polite">
         <NoticeHead n={n} />
         <div className="notice-popup-body"><RichText text={n.body} /></div>
@@ -102,18 +105,18 @@ export function NoticePopup({ notices, onClose }: { notices: Notice[]; onClose()
       <footer className="notice-popup-foot">
         {many ? (
           <div className="notice-popup-nav">
-            <button onClick={() => setIndex(index - 1)} disabled={index === 0} aria-label="이전 공지">‹</button>
-            <div className="notice-dots" role="tablist" aria-label="공지 넘기기">
+            <button onClick={() => setIndex(index - 1)} disabled={index === 0} aria-label={t('notice.prev')}>‹</button>
+            <div className="notice-dots" role="tablist" aria-label={t('notice.pager')}>
               {notices.map((x, i) => (
-                <button key={x.id} role="tab" aria-selected={i === index} aria-label={`${i + 1}번째 공지`}
+                <button key={x.id} role="tab" aria-selected={i === index} aria-label={t('notice.nth', { n: i + 1 })}
                         className={i === index ? 'notice-dot on' : 'notice-dot'} onClick={() => setIndex(i)} />
               ))}
             </div>
-            <button onClick={() => setIndex(index + 1)} disabled={index === notices.length - 1} aria-label="다음 공지">›</button>
+            <button onClick={() => setIndex(index + 1)} disabled={index === notices.length - 1} aria-label={t('notice.next')}>›</button>
             <span className="muted small notice-popup-count">{index + 1} / {notices.length}</span>
           </div>
         ) : <span />}
-        <button className="primary" onClick={onClose}>확인</button>
+        <button className="primary" onClick={onClose}>{t('notice.ok')}</button>
       </footer>
     </Modal>
   );

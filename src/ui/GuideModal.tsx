@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { GuideArticle, GuideCategory } from '../api/types';
 import { Modal } from './Modal';
 import { RichText } from './RichText';
+import { t } from '../i18n';
 
 interface Props { onClose(): void; initialCategory?: string }
 
@@ -81,16 +82,16 @@ export function GuideModal({ onClose, initialCategory }: Props) {
   }
 
   return (
-    <Modal title="가이드·FAQ" onClose={onClose} className="guide-modal">
+    <Modal title={t('guide.title')} onClose={onClose} className="guide-modal">
       <div className="guide-search">
-        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔎 궁금한 것을 찾아보세요 (예: 세이프존, 칭호)"
-               aria-label="가이드 검색" />
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('guide.searchPlaceholder')}
+               aria-label={t('guide.searchAria')} />
       </div>
-      {error && <p className="muted">가이드를 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>}
-      {categories?.length === 0 && <p className="muted">아직 가이드가 없어요.</p>}
+      {error && <p className="muted">{t('guide.loadFailed')}</p>}
+      {categories?.length === 0 && <p className="muted">{t('guide.empty')}</p>}
       {categories && categories.length > 0 && (
         <div className="guide-layout">
-          <nav className="guide-nav" role="tablist" aria-label="가이드 카테고리">
+          <nav className="guide-nav" role="tablist" aria-label={t('guide.categories')}>
             {categories.map((c) => (
               <button key={c.code} role="tab" aria-selected={!searching && c.code === selected}
                       className={!searching && c.code === selected ? 'guide-nav-item active' : 'guide-nav-item'} onClick={() => open(c.code)}>
@@ -100,9 +101,9 @@ export function GuideModal({ onClose, initialCategory }: Props) {
           </nav>
           <div className="guide-content" ref={bodyRef}>
             {searching ? (
-              <section aria-label="검색 결과">
-                <p className="muted small">'{query.trim()}' 검색 결과 {results.length}개</p>
-                {results.length === 0 ? <p className="muted">찾는 글이 없어요. 다른 말로 찾아보세요.</p> : (
+              <section aria-label={t('guide.results')}>
+                <p className="muted small">{t('guide.resultCount', { query: query.trim(), n: results.length })}</p>
+                {results.length === 0 ? <p className="muted">{t('guide.noResults')}</p> : (
                   <ul className="guide-results">
                     {results.map(({ category: c, article: a }) => (
                       <li key={a.id}>
@@ -117,8 +118,8 @@ export function GuideModal({ onClose, initialCategory }: Props) {
               </section>
             ) : (<>
               {category && <h3 className="guide-heading">{category.name}</h3>}
-              {selected && !articles && !error && <p className="muted">불러오는 중…</p>}
-              {category && articles && (articles.length === 0 ? <p className="muted">아직 글이 없어요.</p>
+              {selected && !articles && !error && <p className="muted">{t('common.loading')}</p>}
+              {category && articles && (articles.length === 0 ? <p className="muted">{t('guide.noArticles')}</p>
                 : category.displayType === 'FAQ' ? (
                   <div className="accordion guide-faq">
                     {articles.map((a) => (
@@ -130,7 +131,7 @@ export function GuideModal({ onClose, initialCategory }: Props) {
                   </div>
                 ) : (<>
                   {articles.length > 1 && (
-                    <nav className="guide-toc" aria-label="이 카테고리의 글">
+                    <nav className="guide-toc" aria-label={t('guide.toc')}>
                       {articles.map((a) => (
                         <button key={a.id} className="chip" onClick={() => setJumpTo(a.id)}>{a.title}</button>
                       ))}

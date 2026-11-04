@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 /**
  * 카카오톡 공유(4.24): 공유 주소(링크)만 카카오톡으로 보낸다. 이미지는 올리지 않는다.
  * 카카오가 그 주소의 OG 태그(카드 이미지·제목·설명)를 읽어 메시지를 만든다(스크랩).
@@ -63,6 +65,6 @@ export function sendKakaoLink(url: string, text: string) {
     k.Share.sendScrap({ requestUrl: url });
   } else {
     const link = { mobileWebUrl: url, webUrl: url };
-    k.Share.sendDefault({ objectType: 'text', text, link, buttonTitle: '카드 보기' });
+    k.Share.sendDefault({ objectType: 'text', text, link, buttonTitle: t('main.viewCard') });
   }
 }

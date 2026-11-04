@@ -1,0 +1,16 @@
+export default {
+  rank1: 'Leaderboard #1',
+  rankTop: 'Leaderboard top {n}',
+  loadFailed: 'Couldn\'t load titles',
+  unequipped: 'Title removed',
+  changeFailed: 'Couldn\'t change your title',
+  title: 'Titles',
+  intro: 'You earn titles automatically when you meet their conditions. Equip one of your titles to show it under your nickname in the arena.',
+  owned: 'Earned titles',
+  noneOwned: 'No titles yet. Try adding some keywords!',
+  equipped: 'Equipped',
+  acquiredOn: 'Earned {date}',
+  unequip: 'Remove',
+  equip: 'Equip',
+  locked: 'Locked titles',
+} as Record<string, string>;

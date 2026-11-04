@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { LevelBadge } from '../api/types';
 import { TurtleIcon } from './GrowthIcons';
+import { t } from '../i18n';
 
 /** 레벨별 아이콘 바탕은 DB(levels)에서 받아 한 번만 불러 둔다(4.9). 실패하면 다음에 다시 시도한다 */
 let badges: Map<number, LevelBadge> | null = null;
@@ -47,17 +48,17 @@ const TENS = [10, 20, 30, 40, 50, 60, 70, 80, 90];
 export function LevelIconGallery() {
   const map = useLevelBadges();
   return (
-    <figure className="level-gallery" aria-label="레벨별 아이콘 바탕: 10레벨 구간마다 색이 바뀌고 일의 자리가 클수록 진해지며, 100레벨은 무지개">
+    <figure className="level-gallery" aria-label={t('guideArt.galleryAria')}>
       <div className="lg-grid">
         <span />
         {Array.from({ length: 10 }, (_, d) => <span key={d} className="lg-head">{d}</span>)}
-        {TENS.map((t) => (
-          <Fragment key={t}>
-            <span className="lg-row">{t}~{t + 9}</span>
+        {TENS.map((ten) => (
+          <Fragment key={ten}>
+            <span className="lg-row">{ten}~{ten + 9}</span>
             {Array.from({ length: 10 }, (_, d) => {
-              const lv = t + d;
+              const lv = ten + d;
               return (
-                <span key={d} title={`${lv}레벨`}>
+                <span key={d} title={`${t('common.levelPrefix')}${lv}${t('common.levelSuffix')}`}>
                   <TurtleIcon level={lv} size={26} badge={map?.get(lv) ?? null} />
                 </span>
               );
@@ -67,7 +68,7 @@ export function LevelIconGallery() {
       </div>
       <div className="lg-top">
         <TurtleIcon level={100} size={34} badge={map?.get(100) ?? null} />
-        <span><strong>100레벨</strong> 무지개 그라데이션</span>
+        <span><strong>{t('common.levelPrefix')}100{t('common.levelSuffix')}</strong> {t('guideArt.rainbow')}</span>
       </div>
     </figure>
   );

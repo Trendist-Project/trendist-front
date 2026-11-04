@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { KeywordCard, MyKeyword, PlayerSummary } from '../api/types';
 import { remaining, STATE_BADGE } from './keywordFormat';
+import { fmtNumber, t } from '../i18n';
+import { getLang } from '../country';
 
 type Tab = 'search' | 'mine';
 
@@ -19,7 +21,7 @@ interface Props {
 type SortKey = 'recent' | 'text' | 'state' | 'trend' | 'remaining';
 type SortDir = 'asc' | 'desc';
 // 칩은 이 순서로 보인다. 기본 정렬인 남은 시간을 맨 앞에 둔다
-const SORT_LABEL: Record<SortKey, string> = { remaining: '남은 시간', recent: '최신순', text: '키워드', state: '상태', trend: '트렌드 점수' };
+const SORT_LABEL: Record<SortKey, string> = { remaining: t('side.sortRemaining'), recent: t('side.sortRecent'), text: t('side.sortText'), state: t('side.sortState'), trend: t('side.sortTrend') };
 /** 기준을 고르면 먼저 쓰는 방향: 최신·트렌드·남은 시간은 큰 것부터, 키워드는 가나다, 상태는 🔥부터 */
 const DEFAULT_DIR: Record<SortKey, SortDir> = { recent: 'desc', text: 'asc', state: 'asc', trend: 'desc', remaining: 'desc' };
 const STATE_ORDER: Record<string, number> = { 활성: 0, 비활성: 1, 금지: 2 };
@@ -39,7 +41,7 @@ function sortMine(list: MyKeyword[], key: SortKey, dir: SortDir) {
   const time = (iso: string) => new Date(iso).getTime();
   const compare = (a: MyKeyword, b: MyKeyword) => {
     switch (key) {
-      case 'text': return a.text.localeCompare(b.text, 'ko');
+      case 'text': return a.text.localeCompare(b.text, getLang());
       case 'state': return (STATE_ORDER[a.state] ?? 9) - (STATE_ORDER[b.state] ?? 9);
       case 'trend': return Number(a.trendValue) - Number(b.trendValue);
       case 'remaining': return time(a.expiresAt) - time(b.expiresAt);
@@ -93,10 +95,10 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
     setBusy(true); setNotice(null); setCard(null);
     try {
       const r = await api.search(text);
-      if (r.status === 'BANNED') setNotice('검색할 수 없는 키워드예요');
+      if (r.status === 'BANNED') setNotice(t('side.banned'));
       else setCard(r.keyword);
     } catch (err) {
-      setNotice(err instanceof ApiFailure ? err.message : '검색하지 못했어요');
+      setNotice(err instanceof ApiFailure ? err.message : t('side.searchFailed'));
     } finally {
       setBusy(false);
     }
@@ -110,7 +112,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
       setCard(r.keyword);
       onPlused(r.gained, r.player);
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '추가하지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('side.plusFailed'));
     } finally {
       setBusy(false);
     }
@@ -119,36 +121,36 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   return (
     <aside className={expanded ? 'side expanded' : 'side'}>
       <nav className="tabs" role="tablist">
-        {([['search', '🔍 검색'], ['mine', '📦 보관함']] as const).map(([k, label]) => (
+        {([['search', t('side.tabSearch')], ['mine', t('side.tabMine')]] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''}
                   onClick={() => { if (tab === k && expanded) setExpanded(false); else { setTab(k); setExpanded(true); } }}>{label}</button>
         ))}
         <button className="sheet-toggle" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}
-                aria-label={expanded ? '패널 접기' : '패널 펼치기'}>{expanded ? '▾' : '▴'}</button>
+                aria-label={expanded ? t('side.collapsePanel') : t('side.expandPanel')}>{expanded ? '▾' : '▴'}</button>
       </nav>
 
       {tab === 'search' && (
         <div className="tab-body">
           <form onSubmit={search} className="search-row">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="키워드를 입력하세요" maxLength={20}
-                   aria-label="키워드 검색" autoComplete="off" />
-            <button className="primary" disabled={busy}>검색</button>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('side.placeholder')} maxLength={20}
+                   aria-label={t('side.searchAria')} autoComplete="off" />
+            <button className="primary" disabled={busy}>{t('side.searchBtn')}</button>
           </form>
           {notice && <p className="muted">{notice}</p>}
           {card && (
             <div className="card">
               <div className="card-head">
                 {card.id !== null
-                  ? <button className="kw kw-link" onClick={() => onOpenKeyword(card.id!)} title="키워드 자세히 보기">{card.text} <span aria-hidden="true">›</span></button>
+                  ? <button className="kw kw-link" onClick={() => onOpenKeyword(card.id!)} title={t('side.detail')}>{card.text} <span aria-hidden="true">›</span></button>
                   : <strong className="kw">{card.text}</strong>}
                 <span className="badge">{STATE_BADGE[card.state] ?? card.state}</span>
               </div>
-              <p>{card.trendValue}점 · 👥 {card.holderCount.toLocaleString()}명</p>
+              <p>{t('side.points', { n: card.trendValue })} · 👥 {t('side.holders', { n: fmtNumber(card.holderCount) })}</p>
               <div className="card-foot">
                 {card.plusedByMe && card.myExpiresAt && <span className="muted small">{remaining(card.myExpiresAt)}</span>}
                 <button className="primary" onClick={plus} disabled={busy || card.plusedByMe}
-                        aria-label={card.plusedByMe ? '이미 보유중이에요' : `${card.text} 추가하기`}>
-                  {card.plusedByMe ? '보유중' : '추가'}
+                        aria-label={card.plusedByMe ? t('side.alreadyOwned') : t('side.plusAria', { kw: card.text })}>
+                  {card.plusedByMe ? t('side.owned') : t('side.plus')}
                 </button>
               </div>
             </div>
@@ -158,17 +160,17 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
 
       {tab === 'mine' && (
         <div className="tab-body">
-          {mine.length === 0 ? <p className="muted">아직 추가한 키워드가 없어요</p> : (<>
+          {mine.length === 0 ? <p className="muted">{t('side.noneYet')}</p> : (<>
             <div className="sort-bar">
-              <span className="muted small">보유 {mine.length}개</span>
+              <span className="muted small">{t('side.holding', { n: mine.length })}</span>
               {/* 기준을 누르면 그 기준으로, 이미 고른 기준을 다시 누르면 방향을 바꾼다 */}
-              <div className="sort-chips" role="group" aria-label="보관함 정렬">
+              <div className="sort-chips" role="group" aria-label={t('side.sortGroup')}>
                 {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => {
                   const active = sort.key === k;
                   return (
                     <button key={k} className={active ? 'sort-chip active' : 'sort-chip'} aria-pressed={active}
-                            title={active ? '다시 누르면 순서를 바꿔요' : undefined}
-                            aria-label={active ? `${SORT_LABEL[k]} ${sort.dir === 'asc' ? '오름차순' : '내림차순'}, 눌러서 순서 바꾸기` : `${SORT_LABEL[k]}으로 정렬`}
+                            title={active ? t('side.sortFlip') : undefined}
+                            aria-label={active ? t('side.sortActiveAria', { label: SORT_LABEL[k], dir: sort.dir === 'asc' ? t('side.asc') : t('side.desc') }) : t('side.sortByAria', { label: SORT_LABEL[k] })}
                             onClick={() => setSort((s) => (s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: DEFAULT_DIR[k] }))}>
                       {SORT_LABEL[k]}
                       {active && <span className="sort-arrow" aria-hidden="true">{sort.dir === 'asc' ? '↑' : '↓'}</span>}
@@ -180,10 +182,10 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
             <ul className="list">
               {sortedMine.map((k) => (
                 <li key={k.keywordId} className="mine-item">
-                  <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={`${k.text} 자세히 보기`}>
+                  <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={t('side.openAria', { kw: k.text })}>
                     <div><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></div>
                     <div className="muted small">
-                      {k.trendValue}점 ·{' '}
+                      {t('side.points', { n: k.trendValue })} ·{' '}
                       <span className={new Date(k.expiresAt).getTime() - Date.now() < 3_600_000 ? 'warn' : ''}>{remaining(k.expiresAt)}</span>
                     </div>
                     <span className="mine-chevron" aria-hidden="true">›</span>

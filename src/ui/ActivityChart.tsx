@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Activity, ActivityPoint } from '../api/types';
 import { niceMax, smoothPath } from './chartMath';
+import { intlLocale } from './keywordFormat';
+import { fmtNumber, t } from '../i18n';
 
 const HEIGHT = 200;
 const PAD = { top: 18, right: 40, bottom: 26, left: 34 };
@@ -63,7 +65,7 @@ export function ActivityChart({ activity, showHolders }: Props) {
 
   return (
     <div className="activity-chart" ref={wrapRef}>
-      {empty ? <p className="chart-empty muted">아직 기록이 없어요</p> : (
+      {empty ? <p className="chart-empty muted">{t('chart.noRecords')}</p> : (
         <svg width={width} height={HEIGHT} role="img" aria-label={summary(activity, fmt)} className="chart-svg">
           <defs>
             <linearGradient id="grad-search" x1="0" y1="0" x2="0" y2="1">
@@ -85,7 +87,7 @@ export function ActivityChart({ activity, showHolders }: Props) {
           ))}
           {points.map((pt, i) => (i % labelEvery === 0 || i === points.length - 1) && (
             <text key={pt.t} x={x(i)} y={HEIGHT - 6} className="chart-axis" textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}>
-              {pt.live ? (hourly ? '지금' : '오늘') : fmt.tick(pt.t)}
+              {pt.live ? (hourly ? t('chart.now') : t('chart.today')) : fmt.tick(pt.t)}
             </text>
           ))}
 
@@ -102,7 +104,7 @@ export function ActivityChart({ activity, showHolders }: Props) {
           {peak >= 0 && (
             <g className="chart-peak">
               <circle cx={x(peak)} cy={y(Math.max(points[peak].search, points[peak].plus))} r="4" />
-              <text x={x(peak)} y={y(Math.max(points[peak].search, points[peak].plus)) - 9} textAnchor="middle">최고</text>
+              <text x={x(peak)} y={y(Math.max(points[peak].search, points[peak].plus)) - 9} textAnchor="middle">{t('chart.peak')}</text>
             </g>
           )}
           {points[points.length - 1]?.live && (
@@ -127,17 +129,17 @@ export function ActivityChart({ activity, showHolders }: Props) {
 
       {!empty && hover !== null && hp && (
         <div className="chart-tooltip" style={{ left: Math.min(Math.max(x(hover), 70), width - 70) }}>
-          <strong>{fmt.full(hp.t)}{hp.live ? ' · 집계 중' : ''}</strong>
-          <span><i style={{ background: COLORS.search }} />검색 {hp.search.toLocaleString()}회</span>
-          <span><i style={{ background: COLORS.plus }} />추가 {hp.plus.toLocaleString()}회</span>
-          {showHolders && <span><i style={{ background: COLORS.holders }} />가진 사람 {hp.holders.toLocaleString()}명</span>}
+          <strong>{fmt.full(hp.t)}{hp.live ? t('chart.counting') : ''}</strong>
+          <span><i style={{ background: COLORS.search }} />{t('chart.searchesN', { n: fmtNumber(hp.search) })}</span>
+          <span><i style={{ background: COLORS.plus }} />{t('chart.addsN', { n: fmtNumber(hp.plus) })}</span>
+          {showHolders && <span><i style={{ background: COLORS.holders }} />{t('chart.holdersN', { n: fmtNumber(hp.holders) })}</span>}
         </div>
       )}
 
       <div className="chart-legend" aria-hidden="true">
-        <span><i className="solid" style={{ borderColor: COLORS.search }} />검색</span>
-        <span><i className="dash" style={{ borderColor: COLORS.plus }} />추가</span>
-        {showHolders && <span><i className="dot" style={{ borderColor: COLORS.holders }} />가진 사람</span>}
+        <span><i className="solid" style={{ borderColor: COLORS.search }} />{t('chart.search')}</span>
+        <span><i className="dash" style={{ borderColor: COLORS.plus }} />{t('chart.add')}</span>
+        {showHolders && <span><i className="dot" style={{ borderColor: COLORS.holders }} />{t('chart.holders')}</span>}
       </div>
       <p className="chart-summary">{summary(activity, fmt)}</p>
     </div>
@@ -145,18 +147,18 @@ export function ActivityChart({ activity, showHolders }: Props) {
 }
 
 function formatters(timeZone: string, hourly: boolean, range: string) {
-  const tick = new Intl.DateTimeFormat('ko-KR', hourly ? { hour: 'numeric', timeZone } : range === '180d' ? { month: 'short', timeZone } : { month: 'numeric', day: 'numeric', timeZone });
-  const full = new Intl.DateTimeFormat('ko-KR', hourly ? { month: 'numeric', day: 'numeric', hour: 'numeric', timeZone } : { month: 'long', day: 'numeric', weekday: 'short', timeZone });
-  const hour = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', timeZone });
+  const tick = new Intl.DateTimeFormat(intlLocale(), hourly ? { hour: 'numeric', timeZone } : range === '180d' ? { month: 'short', timeZone } : { month: 'numeric', day: 'numeric', timeZone });
+  const full = new Intl.DateTimeFormat(intlLocale(), hourly ? { month: 'numeric', day: 'numeric', hour: 'numeric', timeZone } : { month: 'long', day: 'numeric', weekday: 'short', timeZone });
+  const hour = new Intl.DateTimeFormat(intlLocale(), { hour: 'numeric', timeZone });
   return { tick: (t: string) => tick.format(new Date(t)), full: (t: string) => full.format(new Date(t)), hour: (t: string) => hour.format(new Date(t)) };
 }
 
 /** 그래프 아래 요약 문장(화면 낭독기도 읽는다). */
 function summary(a: Activity, fmt: ReturnType<typeof formatters>) {
-  const label = { '24h': '최근 24시간', '7d': '최근 7일', '30d': '최근 30일', '180d': '최근 180일' }[a.range];
+  const label = { '24h': t('chart.last24h'), '7d': t('chart.last7d'), '30d': t('chart.last30d'), '180d': t('chart.last180d') }[a.range];
   const search = a.points.reduce((n, p) => n + p.search, 0), plus = a.points.reduce((n, p) => n + p.plus, 0);
-  if (search + plus === 0) return `${label} 동안 기록이 없어요. 지금 ${a.holders.toLocaleString()}명이 가지고 있어요.`;
+  if (search + plus === 0) return t('chart.summaryEmpty', { label, holders: fmtNumber(a.holders) });
   const best: ActivityPoint = a.points.reduce((b, p) => (p.search + p.plus > b.search + b.plus ? p : b));
-  const when = a.range === '24h' ? `${fmt.hour(best.t)}에` : `${fmt.full(best.t)}에`;
-  return `${label} 검색 ${search.toLocaleString()}회, 추가 ${plus.toLocaleString()}회, ${when} 가장 많았어요.`;
+  const when = a.range === '24h' ? t('chart.atWhen', { when: fmt.hour(best.t) }) : t('chart.atWhen', { when: fmt.full(best.t) });
+  return t('chart.summary', { label, search: fmtNumber(search), plus: fmtNumber(plus), when });
 }

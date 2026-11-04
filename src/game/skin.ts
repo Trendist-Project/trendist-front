@@ -2,13 +2,14 @@
  * 원 꾸미기 그리기(4.9, 4.25, 4.26): 테두리 효과, 이름표, 콤보 불꽃, 이모트.
  * 아레나·꾸미기 미리 보기가 같은 함수를 쓴다. t는 초 단위 시각(performance.now() / 1000).
  */
+import { t } from '../i18n';
 
 export const BORDER_EFFECTS = ['glow', 'dash', 'gradient', 'pulse', 'rainbow'] as const;
 
 /** 이모트 코드 → 이모지. 서버 Room.EMOTES와 같은 순서(숫자 키 1~8) */
 export const EMOTES: [string, string, string][] = [
-  ['wave', '👋', '안녕'], ['laugh', '😂', '웃음'], ['cool', '😎', '여유'], ['cry', '😭', '울음'],
-  ['angry', '😡', '화남'], ['thumbs', '👍', '좋아'], ['heart', '❤️', '하트'], ['fire', '🔥', '불타오름'],
+  ['wave', '👋', t('arena.emote_wave')], ['laugh', '😂', t('arena.emote_laugh')], ['cool', '😎', t('arena.emote_cool')], ['cry', '😭', t('arena.emote_cry')],
+  ['angry', '😡', t('arena.emote_angry')], ['thumbs', '👍', t('arena.emote_thumbs')], ['heart', '❤️', t('arena.emote_heart')], ['fire', '🔥', t('arena.emote_fire')],
 ];
 export const EMOTE_CHAR: Record<string, string> = Object.fromEntries(EMOTES.map(([c, e]) => [c, e]));
 

@@ -3,6 +3,7 @@ import {
   adminApi, resumeSession,
   type AdminKeywordPage, type AdminKeywordQuery, type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
 } from '../api/client';
+import { ADMIN_COUNTRIES, getAdminCountry, setAdminCountry, type AdminCountry } from '../api/adminCountry';
 import { STATE_BADGE } from '../ui/keywordFormat';
 import { RichText } from '../ui/RichText';
 import { GuidesTab } from './GuidesTab';
@@ -26,6 +27,7 @@ const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'
 export function AdminApp() {
   const [status, setStatus] = useState<AdminStatus | null | 'nologin'>(null);
   const [tab, setTabState] = useState<Tab>('dashboard');
+  const country = getAdminCountry(); // 바꾸면 새로 읽어 모든 탭이 같은 나라를 본다
   // 대시보드에서 눌러 들어갈 때 사용자 탭에 넘길 값(바로 열 사용자, 필터). key가 바뀌면 사용자 탭을 새로 연다
   const [jump, setJump] = useState<{ userId: number | null; filter: string; key: number }>({ userId: null, filter: 'all', key: 0 });
   const setTab = (t: Tab) => setTabState(t);
@@ -61,6 +63,11 @@ export function AdminApp() {
             <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'on' : undefined} onClick={() => setTab(t)}>{label}</button>
           ))}
         </nav>
+        <label className="muted small admin-country">나라
+          <select value={country} onChange={(e) => { setAdminCountry(e.target.value as AdminCountry); location.reload(); }}>
+            {ADMIN_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
         <a className="muted small" href="/">게임으로</a>
       </header>
       {tab === 'dashboard' && <DashboardTab onGo={go} />}
@@ -563,7 +570,7 @@ function SettingsTab() {
 // ---------------------------------------------------------------- 공지(4.16)
 
 const NOTICE_TITLE_MAX = 50, NOTICE_BODY_MAX = 5000;
-const EMPTY_NOTICE: AdminNoticeInput = { title: '', body: '', pinned: false, popupEnabled: true, popupDays: 7 };
+const EMPTY_NOTICE: AdminNoticeInput = { title: '', body: '', titleEn: '', bodyEn: '', pinned: false, popupEnabled: true, popupDays: 7 };
 const chars = (s: string) => [...s].length; // 서버와 같이 글자(코드 포인트) 수로 센다
 
 /** 공지 쓰기·수정·삭제. 본문은 게임의 공지 창과 같은 모양으로 미리 본다(문단, `- ` 목록, **굵게** 등). */
@@ -587,7 +594,9 @@ function NoticesTab() {
     if (!valid) return;
     setBusy(true); setMessage(null);
     try {
-      if (editing === null) await adminApi.createNotice(form); else await adminApi.updateNotice(editing, form);
+      // 영어판은 비우면 null(영어 사용자에게는 한국어가 대신 보인다)
+      const input: AdminNoticeInput = { ...form, titleEn: form.titleEn?.trim() || null, bodyEn: form.bodyEn?.trim() || null };
+      if (editing === null) await adminApi.createNotice(input); else await adminApi.updateNotice(editing, input);
       successToast(editing === null ? '공지를 올렸어요' : '공지를 수정했어요');
       setForm(EMPTY_NOTICE); setEditing(null);
       load();
@@ -600,7 +609,7 @@ function NoticesTab() {
 
   function startEdit(n: AdminNotice) {
     setEditing(n.id);
-    setForm({ title: n.title, body: n.body, pinned: n.pinned, popupEnabled: n.popupEnabled, popupDays: n.popupDays ?? 7 });
+    setForm({ title: n.title, body: n.body, titleEn: n.titleEn ?? '', bodyEn: n.bodyEn ?? '', pinned: n.pinned, popupEnabled: n.popupEnabled, popupDays: n.popupDays ?? 7 });
     setMessage(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -640,11 +649,22 @@ function NoticesTab() {
                  placeholder="예) 10월 31일 새벽 점검 안내" />
         </label>
 
+        <label className="notice-field">
+          <span className="notice-label">제목 (English)<span className="count">비우면 영어 사용자에게도 한국어가 보여요</span></span>
+          <input className="notice-title-input" value={form.titleEn ?? ''} onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+                 placeholder="e.g. Maintenance on Oct 31" />
+        </label>
+
         <div className="notice-edit">
           <div className="notice-field">
             <label className="notice-label" htmlFor="notice-body">본문<span className={bodyLen > NOTICE_BODY_MAX ? 'count over' : 'count'}>{bodyLen.toLocaleString()}/{NOTICE_BODY_MAX.toLocaleString()}</span></label>
             <MarkupEditor id="notice-body" value={form.body} onChange={(body) => setForm((f) => ({ ...f, body }))}
                           placeholder={'공지 내용을 쓰세요. 위 단추로 굵게·목록·팁 상자를 넣을 수 있어요.\n빈 줄로 문단을 나눠요.'} />
+          </div>
+          <div className="notice-field">
+            <label className="notice-label" htmlFor="notice-body-en">본문 (English)</label>
+            <MarkupEditor id="notice-body-en" value={form.bodyEn ?? ''} onChange={(bodyEn) => setForm((f) => ({ ...f, bodyEn }))}
+                          placeholder="English body. Leave empty to show the Korean text." />
           </div>
           <div className="notice-preview" aria-label="미리 보기">
             <span className="notice-label">미리 보기<span className="count">사용자 화면과 같은 모양</span></span>

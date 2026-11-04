@@ -1,3 +1,4 @@
+import { getAdminCountry } from '../api/adminCountry';
 import { useCallback, useEffect, useState } from 'react';
 import { adminApi, type StatPeriod, type StatRow, type StatSummary } from '../api/client';
 import { BarChart, LineChart } from './charts';
@@ -140,7 +141,7 @@ export function StatsTab() {
             <Kpi label="게스트" value={t?.guests ?? '-'} />
             <Kpi label="최근 7일 활동" value={t?.wau ?? '-'}><em>WAU</em></Kpi>
             <Kpi label="최근 30일 활동" value={t?.mau ?? '-'}><em>MAU</em></Kpi>
-            <Kpi label="플레이어(KR)" value={t?.players ?? '-'} />
+            <Kpi label={`플레이어(${getAdminCountry()})`} value={t?.players ?? '-'} />
             <Kpi label="관리자" value={t?.admins ?? '-'} />
             <Kpi label="금지 중" value={t?.banned ?? '-'} />
             <Kpi label="탈퇴" value={t?.withdrawn ?? '-'} />

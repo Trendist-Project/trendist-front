@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { borderLineWidth } from '../game/turtle';
 import { ART_SIZE, drawArt, encodeArt } from '../game/pixelArt';
+import { t } from '../i18n';
 
 /**
  * 픽셀 그림 편집기(4.9): 32×32 칸에 직접 그린다. 투명한 칸은 원의 바탕색이 보이고, 원 밖의 칸은 아레나에서 잘려 보이지 않는다.
@@ -31,7 +32,7 @@ const VIEW = 352; // 편집 칸 화면 크기(px)
 const CELL = VIEW / N;
 const HISTORY = 60;
 const TOOLS: [Tool, string, string, string][] = [
-  ['pen', '✏️', '펜', 'B'], ['eraser', '🧽', '지우개', 'E'], ['fill', '🪣', '채우기', 'G'], ['picker', '💧', '스포이드', 'I'],
+  ['pen', '✏️', t('pixel.pen'), 'B'], ['eraser', '🧽', t('pixel.eraser'), 'E'], ['fill', '🪣', t('pixel.fill'), 'G'], ['picker', '💧', t('pixel.picker'), 'I'],
 ];
 /** 그림에 자주 쓰는 기본 색(프리셋 24색에 더해 검정·어두운 색) */
 const EXTRA = ['#000000', '#3a3a3a', '#6b4f3a', '#1e3a8a', '#14532d', '#7f1d1d'];
@@ -41,7 +42,7 @@ const inCircle = (x: number, y: number) => {
   return cx * cx + cy * cy <= (N / 2) * (N / 2);
 };
 
-export function PixelEditor({ initial, background, borderColor, borderWidth, presets, maxColors, busy, changeableAt, onSave, onCancel, saveLabel = '저장' }: Props) {
+export function PixelEditor({ initial, background, borderColor, borderWidth, presets, maxColors, busy, changeableAt, onSave, onCancel, saveLabel = t('pixel.save') }: Props) {
   const [cells, setCells] = useState<Cells>(initial);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(presets[0] ?? '#ffffff');
@@ -245,46 +246,46 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
 
   return (
     <div className="pixel-editor">
-      <div className="pixel-toolbar" role="toolbar" aria-label="그리기 도구">
-        {TOOLS.map(([t, icon, label, key]) => (
-          <button key={t} type="button" className={tool === t ? 'pixel-tool on' : 'pixel-tool'} aria-pressed={tool === t}
-                  title={`${label} (${key})`} onClick={() => setTool(t)}>
+      <div className="pixel-toolbar" role="toolbar" aria-label={t('pixel.tools')}>
+        {TOOLS.map(([id, icon, label, key]) => (
+          <button key={id} type="button" className={tool === id ? 'pixel-tool on' : 'pixel-tool'} aria-pressed={tool === id}
+                  title={`${label} (${key})`} onClick={() => setTool(id)}>
             <span aria-hidden="true">{icon}</span><span className="pixel-tool-label">{label}</span>
           </button>
         ))}
         <span className="pixel-sep" />
-        <div className="pixel-size" role="radiogroup" aria-label="붓 크기">
+        <div className="pixel-size" role="radiogroup" aria-label={t('pixel.brushSize')}>
           {[1, 2, 3].map((s) => (
             <button key={s} type="button" role="radio" aria-checked={size === s} className={size === s ? 'on' : undefined}
-                    title={`붓 크기 ${s}칸`} onClick={() => setSize(s)}>
+                    title={t('pixel.brushSizeN', { n: s })} onClick={() => setSize(s)}>
               <span style={{ width: 4 + s * 3, height: 4 + s * 3 }} />
             </button>
           ))}
         </div>
-        <button type="button" className={mirror ? 'pixel-tool on' : 'pixel-tool'} aria-pressed={mirror} title="좌우 대칭으로 그리기"
+        <button type="button" className={mirror ? 'pixel-tool on' : 'pixel-tool'} aria-pressed={mirror} title={t('pixel.mirrorTitle')}
                 onClick={() => setMirror((m) => !m)}>
-          <span aria-hidden="true">🪞</span><span className="pixel-tool-label">대칭</span>
+          <span aria-hidden="true">🪞</span><span className="pixel-tool-label">{t('pixel.mirror')}</span>
         </button>
         <span className="pixel-sep" />
-        <button type="button" className="pixel-tool" onClick={doUndo} disabled={undo.current.length === 0} title="되돌리기 (Ctrl+Z)">↶</button>
-        <button type="button" className="pixel-tool" onClick={doRedo} disabled={redo.current.length === 0} title="다시 하기 (Ctrl+Y)">↷</button>
+        <button type="button" className="pixel-tool" onClick={doUndo} disabled={undo.current.length === 0} title={t('pixel.undo')}>↶</button>
+        <button type="button" className="pixel-tool" onClick={doRedo} disabled={redo.current.length === 0} title={t('pixel.redo')}>↷</button>
       </div>
 
       <div className="pixel-main">
         <div className="pixel-canvas-wrap">
           <canvas ref={canvasRef} className={`pixel-canvas tool-${tool}`} style={{ width: VIEW, height: VIEW }}
                   onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-                  aria-label="32×32 그림 칸. 누르거나 끌어서 칠해요" />
+                  aria-label={t('pixel.canvasAria')} />
           <div className="pixel-under">
-            <div className="pixel-moves" aria-label="그림 옮기기">
-              <button type="button" onClick={() => shift(0, -1)} title="위로 한 칸">↑</button>
-              <button type="button" onClick={() => shift(0, 1)} title="아래로 한 칸">↓</button>
-              <button type="button" onClick={() => shift(-1, 0)} title="왼쪽으로 한 칸">←</button>
-              <button type="button" onClick={() => shift(1, 0)} title="오른쪽으로 한 칸">→</button>
-              <button type="button" onClick={flip} title="좌우 뒤집기">⇋</button>
+            <div className="pixel-moves" aria-label={t('pixel.moveArt')}>
+              <button type="button" onClick={() => shift(0, -1)} title={t('pixel.up')}>↑</button>
+              <button type="button" onClick={() => shift(0, 1)} title={t('pixel.down')}>↓</button>
+              <button type="button" onClick={() => shift(-1, 0)} title={t('pixel.left')}>←</button>
+              <button type="button" onClick={() => shift(1, 0)} title={t('pixel.right')}>→</button>
+              <button type="button" onClick={flip} title={t('pixel.flip')}>⇋</button>
             </div>
-            <label className="pixel-check"><input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> 격자</label>
-            <button type="button" className="link-danger" onClick={() => change(new Array(N * N).fill(null))} disabled={empty}>전체 지우기</button>
+            <label className="pixel-check"><input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> {t('pixel.grid')}</label>
+            <button type="button" className="link-danger" onClick={() => change(new Array(N * N).fill(null))} disabled={empty}>{t('pixel.clearAll')}</button>
           </div>
         </div>
 
@@ -292,13 +293,13 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
           <div className="pixel-current">
             <span className="pixel-swatch big" style={{ background: tool === 'eraser' ? 'transparent' : color }} />
             <div>
-              <strong>{tool === 'eraser' ? '지우개' : color}</strong>
+              <strong>{tool === 'eraser' ? t('pixel.eraser') : color}</strong>
               <label className="pixel-custom">
-                <input type="color" value={color} onChange={(e) => pickColor(e.target.value)} aria-label="색 직접 고르기" /> 직접 고르기
+                <input type="color" value={color} onChange={(e) => pickColor(e.target.value)} aria-label={t('pixel.pickColor')} /> {t('pixel.pickColor')}
               </label>
             </div>
           </div>
-          <div className="pixel-palette" role="radiogroup" aria-label="색">
+          <div className="pixel-palette" role="radiogroup" aria-label={t('pixel.color')}>
             {palette.map((c) => (
               <button key={c} type="button" role="radio" aria-checked={color === c && tool !== 'eraser'} aria-label={c} title={c}
                       className={color === c && tool !== 'eraser' ? 'pixel-swatch on' : 'pixel-swatch'} style={{ background: c }}
@@ -307,7 +308,7 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
           </div>
           {recent.length > 0 && (
             <>
-              <p className="muted small">최근 쓴 색</p>
+              <p className="muted small">{t('pixel.recent')}</p>
               <div className="pixel-palette">
                 {recent.map((c) => (
                   <button key={c} type="button" aria-label={c} title={c} className="pixel-swatch" style={{ background: c }} onClick={() => pickColor(c)} />
@@ -315,19 +316,19 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
               </div>
             </>
           )}
-          <div className="pixel-previews" aria-label="아레나에서 보이는 모습">
+          <div className="pixel-previews" aria-label={t('pixel.arenaLook')}>
             {[96, 44, 20].map((s) => <ArtPreview key={s} cells={cells} size={s} background={background} borderColor={borderColor} borderWidth={borderWidth} />)}
           </div>
-          <p className={tooMany ? 'error small' : 'muted small'}>색 {colorsUsed} / {maxColors}개{tooMany ? ' · 색이 너무 많아요' : ''}</p>
+          <p className={tooMany ? 'error small' : 'muted small'}>{t('pixel.colorsUsed', { used: colorsUsed, max: maxColors })}{tooMany ? t('pixel.tooMany') : ''}</p>
         </div>
       </div>
 
-      <p className="muted small">점선 원 밖의 칸은 아레나에서 보이지 않아요. 비워 둔 칸에는 바탕색이 보여요. 작게 보여도 알아보기 쉽게 굵은 모양으로 그려 보세요.</p>
+      <p className="muted small">{t('pixel.note')}</p>
       <div className="pixel-actions">
-        {waitMs > 0 && <span className="muted small">{Math.ceil(waitMs / 60000)}분 뒤에 다시 저장할 수 있어요</span>}
-        <button type="button" className="pixel-cancel" disabled={busy} onClick={onCancel}>취소</button>
+        {waitMs > 0 && <span className="muted small">{t('pixel.wait', { n: Math.ceil(waitMs / 60000) })}</span>}
+        <button type="button" className="pixel-cancel" disabled={busy} onClick={onCancel}>{t('pixel.cancel')}</button>
         <button type="button" className="primary" disabled={!canSave} onClick={() => onSave(encodeArt(cells))}>
-          {busy ? '저장하는 중…' : saveLabel}
+          {busy ? t('pixel.saving') : saveLabel}
         </button>
       </div>
     </div>

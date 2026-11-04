@@ -1,0 +1,18 @@
+export default {
+  loadFailed: '정보를 불러오지 못했어요',
+  botDesc: '아레나를 함께 돌아다니는 봇이에요. 사람과 같은 규칙으로 커지고 작아지고, 부딪히면 이기고 져요.',
+  score: '현재 유행도',
+  rank: '순위',
+  notRanked: '집계 안 함',
+  title: '플레이어',
+  reportAria: '{name} 신고하기',
+  report: '🚩 신고',
+  admin: '관리자',
+  commentScore: '댓글 점수',
+  last7dTrend: '최근 7일 점수 추이',
+  keywords: '가진 키워드',
+  top3: '점수 상위 3개',
+  noKeywords: '지금 가진 키워드가 없어요',
+  detailAria: '{text} 자세히 보기',
+  reportPreview: '플레이어: {name}',
+} as Record<string, string>;

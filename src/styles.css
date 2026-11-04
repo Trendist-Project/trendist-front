@@ -824,3 +824,9 @@ button.link-back:hover { color: var(--text); }
 .dash-chip.cool { color: var(--muted); border-color: var(--line); background: linear-gradient(90deg, rgba(148,163,184,0.28) var(--p, 100%), transparent var(--p, 100%)); }
 @keyframes dash-glow { from { box-shadow: 0 0 0 rgba(255,200,74,0); } to { box-shadow: 0 0 10px rgba(255,200,74,0.8); } }
 @media (prefers-reduced-motion: reduce) { .dash-chip.active { animation: none; } }
+
+/* 메인 화면 서버(나라) 선택: 기본값이 알아서 정해지므로 눈에 덜 띄는 작은 목록 */
+.server-select { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 0.8rem; color: var(--muted); }
+.server-select select { font: inherit; font-size: 0.8rem; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; width: auto; cursor: pointer; }
+.server-select select:hover, .server-select select:focus { color: var(--text); border-color: var(--muted); }
+.server-select select option { background: var(--panel); color: var(--text); }

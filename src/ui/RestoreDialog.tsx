@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ApiFailure } from '../api/client';
 import { Modal } from './Modal';
+import { t } from '../i18n';
 
 interface Props { onRestore(): Promise<void>; onCancel(): void }
 
@@ -14,23 +15,23 @@ export function RestoreDialog({ onRestore, onCancel }: Props) {
     try {
       await onRestore();
     } catch (e) {
-      setError(e instanceof ApiFailure ? e.message : '복구하지 못했어요. 다시 시도해 주세요');
+      setError(e instanceof ApiFailure ? e.message : t('dialogs.restoreFailed'));
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="탈퇴한 계정이에요" onClose={onCancel} className="account-dialog">
-      <p>이 Google 계정은 탈퇴한 상태예요. 계정을 복구할까요?</p>
+    <Modal title={t('dialogs.restoreTitle')} onClose={onCancel} className="account-dialog">
+      <p>{t('dialogs.restoreAsk')}</p>
       <ul className="account-dialog-list">
-        <li>닉네임, 레벨·EXP, 칭호, 꾸미기, 댓글이 탈퇴 전 그대로 돌아와요.</li>
-        <li>탈퇴한 동안 24시간이 지난 보관함 키워드는 돌아오지 않아요.</li>
-        <li>복구하면 바로 로그인돼요.</li>
+        <li>{t('dialogs.restore1')}</li>
+        <li>{t('dialogs.restore2')}</li>
+        <li>{t('dialogs.restore3')}</li>
       </ul>
       {error && <p className="error small" role="alert">{error}</p>}
       <div className="account-dialog-actions">
-        <button onClick={onCancel} disabled={busy}>취소</button>
-        <button className="primary" onClick={restore} disabled={busy}>{busy ? '복구하는 중…' : '계정 복구'}</button>
+        <button onClick={onCancel} disabled={busy}>{t('dialogs.cancel')}</button>
+        <button className="primary" onClick={restore} disabled={busy}>{busy ? t('dialogs.restoring') : t('dialogs.restoreBtn')}</button>
       </div>
     </Modal>
   );

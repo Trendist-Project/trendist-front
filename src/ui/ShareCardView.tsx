@@ -4,6 +4,7 @@ import type { PlayerSummary, ShareCardCreated } from '../api/types';
 import { kakaoEnabled, prepareKakao, sendKakaoLink } from '../kakaoShare';
 import { Modal } from './Modal';
 import { successToast } from './toast';
+import { fmtNumber, t } from '../i18n';
 
 interface Props { player: PlayerSummary; onBack(): void; onClose(): void }
 
@@ -41,7 +42,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     })().catch((e) => {
       if (!alive) return;
       const tooFast = (e as { code?: string })?.code === 'SHARE_TOO_FAST';
-      setMessage({ text: tooFast ? '잠시 후 다시 열어 주세요' : '카드를 만들지 못했어요', error: true });
+      setMessage({ text: tooFast ? t('share.tooFast') : t('share.createFailed'), error: true });
     });
     return () => { alive = false; };
   }, [player]);
@@ -51,7 +52,7 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     setMessage(null);
     try {
       await navigator.clipboard.writeText(card.url);
-      successToast('카드 링크를 복사했어요');
+      successToast(t('share.linkCopied'));
     } catch {
       // 클립보드를 쓸 수 없는 브라우저(권한·http 주소)에서는 주소를 보여 줘서 직접 복사하게 한다
       setMessage({ text: card.url, error: false });
@@ -78,11 +79,11 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     if (!card) return;
     if (kakaoReady) {
       try {
-        sendKakaoLink(card.url, `${player.nickname}의 트렌드 성적표 · 유행도 ${player.currentScore.toLocaleString()}\n${card.url}`);
+        sendKakaoLink(card.url, `${t('share.kakaoText', { name: player.nickname, score: fmtNumber(Number(player.currentScore)) })}\n${card.url}`);
         return;
       } catch { /* 아래 공유 시트로 */ }
     }
-    void shareOrCopy(card.url, `내 유행도 ${player.currentScore.toLocaleString()}! 나랑 겨뤄 볼래?`, '카드 링크를 복사했어요');
+    void shareOrCopy(card.url, t('share.shareText', { score: fmtNumber(Number(player.currentScore)) }), t('share.linkCopied'));
   }
 
   function save() {
@@ -96,31 +97,31 @@ export function ShareCardView({ player, onBack, onClose }: Props) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    successToast('이미지를 저장했어요');
+    successToast(t('share.imageSaved'));
   }
 
   const stats = card && card.totalViews > 0
-    ? `내 카드를 지금까지 ${card.totalViews.toLocaleString()}명이 ${card.totalPlays > 0 ? `봤고 ${card.totalPlays.toLocaleString()}명이 게임에 들어왔어요` : '봤어요'}`
+    ? card.totalPlays > 0 ? t('share.statsPlays', { views: fmtNumber(card.totalViews), plays: fmtNumber(card.totalPlays) }) : t('share.statsViews', { views: fmtNumber(card.totalViews) })
     : null;
 
   return (
-    <Modal title="📸 자랑하기 카드" onClose={onClose} className="share-card-modal" titleExtra={<button className="link-back" onClick={onBack}>‹ 내 정보</button>}>
+    <Modal title={t('share.title')} onClose={onClose} className="share-card-modal" titleExtra={<button className="link-back" onClick={onBack}>{t('common.backToProfile')}</button>}>
       <div className="share-card-frame">
         {card
-          ? <img src={pathOf(card.imageUrl)} className="share-card-canvas" width={1080} height={1350} alt="내 기록 카드 이미지" />
+          ? <img src={pathOf(card.imageUrl)} className="share-card-canvas" width={1080} height={1350} alt={t('share.imageAlt')} />
           : <div className="share-card-canvas loading" aria-hidden="true" />}
-        {!card && !message?.error && <span className="share-card-loading muted small">카드를 만드는 중…</span>}
+        {!card && !message?.error && <span className="share-card-loading muted small">{t('share.creating')}</span>}
       </div>
       {stats && <p className="share-card-stats small">👀 {stats}</p>}
       {message && <p className={message.error ? 'error small' : 'ok small'} role="status">{message.text}</p>}
       <div className="share-card-actions">
         {kakaoEnabled && kakaoReady !== false
           ? <button className="kakao-share" onClick={shareCard} disabled={!kakaoReady || !card}>
-              <span aria-hidden="true">💬</span>{kakaoReady ? '카카오톡 공유' : '카카오톡 준비 중…'}
+              <span aria-hidden="true">💬</span>{kakaoReady ? t('share.kakao') : t('share.kakaoPreparing')}
             </button>
-          : <button className="primary" onClick={shareCard} disabled={!card}>📤 카드 공유</button>}
-        <button onClick={save} disabled={!ready}>⬇️ 이미지 저장</button>
-        <button onClick={copyLink} disabled={!card}>🔗 링크 복사</button>
+          : <button className="primary" onClick={shareCard} disabled={!card}>{t('share.shareCard')}</button>}
+        <button onClick={save} disabled={!ready}>{t('share.saveImage')}</button>
+        <button onClick={copyLink} disabled={!card}>{t('share.copyLink')}</button>
       </div>
     </Modal>
   );

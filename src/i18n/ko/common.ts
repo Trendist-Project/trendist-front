@@ -1,0 +1,15 @@
+export default {
+  loading: '불러오는 중…',
+  stateActive: '🔥활성',
+  stateInactive: '💤비활성',
+  stateBanned: '⛔금지',
+  expiringSoon: '곧 삭제',
+  remainingHM: '{h}시간 {m}분 남음',
+  remainingM: '{m}분 남음',
+  justNow: '방금',
+  minutesAgo: '{n}분 전',
+  hoursAgo: '{n}시간 전',
+  backToProfile: '‹ 내 정보',
+  levelPrefix: '',
+  levelSuffix: '레벨',
+} as Record<string, string>;

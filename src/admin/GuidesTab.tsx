@@ -8,8 +8,8 @@ import { successToast } from '../ui/toast';
 const NAME_MAX = 100, TITLE_MAX = 100, BODY_MAX = 20000;
 const chars = (s: string) => [...s.trim()].length; // 서버와 같이 글자(코드 포인트) 수로 센다
 const TYPE_LABEL = { ARTICLE: '📄 문서형', FAQ: '❓ FAQ형' } as const;
-const EMPTY_CATEGORY: AdminGuideCategoryInput = { code: '', name: '', displayType: 'ARTICLE', enabled: true };
-const EMPTY_ARTICLE: AdminGuideArticleInput = { title: '', body: '' };
+const EMPTY_CATEGORY: AdminGuideCategoryInput = { code: '', name: '', nameEn: '', displayType: 'ARTICLE', enabled: true };
+const EMPTY_ARTICLE: AdminGuideArticleInput = { title: '', body: '', titleEn: '', bodyEn: '' };
 
 type Msg = { text: string; ok: boolean } | null;
 
@@ -108,6 +108,10 @@ export function GuidesTab() {
                 <span className="notice-label">이름<span className="count">{chars(catForm.value.name)}/{NAME_MAX}</span></span>
                 <input className="notice-title-input" value={catForm.value.name} placeholder="예) 🎉 이벤트" onChange={(e) => setCatForm({ ...catForm, value: { ...catForm.value, name: e.target.value } })} />
               </label>
+              <label className="notice-field">
+                <span className="notice-label">이름 (English)<span className="count">비우면 영어 사용자에게도 한국어가 보여요</span></span>
+                <input className="notice-title-input" value={catForm.value.nameEn ?? ''} placeholder="e.g. 🎉 Events" onChange={(e) => setCatForm({ ...catForm, value: { ...catForm.value, nameEn: e.target.value } })} />
+              </label>
               <div className="notice-options">
                 {(['ARTICLE', 'FAQ'] as const).map((t) => (
                   <label key={t} className={catForm.value.displayType === t ? 'notice-toggle on' : 'notice-toggle'}>
@@ -132,7 +136,7 @@ export function GuidesTab() {
                 <span className="muted small"><code>{current.code}</code> · {TYPE_LABEL[current.displayType]} · 글 {current.articleCount}개</span>
               </div>
               <div className="notice-row-actions">
-                <button onClick={() => setCatForm({ id: current.id, value: { name: current.name, displayType: current.displayType, enabled: current.enabled } })} disabled={busy}>카테고리 수정</button>
+                <button onClick={() => setCatForm({ id: current.id, value: { name: current.name, nameEn: current.nameEn ?? '', displayType: current.displayType, enabled: current.enabled } })} disabled={busy}>카테고리 수정</button>
                 {confirmCat ? (<>
                   <span className="small">삭제할까요?</span>
                   <button className="danger" disabled={busy} onClick={async () => {
@@ -178,14 +182,14 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
     }
   }
 
-  const dirty = editing !== null && (editing === 'new' ? form.title.trim() !== '' || form.body.trim() !== ''
-    : (() => { const a = list?.find((x) => x.id === editing); return !!a && (a.title !== form.title || a.body !== form.body); })());
+  const dirty = editing !== null && (editing === 'new' ? form.title.trim() !== '' || form.body.trim() !== '' || !!form.titleEn?.trim() || !!form.bodyEn?.trim()
+    : (() => { const a = list?.find((x) => x.id === editing); return !!a && (a.title !== form.title || a.body !== form.body || (a.titleEn ?? '') !== (form.titleEn ?? '') || (a.bodyEn ?? '') !== (form.bodyEn ?? '')); })());
 
   function open(target: number | 'new') {
     if (dirty && !window.confirm('저장하지 않은 내용이 있어요. 버리고 넘어갈까요?')) return;
     const a = target === 'new' ? null : list?.find((x) => x.id === target);
     setEditing(target);
-    setForm(a ? { title: a.title, body: a.body } : EMPTY_ARTICLE);
+    setForm(a ? { title: a.title, body: a.body, titleEn: a.titleEn ?? '', bodyEn: a.bodyEn ?? '' } : EMPTY_ARTICLE);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -193,8 +197,9 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
     e.preventDefault();
     if (editing === null) return;
     const done = await run(async () => {
-      if (editing === 'new') await adminApi.createGuideArticle(category.id, form);
-      else await adminApi.updateGuideArticle(editing, form);
+      const input = { ...form, titleEn: form.titleEn?.trim() || null, bodyEn: form.bodyEn?.trim() || null }; // 영어판은 비우면 null
+      if (editing === 'new') await adminApi.createGuideArticle(category.id, input);
+      else await adminApi.updateGuideArticle(editing, input);
       await load();
       onCountChange();
     }, editing === 'new' ? '글을 올렸어요' : '글을 수정했어요');
@@ -217,11 +222,20 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
           <input className="notice-title-input" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                  placeholder={category.displayType === 'FAQ' ? '예) 키워드가 사라졌어요.' : '예) 세이프존'} />
         </label>
+        <label className="notice-field">
+          <span className="notice-label">{category.displayType === 'FAQ' ? '질문' : '제목'} (English)<span className="count">비우면 영어 사용자에게도 한국어가 보여요</span></span>
+          <input className="notice-title-input" value={form.titleEn ?? ''} onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))} />
+        </label>
         <div className="notice-edit">
           <div className="notice-field">
             <label className="notice-label" htmlFor="guide-body">{category.displayType === 'FAQ' ? '답변' : '본문'}<span className={bodyLen > BODY_MAX ? 'count over' : 'count'}>{bodyLen.toLocaleString()}/{BODY_MAX.toLocaleString()}</span></label>
             <MarkupEditor id="guide-body" embeds value={form.body} onChange={(body) => setForm((f) => ({ ...f, body }))} rows={18}
                           placeholder={'놀이 방법을 쉬운 말로 써 주세요. 세부 수치·계산식은 쓰지 않아요.\n🖼 그림 넣기로 게임 그림을 넣을 수 있어요.'} />
+          </div>
+          <div className="notice-field">
+            <label className="notice-label" htmlFor="guide-body-en">{category.displayType === 'FAQ' ? '답변' : '본문'} (English)</label>
+            <MarkupEditor id="guide-body-en" embeds value={form.bodyEn ?? ''} onChange={(bodyEn) => setForm((f) => ({ ...f, bodyEn }))} rows={18}
+                          placeholder="English text. Leave empty to show the Korean text." />
           </div>
           <div className="notice-preview" aria-label="미리 보기">
             <span className="notice-label">미리 보기<span className="count">사용자 가이드 창과 같은 모양</span></span>

@@ -7,6 +7,7 @@ import { Modal } from './Modal';
 import { ReportDialog } from './ReportDialog';
 import { ScoreChart } from './ScoreChart';
 import { LevelText } from './LevelText';
+import { fmtNumber, t } from '../i18n';
 
 interface Props {
   entityNo: number;
@@ -33,7 +34,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
     let alive = true;
     api.roomPlayer(entityNo)
       .then((c) => { if (alive) setCard(c); })
-      .catch((e) => { if (alive) setError(e instanceof ApiFailure ? e.message : '정보를 불러오지 못했어요'); });
+      .catch((e) => { if (alive) setError(e instanceof ApiFailure ? e.message : t('player.loadFailed')); });
     api.roomPlayerHistory(entityNo).then((h) => { if (alive) setHistory(h); }).catch(() => { /* 그래프만 빠진다 */ });
     return () => { alive = false; };
   }, [entityNo, bot]);
@@ -45,56 +46,56 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
           <TurtleIcon level={bot.level} size={64} />
           <div className="player-hero-main">
             <div className="player-name"><strong>{bot.nickname}</strong><span className="badge bot">BOT</span></div>
-            <span className="muted small">아레나를 함께 돌아다니는 봇이에요. 사람과 같은 규칙으로 커지고 작아지고, 부딪히면 이기고 져요.</span>
+            <span className="muted small">{t('player.botDesc')}</span>
           </div>
         </section>
         <dl className="kw-stats">
-          <div><dt>현재 유행도</dt><dd>{bot.score.toLocaleString()}</dd></div>
-          <div><dt>레벨</dt><dd><LevelText level={bot.level} size={26} /></dd></div>
-          <div><dt>순위</dt><dd className="muted">집계 안 함</dd></div>
+          <div><dt>{t('player.score')}</dt><dd>{fmtNumber(bot.score)}</dd></div>
+          <div><dt>{t('profile.level')}</dt><dd><LevelText level={bot.level} prefix={t('common.levelPrefix')} suffix={t('common.levelSuffix')} size={26} /></dd></div>
+          <div><dt>{t('player.rank')}</dt><dd className="muted">{t('player.notRanked')}</dd></div>
         </dl>
       </Modal>
     );
   }
 
   return (
-    <Modal title={card?.nickname ?? '플레이어'} onClose={onClose} className="player-modal"
+    <Modal title={card?.nickname ?? t('player.title')} onClose={onClose} className="player-modal"
            titleExtra={card && (
              // 플레이어 신고(13.5): 닉네임·행동 등. 세션 번호로 보내면 서버가 같은 방의 그 플레이어로 바꿔 저장한다
-             <button className="pi-report" onClick={() => setReporting(true)} aria-label={`${card.nickname} 신고하기`}>🚩 신고</button>
+             <button className="pi-report" onClick={() => setReporting(true)} aria-label={t('player.reportAria', { name: card.nickname })}>{t('player.report')}</button>
            )}>
       {error && <p className="muted">{error}</p>}
-      {!error && !card && <p className="muted">불러오는 중…</p>}
+      {!error && !card && <p className="muted">{t('common.loading')}</p>}
       {card && (<>
         <section className="player-hero">
           <TurtleIcon level={card.level} size={64} />
           <div className="player-hero-main">
             <div className="player-name">
               <strong>{card.nickname}</strong>
-              {card.admin && <span className="badge admin">관리자</span>}
+              {card.admin && <span className="badge admin">{t('player.admin')}</span>}
             </div>
             {card.title && <span className="muted small">{card.title}</span>}
           </div>
         </section>
 
         <dl className="kw-stats">
-          <div><dt>현재 유행도</dt><dd>{card.score.toLocaleString()}</dd></div>
-          <div><dt>레벨</dt><dd><LevelText level={card.level} size={26} /></dd></div>
-          <div><dt>댓글 점수</dt><dd>{card.commentScore.toLocaleString()}</dd></div>
+          <div><dt>{t('player.score')}</dt><dd>{fmtNumber(card.score)}</dd></div>
+          <div><dt>{t('profile.level')}</dt><dd><LevelText level={card.level} prefix={t('common.levelPrefix')} suffix={t('common.levelSuffix')} size={26} /></dd></div>
+          <div><dt>{t('player.commentScore')}</dt><dd>{fmtNumber(card.commentScore)}</dd></div>
         </dl>
 
-        <section className="kw-activity" aria-label="최근 7일 점수 추이">
-          <div className="kw-activity-head"><h3>최근 7일</h3></div>
-          {history ? <ScoreChart history={history} /> : <div className="chart-placeholder muted small">그래프를 불러오는 중…</div>}
+        <section className="kw-activity" aria-label={t('player.last7dTrend')}>
+          <div className="kw-activity-head"><h3>{t('chart.last7d')}</h3></div>
+          {history ? <ScoreChart history={history} /> : <div className="chart-placeholder muted small">{t('chart.loading')}</div>}
         </section>
 
-        <section className="player-keywords" aria-label="가진 키워드">
-          <h3>가진 키워드 <span className="muted small">점수 상위 3개</span></h3>
-          {card.topKeywords.length === 0 ? <p className="muted small">지금 가진 키워드가 없어요</p> : (
+        <section className="player-keywords" aria-label={t('player.keywords')}>
+          <h3>{t('player.keywords')} <span className="muted small">{t('player.top3')}</span></h3>
+          {card.topKeywords.length === 0 ? <p className="muted small">{t('player.noKeywords')}</p> : (
             <ul>
               {card.topKeywords.map((k) => (
                 <li key={k.keywordId}>
-                  <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={`${k.text} 자세히 보기`}>
+                  <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={t('player.detailAria', { text: k.text })}>
                     <span><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></span>
                     <span className="mine-chevron" aria-hidden="true">›</span>
                   </button>
@@ -105,7 +106,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
         </section>
       </>)}
       {reporting && card && (
-        <ReportDialog target="PLAYER" targetId={entityNo} preview={`플레이어: ${card.nickname}`}
+        <ReportDialog target="PLAYER" targetId={entityNo} preview={t('player.reportPreview', { name: card.nickname })}
                       onDone={(err) => { setReporting(false); if (err) onNotice(err); }} onClose={() => setReporting(false)} />
       )}
     </Modal>

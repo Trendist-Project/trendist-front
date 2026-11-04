@@ -7,8 +7,9 @@ import { Comments } from './Comments';
 import { remaining, STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
 import { successToast } from './toast';
+import { fmtNumber, t } from '../i18n';
 
-const RANGES: [ActivityRange, string][] = [['24h', '24시간'], ['7d', '7일'], ['30d', '30일'], ['180d', '180일']];
+const RANGES: [ActivityRange, string][] = [['24h', t('chart.range24h')], ['7d', t('chart.range7d')], ['30d', t('chart.range30d')], ['180d', t('chart.range180d')]];
 const HOLDERS_KEY = 'trendist.chartHolders';
 
 interface Props {
@@ -58,9 +59,9 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
     try {
       await api.requestAiComment(card.id);
       setCard((c) => (c ? { ...c, aiCommentRequested: true } : c));
-      successToast('갱신을 요청했어요. 관리자가 확인해요');
+      successToast(t('keyword.aiRequested'));
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '요청하지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('keyword.requestFailed'));
     } finally {
       setAiBusy(false);
     }
@@ -75,30 +76,30 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
       onPlused(r.gained, r.player);
       loadActivity();
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '추가하지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('keyword.plusFailed'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title={card?.text ?? '키워드'} onClose={onClose} className="keyword-modal"
+    <Modal title={card?.text ?? t('keyword.title')} onClose={onClose} className="keyword-modal"
            titleExtra={card && onShare && (
-             <button className="kw-share" disabled={shared} title="채팅에 #키워드로 공유해요" aria-label={`${card.text} 채팅에 공유하기`}
+             <button className="kw-share" disabled={shared} title={t('keyword.shareTitle')} aria-label={t('keyword.shareAria', { text: card.text })}
                      onClick={() => { onShare(card.text); setShared(true); window.setTimeout(() => setShared(false), 1500); }}>
-               {shared ? '공유함' : '💬 공유'}
+               {shared ? t('keyword.shared') : t('keyword.share')}
              </button>
            )}>
-      {failed && <p className="muted">키워드를 불러오지 못했어요. 금지되었거나 다른 나라의 키워드일 수 있어요.</p>}
-      {!failed && !card && <p className="muted">불러오는 중…</p>}
+      {failed && <p className="muted">{t('keyword.loadFailed')}</p>}
+      {!failed && !card && <p className="muted">{t('common.loading')}</p>}
       {card && (<>
         {card.aiComment && (
-          <section className="kw-ai" aria-label="AI 한 줄 설명">
+          <section className="kw-ai" aria-label={t('keyword.aiLabel')}>
             <div className="kw-ai-head">
-              <span className="kw-ai-label"><GeminiIcon /> AI 한 줄 설명</span>
+              <span className="kw-ai-label"><GeminiIcon /> {t('keyword.aiLabel')}</span>
               <button type="button" className="kw-ai-report" disabled={aiBusy || card.aiCommentRequested} onClick={requestAi}
-                      title="설명이 이상하면 관리자에게 갱신을 요청해요">
-                {card.aiCommentRequested ? '갱신 요청함' : '설명이 이상해요'}
+                      title={t('keyword.aiReportTitle')}>
+                {card.aiCommentRequested ? t('keyword.aiRequestedBtn') : t('keyword.aiReportBtn')}
               </button>
             </div>
             <p>{card.aiComment}</p>
@@ -107,37 +108,37 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
         <section className="kw-hero">
           <div className="kw-hero-main">
             <span className={`badge state-${card.state}`}>{STATE_BADGE[card.state] ?? card.state}</span>
-            <div className="kw-score"><strong>{card.trendValue}</strong><span>점</span></div>
+            <div className="kw-score"><strong>{card.trendValue}</strong><span>{t('keyword.pointsUnit')}</span></div>
           </div>
           <div className="kw-hero-side">
             <button className="primary kw-plus" onClick={plus} disabled={busy || card.plusedByMe}
-                    aria-label={card.plusedByMe ? '이미 보유중이에요' : `${card.text} 추가하기`}>
-              {card.plusedByMe ? '보유중' : '추가'}
+                    aria-label={card.plusedByMe ? t('keyword.alreadyHeld') : t('keyword.addAria', { text: card.text })}>
+              {card.plusedByMe ? t('keyword.held') : t('keyword.add')}
             </button>
             {card.plusedByMe && card.myExpiresAt && <span className="muted small">{remaining(card.myExpiresAt)}</span>}
           </div>
         </section>
 
         <dl className="kw-stats">
-          <div><dt>가진 사람</dt><dd>👥 {card.holderCount.toLocaleString()}명</dd></div>
-          <div><dt>누적 추가</dt><dd>{card.totalPlusCount.toLocaleString()}</dd></div>
-          <div><dt>누적 검색</dt><dd>{card.searchCount.toLocaleString()}</dd></div>
+          <div><dt>{t('keyword.holders')}</dt><dd>{t('keyword.holderCount', { n: fmtNumber(card.holderCount) })}</dd></div>
+          <div><dt>{t('keyword.totalAdds')}</dt><dd>{fmtNumber(card.totalPlusCount)}</dd></div>
+          <div><dt>{t('keyword.totalSearches')}</dt><dd>{fmtNumber(card.searchCount)}</dd></div>
         </dl>
 
-        <section className="kw-activity" aria-label="활동 그래프">
+        <section className="kw-activity" aria-label={t('keyword.activityGraph')}>
           <div className="kw-activity-head">
-            <h3>활동</h3>
-            <div className="chip-row" role="group" aria-label="기간">
+            <h3>{t('keyword.activity')}</h3>
+            <div className="chip-row" role="group" aria-label={t('keyword.period')}>
               {RANGES.map(([r, label]) => (
                 <button key={r} className={range === r ? 'chip active' : 'chip'} aria-pressed={range === r} onClick={() => setRange(r)}>{label}</button>
               ))}
             </div>
             <label className="toggle small">
-              <input type="checkbox" checked={showHolders} onChange={(e) => setShowHolders(e.target.checked)} /> 가진 사람
+              <input type="checkbox" checked={showHolders} onChange={(e) => setShowHolders(e.target.checked)} /> {t('keyword.holders')}
             </label>
           </div>
           {activity && activity.range === range ? <ActivityChart activity={activity} showHolders={showHolders} />
-            : <div className="chart-placeholder muted small">그래프를 불러오는 중…</div>}
+            : <div className="chart-placeholder muted small">{t('chart.loading')}</div>}
         </section>
 
         <Comments keywordId={keywordId} onError={onError} />

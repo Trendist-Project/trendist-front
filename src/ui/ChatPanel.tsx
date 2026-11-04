@@ -1,5 +1,6 @@
 import { forwardRef, useRef, useState, type FormEvent, useLayoutEffect } from 'react';
 import { ReportDialog } from './ReportDialog';
+import { t } from '../i18n';
 
 /** 화면에 쌓는 채팅 한 줄. id는 서버의 채팅 메시지 번호(신고에 쓴다). */
 export interface ChatLine { id: number; e: number; nickname: string; text: string; at: number; mine: boolean }
@@ -63,28 +64,28 @@ export const ChatPanel = forwardRef<HTMLInputElement, Props>(function ChatPanel(
   }
 
   return (
-    <section className={collapsed ? 'chat collapsed' : 'chat'} aria-label="채팅">
+    <section className={collapsed ? 'chat collapsed' : 'chat'} aria-label={t('chat.label')}>
       <ol className="chat-log" ref={logRef} aria-live="polite" onScroll={onScroll}>
-        {shown.length === 0 && <li className="muted small">{collapsed ? '아직 채팅이 없어요' : '첫 메시지를 남겨 보세요. #키워드 를 쓰면 누르는 사람이 바로 검색해요'}</li>}
+        {shown.length === 0 && <li className="muted small">{collapsed ? t('chat.emptyCollapsed') : t('chat.emptyOpen')}</li>}
         {shown.map((l) => (
           <li key={l.id} className={l.mine ? 'mine' : undefined} tabIndex={l.mine ? undefined : -1}>
             <strong>{l.nickname}</strong>{': '}
             {l.text.split(TAG).map((part, i) => (/^#[^\s#]{1,20}$/.test(part)
-              ? <button key={i} className="chat-tag" onClick={() => onKeyword(part.slice(1))} title={`${part.slice(1)} 검색`}>{part}</button>
+              ? <button key={i} className="chat-tag" onClick={() => onKeyword(part.slice(1))} title={t('chat.search', { kw: part.slice(1) })}>{part}</button>
               : <span key={i}>{part}</span>))}
             {!l.mine && (
-              <button className="chat-report" onClick={() => setReporting(l)} aria-label={`${l.nickname}의 메시지 신고`}>신고</button>
+              <button className="chat-report" onClick={() => setReporting(l)} aria-label={t('chat.reportAria', { name: l.nickname })}>{t('chat.report')}</button>
             )}
           </li>
         ))}
       </ol>
       <form className="chat-input" onSubmit={submit}>
         <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX} disabled={disabled}
-               placeholder={disabled ? '연결 중…' : 'Enter로 채팅 (#키워드 가능)'} aria-label="채팅 입력" autoComplete="off"
+               placeholder={disabled ? t('chat.connecting') : t('chat.placeholder')} aria-label={t('chat.inputLabel')} autoComplete="off"
                onKeyDown={(e) => { if (e.key === 'Escape') e.currentTarget.blur(); }} />
         {/* 접기 버튼은 입력 줄 오른쪽 끝에 둔다. 메시지 목록 위에 겹치면 스크롤 막대를 가린다 */}
         <button type="button" className="chat-fold" onClick={onToggleCollapsed} aria-expanded={!collapsed}
-                title={collapsed ? '채팅 펼치기' : '채팅 접기'} aria-label={collapsed ? '채팅 펼치기' : '채팅 접기'}>
+                title={collapsed ? t('chat.expand') : t('chat.collapse')} aria-label={collapsed ? t('chat.expand') : t('chat.collapse')}>
           {collapsed ? '▴' : '▾'}
         </button>
       </form>

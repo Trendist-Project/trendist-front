@@ -1,3 +1,6 @@
+import { getCountry, getLang } from '../country';
+import { errorText } from '../i18n';
+import { getAdminCountry } from './adminCountry';
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
   AiCommentPage, AiCommentRow, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
@@ -14,7 +17,7 @@ let accessToken: string | null = null;
 export const getToken = () => accessToken;
 
 async function raw<T>(method: string, path: string, body?: unknown, auth = true): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { 'Accept-Language': getLang() };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
   const res = await fetch(path, {
@@ -25,7 +28,10 @@ async function raw<T>(method: string, path: string, body?: unknown, auth = true)
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new ApiFailure(res.status, data?.code ?? `HTTP_${res.status}`, data?.message ?? '요청에 실패했어요');
+  if (!res.ok) {
+    const code = data?.code ?? `HTTP_${res.status}`;
+    throw new ApiFailure(res.status, code, errorText(code, data?.message ?? errorText('REQUEST_FAILED', '요청에 실패했어요')));
+  }
   return data as T;
 }
 
@@ -87,8 +93,8 @@ export const api = {
   async logout() {
     try { await raw<void>('POST', '/api/auth/logout', undefined, true); } finally { accessToken = null; }
   },
-  me: () => request<Me>('GET', '/api/me'),
-  createPlayer: (nickname: string) => request<PlayerSummary>('POST', '/api/players', { nickname, countryCode: 'KR' }),
+  me: (country = getCountry()) => request<Me>('GET', `/api/me?country=${country}`),
+  createPlayer: (nickname: string) => request<PlayerSummary>('POST', '/api/players', { nickname, countryCode: getCountry() }),
   changeNickname: (nickname: string) => request<PlayerSummary>('PATCH', '/api/me/nickname', { nickname }),
   titles: () => request<TitleBox>('GET', '/api/me/titles'),
   levelBadges: () => request<LevelBadge[]>('GET', '/api/levels/badges'),
@@ -117,7 +123,7 @@ export const api = {
   scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
   roomPlayer: (entityNo: number) => request<PlayerCard>('GET', `/api/room/players/${entityNo}`),
   roomPlayerHistory: (entityNo: number) => request<ScoreHistory>('GET', `/api/room/players/${entityNo}/score-history?range=7d`),
-  rankings: () => request<RankingEntry[]>('GET', '/api/rankings?country=KR'),
+  rankings: () => request<RankingEntry[]>('GET', `/api/rankings?country=${getCountry()}`),
   notices: () => request<Notice[]>('GET', '/api/notices'),
   guideCategories: () => request<GuideCategory[]>('GET', '/api/guide/categories'),
   guideArticles: (code: string) => request<GuideArticle[]>('GET', `/api/guide/categories/${encodeURIComponent(code)}/articles`),
@@ -151,13 +157,13 @@ const qs = (o: Record<string, string | number | undefined>) =>
   new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString();
 
 /** 관리자 공지(4.16). popupDays는 등록 시각부터 팝업 기간(1~90일) */
-export interface AdminNoticeInput { title: string; body: string; pinned: boolean; popupEnabled: boolean; popupDays: number | null }
+export interface AdminNoticeInput { title: string; body: string; titleEn: string | null; bodyEn: string | null; pinned: boolean; popupEnabled: boolean; popupDays: number | null }
 export interface AdminNotice extends AdminNoticeInput { id: number; popupUntil: string | null; createdAt: string; updatedAt: string; edited: boolean }
 
 /** 관리자 가이드(4.17, 13.4). code는 만들 때만, displayType은 FAQ(아코디언)·ARTICLE(문서형) */
-export interface AdminGuideCategoryInput { code?: string; name: string; displayType: 'FAQ' | 'ARTICLE'; enabled: boolean }
-export interface AdminGuideCategory { id: number; code: string; name: string; displayType: 'FAQ' | 'ARTICLE'; enabled: boolean; sortOrder: number; articleCount: number }
-export interface AdminGuideArticleInput { title: string; body: string }
+export interface AdminGuideCategoryInput { code?: string; name: string; nameEn: string | null; displayType: 'FAQ' | 'ARTICLE'; enabled: boolean }
+export interface AdminGuideCategory { id: number; code: string; name: string; nameEn: string | null; displayType: 'FAQ' | 'ARTICLE'; enabled: boolean; sortOrder: number; articleCount: number }
+export interface AdminGuideArticleInput { title: string; body: string; titleEn: string | null; bodyEn: string | null }
 export interface AdminGuideArticle extends AdminGuideArticleInput { id: number; categoryId: number; sortOrder: number; createdAt: string; updatedAt: string }
 
 /** 관리자 공유 통계(13.8) */
@@ -211,27 +217,27 @@ export interface Dashboard {
 }
 
 export const adminApi = {
-  dashboard: () => request<Dashboard>('GET', '/api/admin/dashboard?country=KR'),
-  statsSummary: () => request<StatSummary>('GET', '/api/admin/stats/summary?country=KR'),
-  statsHourly: (hours: number) => request<StatRow[]>('GET', `/api/admin/stats/hourly?${qs({ country: 'KR', hours })}`),
-  statsDaily: (days: number) => request<StatRow[]>('GET', `/api/admin/stats/daily?${qs({ country: 'KR', days })}`),
-  users: (q: { q?: string; filter: string; sort: string; dir: 'asc' | 'desc'; page: number }) => request<AdminUserPage>('GET', `/api/admin/users?${qs({ country: 'KR', ...q })}`),
-  user: (userId: number) => request<AdminUserDetail>('GET', `/api/admin/users/${userId}`),
+  dashboard: () => request<Dashboard>('GET', `/api/admin/dashboard?country=${getAdminCountry()}`),
+  statsSummary: () => request<StatSummary>('GET', `/api/admin/stats/summary?country=${getAdminCountry()}`),
+  statsHourly: (hours: number) => request<StatRow[]>('GET', `/api/admin/stats/hourly?${qs({ country: getAdminCountry(), hours })}`),
+  statsDaily: (days: number) => request<StatRow[]>('GET', `/api/admin/stats/daily?${qs({ country: getAdminCountry(), days })}`),
+  users: (q: { q?: string; filter: string; sort: string; dir: 'asc' | 'desc'; page: number }) => request<AdminUserPage>('GET', `/api/admin/users?${qs({ country: getAdminCountry(), ...q })}`),
+  user: (userId: number) => request<AdminUserDetail>('GET', `/api/admin/users/${userId}?country=${getAdminCountry()}`),
   sanction: (userId: number, type: SanctionKind, days: number | null, reason: string) =>
-    request<AdminUserDetail>('POST', `/api/admin/users/${userId}/sanctions`, { type, days, reason }),
-  releaseSanction: (sanctionId: number) => request<AdminUserDetail>('POST', `/api/admin/users/sanctions/${sanctionId}/release`),
-  renameUser: (userId: number, nickname: string) => request<AdminUserDetail>('PATCH', `/api/admin/users/${userId}/nickname`, { nickname }),
-  resetUserLook: (userId: number) => request<AdminUserDetail>('POST', `/api/admin/users/${userId}/look/reset`),
-  setUserAdmin: (userId: number, admin: boolean) => request<AdminUserDetail>('PATCH', `/api/admin/users/${userId}/role`, { admin }),
-  kickUser: (userId: number) => request<void>('POST', `/api/admin/users/${userId}/kick`),
+    request<AdminUserDetail>('POST', `/api/admin/users/${userId}/sanctions?country=${getAdminCountry()}`, { type, days, reason }),
+  releaseSanction: (sanctionId: number) => request<AdminUserDetail>('POST', `/api/admin/users/sanctions/${sanctionId}/release?country=${getAdminCountry()}`),
+  renameUser: (userId: number, nickname: string) => request<AdminUserDetail>('PATCH', `/api/admin/users/${userId}/nickname?country=${getAdminCountry()}`, { nickname }),
+  resetUserLook: (userId: number) => request<AdminUserDetail>('POST', `/api/admin/users/${userId}/look/reset?country=${getAdminCountry()}`),
+  setUserAdmin: (userId: number, admin: boolean) => request<AdminUserDetail>('PATCH', `/api/admin/users/${userId}/role?country=${getAdminCountry()}`, { admin }),
+  kickUser: (userId: number) => request<void>('POST', `/api/admin/users/${userId}/kick?country=${getAdminCountry()}`),
   shareStats: (sort: string, page: number) => request<AdminShareStats>('GET', `/api/admin/share-cards?${qs({ sort, page })}`),
   status: () => request<AdminStatus>('GET', '/api/me/admin'),
-  aiComments: (filter: string, page: number) => request<AiCommentPage>('GET', `/api/admin/ai-comments?${qs({ country: 'KR', filter, page })}`),
+  aiComments: (filter: string, page: number) => request<AiCommentPage>('GET', `/api/admin/ai-comments?${qs({ country: getAdminCountry(), filter, page })}`),
   aiRegenerate: (id: number) => request<AiCommentRow>('POST', `/api/admin/ai-comments/${id}/regenerate`),
   aiEdit: (id: number, comment: string) => request<AiCommentRow>('PUT', `/api/admin/ai-comments/${id}`, { comment }),
   aiDismiss: (id: number) => request<AiCommentRow>('POST', `/api/admin/ai-comments/${id}/dismiss`),
-  keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: 'KR', size: 50, ...q, state: q.state?.join(','), source: q.source?.join(',') })}`),
-  addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: 'KR' }),
+  keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: getAdminCountry(), size: 50, ...q, state: q.state?.join(','), source: q.source?.join(',') })}`),
+  addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: getAdminCountry() }),
   ban: (id: number, banned: boolean) => request<AdminKeywordRow>('POST', `/api/admin/keywords/${id}/${banned ? 'ban' : 'unban'}`),
   reports: (status: string, page: number) => request<AdminReportPage>('GET', `/api/admin/reports?${qs({ status, page })}`),
   setReportStatus: (id: number, status: string, sameTarget: boolean) =>

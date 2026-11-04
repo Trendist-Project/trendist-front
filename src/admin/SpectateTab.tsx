@@ -1,9 +1,10 @@
+import { getAdminCountry } from '../api/adminCountry';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Arena } from '../game/Arena';
 import { GameConnection } from '../game/connection';
 import type { ChatMessage, ServerMessage } from '../game/protocol';
 
-const COUNTRY = 'KR';
+const COUNTRY = getAdminCountry(); // 관리자 화면에서 고른 나라
 const CHAT_KEEP = 100;
 const LIST_LIMIT = 300;
 

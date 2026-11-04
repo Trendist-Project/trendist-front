@@ -441,3 +441,7 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
   .mon-hint { max-width: calc(100% - 20px); bottom: 6px; font-size: 0.7rem; }
   .mon-list { max-height: 240px; }
 }
+
+/* 관리자 나라 선택(KR/GLOBAL) */
+.admin-country { display: inline-flex; align-items: center; gap: 6px; }
+.admin-country select { padding: 2px 6px; }

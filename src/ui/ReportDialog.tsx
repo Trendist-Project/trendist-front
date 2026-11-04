@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
 import { successToast } from './toast';
+import { t } from '../i18n';
 
-const REASONS = ['욕설·비방', '스팸·광고', '개인정보 노출', '음란·폭력', '기타'];
+/** value는 서버(관리자 화면)에 저장되는 값이라 한국어 그대로 두고, 화면에는 언어별 이름(key)을 보여 준다 */
+const REASONS = [
+  { value: '욕설·비방', key: 'dialogs.reasonAbuse' }, { value: '스팸·광고', key: 'dialogs.reasonSpam' },
+  { value: '개인정보 노출', key: 'dialogs.reasonPrivacy' }, { value: '음란·폭력', key: 'dialogs.reasonAdult' },
+  { value: '기타', key: 'dialogs.reasonOther' },
+];
 
 interface Props {
   target: 'COMMENT' | 'CHAT' | 'PLAYER';
@@ -19,7 +25,7 @@ interface Props {
  * 키워드 창 위에 겹쳐 뜨므로 Esc는 이 창만 닫는다(캡처 단계에서 받아 아래 창으로 넘기지 않는다).
  */
 export function ReportDialog({ target, targetId, preview, onDone, onClose }: Props) {
-  const [reason, setReason] = useState(REASONS[0]);
+  const [reason, setReason] = useState(REASONS[0].value);
   const [busy, setBusy] = useState(false);
   const firstRef = useRef<HTMLInputElement>(null);
   const onCloseRef = useRef(onClose);
@@ -41,35 +47,35 @@ export function ReportDialog({ target, targetId, preview, onDone, onClose }: Pro
     setBusy(true);
     try {
       await api.report(target, targetId, reason);
-      successToast('신고했어요. 관리자가 확인할게요');
+      successToast(t('dialogs.reportDone'));
       onDone();
     } catch (err) {
-      onDone(err instanceof ApiFailure ? err.message : '신고하지 못했어요');
+      onDone(err instanceof ApiFailure ? err.message : t('dialogs.reportFailed'));
     }
   }
 
   return (
     <div className="modal-backdrop report-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <form className="modal report-dialog" role="dialog" aria-modal="true" aria-label="신고하기" onSubmit={submit}>
+      <form className="modal report-dialog" role="dialog" aria-modal="true" aria-label={t('dialogs.reportLabel')} onSubmit={submit}>
         <header className="modal-head">
-          <h2>{target === 'COMMENT' ? '댓글 신고' : '채팅 신고'}</h2>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="닫기">✕</button>
+          <h2>{target === 'COMMENT' ? t('dialogs.reportComment') : t('dialogs.reportChat')}</h2>
+          <button type="button" className="icon-button" onClick={onClose} aria-label={t('dialogs.close')}>✕</button>
         </header>
         <div className="modal-body">
           <blockquote className="report-preview">{preview}</blockquote>
           <fieldset className="report-reasons">
-            <legend className="muted small">신고 사유</legend>
+            <legend className="muted small">{t('dialogs.reportReason')}</legend>
             {REASONS.map((r, i) => (
-              <label key={r}>
-                <input ref={i === 0 ? firstRef : undefined} type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)} /> {r}
+              <label key={r.value}>
+                <input ref={i === 0 ? firstRef : undefined} type="radio" name="reason" value={r.value} checked={reason === r.value} onChange={() => setReason(r.value)} /> {t(r.key)}
               </label>
             ))}
           </fieldset>
-          <p className="muted small">같은 글은 한 번만 신고할 수 있어요. 관리자가 확인한 뒤 처리해요.</p>
+          <p className="muted small">{t('dialogs.reportOnce')}</p>
           <div className="comment-actions">
             <span className="spacer" />
-            <button type="button" onClick={onClose}>취소</button>
-            <button className="primary danger" disabled={busy}>신고하기</button>
+            <button type="button" onClick={onClose}>{t('dialogs.cancel')}</button>
+            <button className="primary danger" disabled={busy}>{t('dialogs.reportSubmit')}</button>
           </div>
         </div>
       </form>

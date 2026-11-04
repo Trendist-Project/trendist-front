@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { RankingEntry } from '../api/types';
+import { fmtNumber, t } from '../i18n';
 
 const REFRESH_MS = 3000; // 접속자 점수는 방 메모리 값이라 자주 바뀐다. 켜져 있는 동안만 다시 읽는다
 
@@ -24,17 +25,17 @@ export function Leaderboard({ myPlayerId }: Props) {
   }, []);
 
   return (
-    <section className="leaderboard" aria-label="리더보드">
-      <h3>🏆 리더보드 <span className="muted small">TOP 10</span></h3>
-      {ranking === null ? <p className="muted small">불러오는 중…</p>
-        : ranking.length === 0 ? <p className="muted small">아직 접속한 사람이 없어요</p>
+    <section className="leaderboard" aria-label={t('rank.label')}>
+      <h3>{t('rank.title')} <span className="muted small">TOP 10</span></h3>
+      {ranking === null ? <p className="muted small">{t('rank.loading')}</p>
+        : ranking.length === 0 ? <p className="muted small">{t('rank.empty')}</p>
         : (
           <ol className="list ranking">
             {ranking.map((r) => (
               <li key={r.playerId} className={r.playerId === myPlayerId ? 'me' : undefined}>
                 <span className="rank">{r.rank}</span> <strong>{r.nickname}</strong>
-                <span className="muted small">{r.level}레벨</span>
-                <span className="score">{Number(r.score).toLocaleString()}</span>
+                <span className="muted small">{t('rank.level', { n: r.level })}</span>
+                <span className="score">{fmtNumber(Number(r.score))}</span>
               </li>
             ))}
           </ol>

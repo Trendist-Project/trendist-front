@@ -1,3 +1,4 @@
+import { t as tr } from '../i18n';
 import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
 import { borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
 import { artImage, drawArt } from './pixelArt';
@@ -697,7 +698,7 @@ export class Arena {
       ctx.strokeRect(x0, y0, zone.size, zone.size);
       ctx.setLineDash([]);
       const sec = Math.ceil(left / 1000);
-      label(`🛡 세이프존 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`, zone.x, y0, '#d6f5a8');
+      label(tr('arena.safeZone', { time: `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` }), zone.x, y0, '#d6f5a8');
       ctx.globalAlpha = 1;
     }
     const c = this.centerZone;
@@ -707,7 +708,7 @@ export class Arena {
       ctx.strokeStyle = CENTER_ZONE_LINE;
       ctx.lineWidth = 4 / z;
       ctx.strokeRect(-c / 2, -c / 2, c, c);
-      label('🛡 세이프존(고정)', 0, -c / 2, '#bcd4ff');
+      label(tr('arena.safeZoneFixed'), 0, -c / 2, '#bcd4ff');
     }
   }
 

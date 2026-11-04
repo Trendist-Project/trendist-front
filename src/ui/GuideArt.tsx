@@ -1,16 +1,17 @@
 import { TurtleIcon } from './GrowthIcons';
+import { t } from '../i18n';
 
 /** 가이드 그림(4.17): 본문에 `[[이름]]` 한 줄로 넣는다. 글로 설명하기 어려운 것을 게임과 같은 모양으로 보여 준다. */
 
 /** 시작 3단계: 찾기 → 추가 → 커지기 */
 export function StartSteps() {
   const steps = [
-    { icon: '🔎', title: '찾기', text: '요즘 뜨는 단어를 검색해요' },
-    { icon: '➕', title: '추가', text: '보관함에 넣으면 점수가 들어와요' },
-    { icon: '🐢', title: '커지기', text: '원이 커지고 부딪혀 이겨요' },
+    { icon: '🔎', title: t('guideArt.step1'), text: t('guideArt.step1Desc') },
+    { icon: '➕', title: t('guideArt.step2'), text: t('guideArt.step2Desc') },
+    { icon: '🐢', title: t('guideArt.step3'), text: t('guideArt.step3Desc') },
   ];
   return (
-    <ol className="guide-steps" aria-label="시작 3단계">
+    <ol className="guide-steps" aria-label={t('guideArt.steps')}>
       {steps.map((s, i) => (
         <li key={s.title}>
           <span className="guide-step-no">{i + 1}</span>
@@ -32,15 +33,15 @@ export function Controls() {
           <span className="key-row"><kbd>W</kbd></span>
           <span className="key-row"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
         </div>
-        <figcaption><strong>PC</strong><span className="muted small">방향키·WASD 또는 클릭 · Space 대시</span></figcaption>
+        <figcaption><strong>PC</strong><span className="muted small">{t('guideArt.pcDesc')}</span></figcaption>
       </figure>
       <figure>
         <div className="joystick" aria-hidden="true"><span /></div>
-        <figcaption><strong>모바일</strong><span className="muted small">누른 채 끌어서 이동 · 다른 손가락 탭 대시</span></figcaption>
+        <figcaption><strong>{t('guideArt.mobile')}</strong><span className="muted small">{t('guideArt.mobileDesc')}</span></figcaption>
       </figure>
       <figure>
         <div className="keys" aria-hidden="true"><span className="key-row"><kbd>M</kbd><kbd>L</kbd><kbd>C</kbd></span></div>
-        <figcaption><strong>단축키</strong><span className="muted small">미니맵 · 리더보드 · 채팅</span></figcaption>
+        <figcaption><strong>{t('guideArt.shortcuts')}</strong><span className="muted small">{t('guideArt.shortcutsDesc')}</span></figcaption>
       </figure>
     </div>
   );
@@ -50,9 +51,9 @@ export function Controls() {
 export function KeywordStates() {
   return (
     <div className="guide-badges">
-      <span className="badge state-활성">🔥 활성 · 점수 있음</span>
-      <span className="badge state-비활성">💤 비활성 · 0점</span>
-      <span className="badge state-금지">⛔ 금지</span>
+      <span className="badge state-활성">{t('guideArt.stateActive')}</span>
+      <span className="badge state-비활성">{t('guideArt.stateInactive')}</span>
+      <span className="badge state-금지">{t('guideArt.stateBanned')}</span>
     </div>
   );
 }
@@ -61,11 +62,11 @@ export function KeywordStates() {
 export function ArenaLegend() {
   return (
     <ul className="guide-legend">
-      <li><span className="swatch-zone center" aria-hidden="true" />가운데 세이프존</li>
-      <li><span className="swatch-zone random" aria-hidden="true" />잠깐 생기는 세이프존</li>
-      <li><span className="legend-me" aria-hidden="true"><TurtleIcon level={10} size={26} /></span>나</li>
-      <li><span className="legend-bot" aria-hidden="true" />봇</li>
-      <li><span className="legend-orb" aria-hidden="true">?</span>? 구슬</li>
+      <li><span className="swatch-zone center" aria-hidden="true" />{t('guideArt.zoneCenter')}</li>
+      <li><span className="swatch-zone random" aria-hidden="true" />{t('guideArt.zoneRandom')}</li>
+      <li><span className="legend-me" aria-hidden="true"><TurtleIcon level={10} size={26} /></span>{t('guideArt.me')}</li>
+      <li><span className="legend-bot" aria-hidden="true" />{t('guideArt.bot')}</li>
+      <li><span className="legend-orb" aria-hidden="true">?</span>{t('guideArt.orb')}</li>
     </ul>
   );
 }

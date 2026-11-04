@@ -13,8 +13,18 @@ const EMBEDS: Record<string, () => ReactNode> = {
   '[[아레나 표시]]': () => <ArenaLegend />,
 };
 
-/** 관리자 편집기의 [그림] 메뉴가 쓰는 이름들 */
+/** 관리자 편집기의 [그림] 메뉴가 쓰는 이름들(한국어 이름이 기준) */
 export const EMBED_NAMES = Object.keys(EMBEDS);
+
+/** 영어 본문에서도 쓸 수 있는 영어 이름(한국어 이름과 같은 그림). 영어 가이드는 어느 쪽으로 써도 된다 */
+const EN_ALIASES: Record<string, string> = {
+  '[[growth icons]]': '[[성장 아이콘]]',
+  '[[level icons]]': '[[레벨 아이콘]]',
+  '[[start steps]]': '[[시작 3단계]]',
+  '[[controls]]': '[[조작]]',
+  '[[keyword states]]': '[[키워드 상태]]',
+  '[[arena legend]]': '[[아레나 표시]]',
+};
 
 /**
  * 공지·가이드 본문을 그린다. 마크다운 중 문단, `## ` 소제목, `- ` 목록, `1. ` 번호 목록, `**굵게**`, `` `키` ``(키 모양), `> ` 팁 상자,
@@ -31,7 +41,7 @@ function RichTextBlocks({ text }: { text: string }) {
   return (
     <>
       {blocks.map((block, i) => {
-        const embed = EMBEDS[block];
+        const embed = EMBEDS[EN_ALIASES[block.toLowerCase()] ?? block];
         if (embed) return <Fragment key={i}>{embed()}</Fragment>;
         const lines = block.split('\n').map((l) => l.trim());
         // 소제목: 문단 첫 줄이 `## `이면 소제목, 나머지 줄은 그 아래 문단

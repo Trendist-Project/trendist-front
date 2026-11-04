@@ -7,11 +7,12 @@ import { LookPreview } from './LookPreview';
 import { Modal } from './Modal';
 import { PixelEditor } from './PixelEditor';
 import { successToast } from './toast';
+import { t } from '../i18n';
 
 interface Props { level: number; nickname?: string; onBack(): void; onClose(): void }
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const NAME_STYLE_LABEL: Record<string, string> = { RIBBON: '리본', GLOW: '빛' };
+const NAME_STYLE_LABEL: Record<string, string> = { RIBBON: t('customize.styleRibbon'), GLOW: t('customize.styleGlow') };
 
 /** 고치는 중인 한 칸. art는 미리 보기·저장에 쓰는 그림, artChanged면 저장할 때 그림도 보낸다 */
 interface Draft {
@@ -47,7 +48,7 @@ function ColorPicker({ label, value, presets, onChange, allowDefault }: {
       <div className="swatches" role="radiogroup" aria-label={label}>
         {allowDefault && (
           <button type="button" role="radio" aria-checked={value === null} className={value === null ? 'swatch default on' : 'swatch default'}
-                  onClick={() => onChange(null)} title="기본">기본</button>
+                  onClick={() => onChange(null)} title={t('customize.default')}>{t('customize.default')}</button>
         )}
         {presets.map((c) => (
           <button key={c} type="button" role="radio" aria-checked={value === c} aria-label={c} title={c}
@@ -55,7 +56,7 @@ function ColorPicker({ label, value, presets, onChange, allowDefault }: {
         ))}
       </div>
       <div className="hex-row">
-        <input type="color" value={value ?? '#11372a'} onChange={(e) => onChange(e.target.value)} aria-label={`${label} 직접 고르기`} />
+        <input type="color" value={value ?? '#11372a'} onChange={(e) => onChange(e.target.value)} aria-label={t('customize.pickAria', { label })} />
         <input value={hex} maxLength={7} placeholder="#RRGGBB" aria-label={`${label} HEX`} spellCheck={false}
                onChange={(e) => { setHex(e.target.value); if (HEX.test(e.target.value)) onChange(e.target.value.toLowerCase()); }} />
       </div>
@@ -69,7 +70,7 @@ function EffectPicker({ label, options, value, onChange }: { label: string; opti
     <fieldset className="color-picker">
       <legend>{label}</legend>
       <div className="effect-chips" role="radiogroup" aria-label={label}>
-        <button type="button" role="radio" aria-checked={value == null} className={value == null ? 'sort-chip active' : 'sort-chip'} onClick={() => onChange(null)}>없음</button>
+        <button type="button" role="radio" aria-checked={value == null} className={value == null ? 'sort-chip active' : 'sort-chip'} onClick={() => onChange(null)}>{t('customize.none')}</button>
         {options.map((e) => (
           <button key={e.id} type="button" role="radio" aria-checked={value === e.id} disabled={!e.unlocked && value !== e.id}
                   title={e.unlocked ? undefined : e.lockReason ?? undefined}
@@ -97,7 +98,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
 
   useEffect(() => {
     api.profiles().then((b) => { setBox(b); setSlot(b.equippedSlot); setDraft(fromSlot(b.slots[b.equippedSlot - 1])); })
-      .catch(() => setMessage('꾸미기 정보를 불러오지 못했어요'));
+      .catch(() => setMessage(t('customize.loadFailed')));
   }, []);
 
   const current = box?.slots[slot - 1];
@@ -107,7 +108,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
 
   function pickSlot(n: number) {
     if (!box || n === slot) return;
-    if (dirty && !window.confirm('저장하지 않은 내용이 있어요. 다른 프로필로 넘어갈까요?')) return;
+    if (dirty && !window.confirm(t('customize.confirmSwitch'))) return;
     setSlot(n); setDraft(fromSlot(box.slots[n - 1])); setDrawing(false); setMessage(null);
   }
 
@@ -118,7 +119,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
       setBox(b); setDraft(fromSlot(b.slots[slot - 1]));
       successToast(done);
     } catch (e) {
-      setMessage(e instanceof ApiFailure ? e.message : '저장하지 못했어요');
+      setMessage(e instanceof ApiFailure ? e.message : t('customize.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -131,7 +132,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
       background: draft.background, borderColor: draft.borderColor, borderWidth: draft.borderWidth, nameColor: draft.nameColor,
       nameStyle: draft.nameStyle, inner: draft.inner, art: draft.artChanged ? draft.art : null,
       trailEffectId: draft.trailEffectId, borderEffectId: draft.borderEffectId, equip,
-    }), willShow ? `${slot}번 프로필을 저장했어요. 아레나의 내 원에 바로 보여요` : `${slot}번 프로필을 저장했어요`);
+    }), willShow ? t('customize.savedShown', { slot }) : t('customize.saved', { slot }));
   }
 
   const equippedSlot = box?.slots.find((s) => s.equipped);
@@ -140,12 +141,12 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
   ) : null;
 
   return (
-    <Modal title="꾸미기" className="customize-modal" onClose={onClose} titleExtra={<button className="link-back" onClick={onBack}>‹ 내 정보</button>}>
-      {!box || !draft || !current ? <p className="muted small">{message ?? '불러오는 중…'}</p> : !box.unlocked ? (
+    <Modal title={t('customize.title')} className="customize-modal" onClose={onClose} titleExtra={<button className="link-back" onClick={onBack}>{t('common.backToProfile')}</button>}>
+      {!box || !draft || !current ? <p className="muted small">{message ?? t('common.loading')}</p> : !box.unlocked ? (
         <div className="customize-locked">
           {lockedPreview}
-          <p><strong>🔒 {box.unlockLevel}레벨부터 꾸밀 수 있어요</strong></p>
-          <p className="muted small">지금 {level}레벨이에요. 키워드를 추가할 때마다 EXP가 쌓여요. {box.unlockLevel}레벨이 되면 프로필 3개에 원의 색, 테두리, 이름표, 직접 그린 그림, 테두리 효과, 이동 효과를 저장해 골라 쓸 수 있어요. 그림과 효과는 Google로 로그인한 사람만 쓸 수 있어요.</p>
+          <p><strong>{t('customize.lockedTitle', { n: box.unlockLevel })}</strong></p>
+          <p className="muted small">{t('customize.lockedDesc', { level, n: box.unlockLevel })}</p>
         </div>
       ) : drawing ? (
         <div className="customize-draw">
@@ -153,21 +154,21 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
                        presets={box.colors} maxColors={box.maxColors} busy={busy} changeableAt={box.artChangeableAt}
                        onSave={(art) => { setDraft({ ...draft, art, artChanged: true, inner: 'PIXEL' }); setDrawing(false); }}
                        onCancel={() => setDrawing(false)} />
-          <p className="muted small">여기서 [저장]하면 {slot}번 프로필 미리 보기에 그림이 들어가요. 프로필 화면에서 한 번 더 [저장]해야 그림이 저장돼요. 남의 얼굴이나 캐릭터, 불쾌한 그림은 그리지 마세요.</p>
+          <p className="muted small">{t('customize.drawNote', { slot })}</p>
         </div>
       ) : (
         <div className="profile-editor">
           {/* 위: 프로필 칸과 미리 보기는 고정, 가운데 꾸밈 항목만 스크롤, 아래: 저장 버튼 고정 */}
           <div className="profile-top">
-            <div className="profile-tabs" role="tablist" aria-label="꾸미기 프로필">
+            <div className="profile-tabs" role="tablist" aria-label={t('customize.profiles')}>
               {box.slots.map((s) => (
                 <button key={s.slot} role="tab" aria-selected={slot === s.slot} className={slot === s.slot ? 'profile-tab on' : 'profile-tab'}
                         onClick={() => pickSlot(s.slot)}>
                   <LookPreview look={s.look} level={level} art={s.inner === 'PIXEL' ? s.art : null} width={52} height={52} moving={false}
-                               label={`${s.slot}번 프로필`} />
+                               label={t('customize.slotName', { slot: s.slot })} />
                   <span className="profile-tab-text">
-                    <strong>{s.slot}번 프로필</strong>
-                    {s.equipped ? <span className="badge">장착 중</span> : !s.saved ? <span className="muted small">기본 모습</span> : <span className="muted small">저장됨</span>}
+                    <strong>{t('customize.slotName', { slot: s.slot })}</strong>
+                    {s.equipped ? <span className="badge">{t('customize.equipped')}</span> : !s.saved ? <span className="muted small">{t('customize.defaultLook')}</span> : <span className="muted small">{t('customize.savedBadge')}</span>}
                   </span>
                 </button>
               ))}
@@ -175,73 +176,73 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
 
             <div className="profile-preview">
               <LookPreview look={lookOf(draft, box)} level={level} art={draft.inner === 'PIXEL' ? draft.art : null} name={nickname} width={320} height={180} />
-              {dirty && <span className="profile-dirty">저장하지 않은 변경이 있어요</span>}
+              {dirty && <span className="profile-dirty">{t('customize.dirty')}</span>}
             </div>
           </div>
 
           <div className="profile-sections">
             <fieldset className="color-picker">
-              <legend>원 안에 그릴 것</legend>
+              <legend>{t('customize.inner')}</legend>
               <div className="effect-chips">
-                <button type="button" className={draft.inner === 'GROWTH' ? 'sort-chip active' : 'sort-chip'} onClick={() => setDraft({ ...draft, inner: 'GROWTH' })}>🐢 성장 캐릭터</button>
+                <button type="button" className={draft.inner === 'GROWTH' ? 'sort-chip active' : 'sort-chip'} onClick={() => setDraft({ ...draft, inner: 'GROWTH' })}>{t('customize.growth')}</button>
                 <button type="button" className={draft.inner === 'PIXEL' ? 'sort-chip active' : 'sort-chip'} disabled={!draft.art || !box.canDraw}
-                        title={!box.canDraw ? box.drawLockReason ?? undefined : !draft.art ? '먼저 그림을 그려 주세요' : undefined}
-                        onClick={() => setDraft({ ...draft, inner: 'PIXEL' })}>🎨 내 그림</button>
+                        title={!box.canDraw ? box.drawLockReason ?? undefined : !draft.art ? t('customize.drawFirst') : undefined}
+                        onClick={() => setDraft({ ...draft, inner: 'PIXEL' })}>{t('customize.myArt')}</button>
                 <button type="button" className="sort-chip" disabled={!box.canDraw} title={box.drawLockReason ?? undefined} onClick={() => setDrawing(true)}>
-                  ✏️ {draft.art ? '그림 고치기' : '그림 그리기'}
+                  ✏️ {draft.art ? t('customize.editArt') : t('customize.drawArt')}
                 </button>
               </div>
               {!box.canDraw && <p className="muted small">🔒 {box.drawLockReason}</p>}
             </fieldset>
 
-            <ColorPicker label="바탕색" value={draft.background} presets={box.colors}
+            <ColorPicker label={t('customize.background')} value={draft.background} presets={box.colors}
                          onChange={(v) => setDraft({ ...draft, background: v ?? box.defaults.background })} />
-            <ColorPicker label="테두리 색" value={draft.borderColor} presets={box.colors} allowDefault
+            <ColorPicker label={t('customize.borderColor')} value={draft.borderColor} presets={box.colors} allowDefault
                          onChange={(v) => setDraft({ ...draft, borderColor: v })} />
             <fieldset className="color-picker">
-              <legend>테두리 두께</legend>
+              <legend>{t('customize.borderWidth')}</legend>
               <div className="width-row">
                 <button type="button" className={draft.borderWidth === null ? 'sort-chip active' : 'sort-chip'}
-                        onClick={() => setDraft({ ...draft, borderWidth: null })}>기본</button>
-                <input type="range" min={1} max={8} step={1} value={draft.borderWidth ?? 3} aria-label="테두리 두께 1~8단계"
+                        onClick={() => setDraft({ ...draft, borderWidth: null })}>{t('customize.default')}</button>
+                <input type="range" min={1} max={8} step={1} value={draft.borderWidth ?? 3} aria-label={t('customize.borderWidthAria')}
                        onChange={(e) => setDraft({ ...draft, borderWidth: Number(e.target.value) })} />
-                <span className="muted small">{draft.borderWidth ?? '기본'}</span>
+                <span className="muted small">{draft.borderWidth ?? t('customize.default')}</span>
               </div>
             </fieldset>
-            <ColorPicker label="이름표 글자색" value={draft.nameColor} presets={box.colors} allowDefault
+            <ColorPicker label={t('customize.nameColor')} value={draft.nameColor} presets={box.colors} allowDefault
                          onChange={(v) => setDraft({ ...draft, nameColor: v })} />
             <fieldset className="color-picker">
-              <legend>이름표 모양</legend>
+              <legend>{t('customize.nameStyle')}</legend>
               <div className="effect-chips">
-                <button type="button" className={draft.nameStyle === null ? 'sort-chip active' : 'sort-chip'} onClick={() => setDraft({ ...draft, nameStyle: null })}>기본</button>
+                <button type="button" className={draft.nameStyle === null ? 'sort-chip active' : 'sort-chip'} onClick={() => setDraft({ ...draft, nameStyle: null })}>{t('customize.default')}</button>
                 {box.nameStyles.map((st) => (
                   <button key={st} type="button" className={draft.nameStyle === st ? 'sort-chip active' : 'sort-chip'}
                           onClick={() => setDraft({ ...draft, nameStyle: st })}>{NAME_STYLE_LABEL[st] ?? st}</button>
                 ))}
               </div>
             </fieldset>
-            <EffectPicker label="테두리 효과" options={box.borders} value={draft.borderEffectId} onChange={(id) => setDraft({ ...draft, borderEffectId: id })} />
-            <EffectPicker label="이동 효과" options={box.trails} value={draft.trailEffectId} onChange={(id) => setDraft({ ...draft, trailEffectId: id })} />
+            <EffectPicker label={t('customize.borderEffect')} options={box.borders} value={draft.borderEffectId} onChange={(id) => setDraft({ ...draft, borderEffectId: id })} />
+            <EffectPicker label={t('customize.trailEffect')} options={box.trails} value={draft.trailEffectId} onChange={(id) => setDraft({ ...draft, trailEffectId: id })} />
             {guestLocked && (
               <div className="login-gate">
-                <span><strong>🔒 그림과 효과는 Google로 로그인하면 쓸 수 있어요</strong><span className="muted small">처음 쓰는 Google 계정이면 지금 기록이 그대로 이어져요.</span></span>
-                <GoogleButton label="Google로 로그인" />
+                <span><strong>{t('customize.loginGate')}</strong><span className="muted small">{t('customize.loginGateDesc')}</span></span>
+                <GoogleButton label={t('profile.googleLogin')} />
               </div>
             )}
-            <p className="muted small">바닥과 비슷한 어두운 색은 아레나에서 잘 안 보여서 고를 수 없어요. 바탕색은 그림의 빈 칸에도 보여요.</p>
+            <p className="muted small">{t('customize.darkNote')}</p>
           </div>
 
           <div className="profile-actions">
             {message && <p className="error small" role="alert">{message}</p>}
-            <button type="button" disabled={busy || !dirty} onClick={() => { setDraft(fromSlot(current)); setMessage(null); }}>되돌리기</button>
+            <button type="button" disabled={busy || !dirty} onClick={() => { setDraft(fromSlot(current)); setMessage(null); }}>{t('customize.revert')}</button>
             <button type="button" className={current.equipped ? 'primary' : undefined} disabled={busy || !dirty} onClick={() => save(false)}>
-              {busy ? '저장하는 중…' : '저장'}
+              {busy ? t('customize.saving') : t('customize.save')}
             </button>
             {!current.equipped && (
               dirty
-                ? <button type="button" className="primary" disabled={busy} onClick={() => save(true)}>저장하고 장착</button>
+                ? <button type="button" className="primary" disabled={busy} onClick={() => save(true)}>{t('customize.saveEquip')}</button>
                 : <button type="button" className="primary" disabled={busy}
-                          onClick={() => run(() => api.equipProfile(slot), `${slot}번 프로필을 장착했어요`)}>이 프로필 장착</button>
+                          onClick={() => run(() => api.equipProfile(slot), t('customize.equippedToast', { slot }))}>{t('customize.equipThis')}</button>
             )}
           </div>
         </div>

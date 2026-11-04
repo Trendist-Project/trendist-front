@@ -1,4 +1,6 @@
 import { GoogleButton } from './GoogleButton';
+import { COUNTRIES, getCountry, setCountry, type Country } from '../country';
+import { t } from '../i18n';
 
 /** loggedIn: 구글 계정으로 로그인한 상태면 true(구글 버튼을 숨긴다), 확인 중이면 null */
 interface Props { onStart(): void; error: string | null; loggedIn: boolean | null }
@@ -10,6 +12,13 @@ const BUBBLES: [number, number, number, number, number, number][] = [
   [32, 30, 26, 3, 4.5, -1], [62, 45, 110, 1, 10, -6], [15, 88, 64, 3, 7, -2], [92, 85, 36, 2, 5.5, -4],
   [38, 5, 80, 2, 9, -7], [72, 92, 24, 1, 4, -1],
 ];
+
+/** 나라(방)를 바꾼다. 나라가 곧 화면 언어라 문구를 모두 바꾸려고 새로 읽는다 */
+function chooseCountry(c: Country) {
+  if (c === getCountry()) return;
+  setCountry(c);
+  location.reload();
+}
 
 export function MainScreen({ onStart, error, loggedIn }: Props) {
   return (
@@ -25,28 +34,35 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
       <section className="main-card">
         <img className="main-logo" src="/logo.png" alt="" width={96} height={96} />
         <h1>Trendist</h1>
-        <p className="tagline">트랜드를 아는 자, 커진다.</p>
-        <p className="muted">남들보다 먼저 뜨는 키워드를 찾아 추가하고, 내 원을 키워 보세요.</p>
+        <p className="tagline">{t('main.tagline')}</p>
+        <p className="muted">{t('main.intro')}</p>
         <ol className="steps">
-          <li>🔍 키워드 찾기</li>
-          <li>➕ 먼저 추가하기</li>
-          <li>⭕ 원이 커진다</li>
+          <li>{t('main.step1')}</li>
+          <li>{t('main.step2')}</li>
+          <li>{t('main.step3')}</li>
         </ol>
-        <ul className="main-howto" aria-label="조작과 규칙">
-          <li>🕹&nbsp; 모바일은 조이스틱, PC는 클릭·방향키로 이동</li>
-          <li>⭕ 큰 원이 작은 원을 튕김</li>
-          <li>💥 지면 키워드 1개를 잃고, 이기면 그 키워드를 뺏음</li>
-          <li>🔥 5콤보 불꽃에 닿으면 키워드 전부 잃음</li>
-          <li>🛡&nbsp; 키워드 잃으면 3초 무적 · 세이프존 안은 안전</li>
+        <ul className="main-howto" aria-label={t('main.howtoLabel')}>
+          <li>{t('main.howto1')}</li>
+          <li>{t('main.howto2')}</li>
+          <li>{t('main.howto3')}</li>
+          <li>{t('main.howto4')}</li>
+          <li>{t('main.howto5')}</li>
         </ul>
-        <button className="primary big" onClick={onStart} autoFocus>시작</button>
+        <button className="primary big" onClick={onStart} autoFocus>{t('main.start')}</button>
         {/* 이미 로그인한 계정이면 [시작]만(그 계정으로 이어 간다). 확인하는 동안에도 구글 버튼을 잠깐 띄웠다 숨기지 않게 기다린다 */}
         {loggedIn === false && (<>
-          <div className="or-divider" aria-hidden="true"><span>또는</span></div>
+          <div className="or-divider" aria-hidden="true"><span>{t('main.or')}</span></div>
           <GoogleButton />
-          <p className="muted small">로그인하면 다른 기기에서도 기록이 이어져요. 게스트로 하던 기록도 그대로 이어져요</p>
+          <p className="muted small">{t('main.googleHint')}</p>
         </>)}
         {error && <p className="error" role="alert">{error}</p>}
+        {/* 서버(나라) 선택: 기본은 브라우저 언어로 정해져 있어 대부분 건드리지 않는다. 눈에 덜 띄게 카드 맨 아래 작은 목록으로 둔다 */}
+        <label className="server-select">
+          <span>{t('main.serverLabel')}</span>
+          <select value={getCountry()} onChange={(e) => chooseCountry(e.target.value as Country)} aria-label={t('main.countryLabel')}>
+            {COUNTRIES.map((c) => (<option key={c} value={c}>{t(`main.country${c}`)}</option>))}
+          </select>
+        </label>
       </section>
     </main>
   );

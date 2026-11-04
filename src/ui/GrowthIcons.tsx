@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { LevelBadge } from '../api/types';
 import { drawTurtle, TURTLE_BASE } from '../game/turtle';
+import { t } from '../i18n';
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const SIZE = 56; // 아이콘 하나의 CSS 크기(px)
@@ -8,12 +9,12 @@ const SIZE = 56; // 아이콘 하나의 CSS 크기(px)
 /** 가이드용(4.9, 4.17): 1~10레벨 성장 아이콘을 아레나와 같은 그림으로 나란히 보여 준다. */
 export function GrowthIcons() {
   return (
-    <figure className="growth-icons" aria-label="레벨별 성장 아이콘: 1레벨 동그라미에서 10레벨 완성된 거북이까지">
+    <figure className="growth-icons" aria-label={t('guideArt.growthAria')}>
       <ol>
         {LEVELS.map((lv) => (
           <li key={lv}>
             <TurtleIcon level={lv} />
-            <span>{lv}레벨</span>
+            <span>{t('common.levelPrefix')}{lv}{t('common.levelSuffix')}</span>
           </li>
         ))}
       </ol>

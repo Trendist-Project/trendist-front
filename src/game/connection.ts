@@ -1,3 +1,4 @@
+import { getLang } from '../country';
 import { getToken, resumeSession } from '../api/client';
 import { parseMinimap, parseSnapshot, type MinimapEntry, type ServerMessage, type Snapshot } from './protocol';
 
@@ -42,7 +43,7 @@ export class GameConnection {
     this.ws = ws;
     ws.onopen = () => {
       this.retry = 0;
-      ws.send(JSON.stringify(this.spectate ? { type: 'spectate', token: getToken(), country: this.spectate.country } : { type: 'auth', token: getToken() }));
+      ws.send(JSON.stringify(this.spectate ? { type: 'spectate', token: getToken(), country: this.spectate.country, lang: getLang() } : { type: 'auth', token: getToken(), lang: getLang() }));
       this.handlers.onStatus('open');
     };
     ws.onmessage = (ev) => {

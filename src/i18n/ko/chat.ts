@@ -1,0 +1,13 @@
+export default {
+  label: '채팅',
+  emptyCollapsed: '아직 채팅이 없어요',
+  emptyOpen: '첫 메시지를 남겨 보세요. #키워드 를 쓰면 누르는 사람이 바로 검색해요',
+  search: '{kw} 검색',
+  report: '신고',
+  reportAria: '{name}의 메시지 신고',
+  connecting: '연결 중…',
+  placeholder: 'Enter로 채팅 (#키워드 가능)',
+  inputLabel: '채팅 입력',
+  expand: '채팅 펼치기',
+  collapse: '채팅 접기',
+};

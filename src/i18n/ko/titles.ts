@@ -1,0 +1,16 @@
+export default {
+  rank1: '리더보드 1위',
+  rankTop: '리더보드 TOP {n}',
+  loadFailed: '칭호를 불러오지 못했어요',
+  unequipped: '칭호를 해제했어요',
+  changeFailed: '칭호를 바꾸지 못했어요',
+  title: '칭호',
+  intro: '조건을 달성하면 칭호를 자동으로 받아요. 받은 칭호 중 하나를 장착하면 아레나의 닉네임 아래에 보여요.',
+  owned: '받은 칭호',
+  noneOwned: '아직 받은 칭호가 없어요. 키워드를 추가해 보세요!',
+  equipped: '장착 중',
+  acquiredOn: '{date} 획득',
+  unequip: '해제',
+  equip: '장착',
+  locked: '아직 못 받은 칭호',
+} as Record<string, string>;

@@ -1,0 +1,18 @@
+export default {
+  tooFast: 'Please try again in a moment',
+  createFailed: 'Couldn\'t create the card',
+  linkCopied: 'Card link copied',
+  kakaoText: '{name}\'s Trendist report card · Trend score {score}',
+  shareText: 'My trend score is {score}! Think you can beat me?',
+  imageSaved: 'Image saved',
+  statsPlays: 'Card views so far: {views} · Joined the game: {plays}',
+  statsViews: 'Card views so far: {views}',
+  title: '📸 Share card',
+  imageAlt: 'My record card image',
+  creating: 'Creating your card…',
+  kakao: 'Share on KakaoTalk',
+  kakaoPreparing: 'Preparing KakaoTalk…',
+  shareCard: '📤 Share card',
+  saveImage: '⬇️ Save image',
+  copyLink: '🔗 Copy link',
+} as Record<string, string>;

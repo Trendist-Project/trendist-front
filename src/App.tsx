@@ -6,10 +6,28 @@ import { MainScreen } from './ui/MainScreen';
 import { NicknameScreen } from './ui/NicknameScreen';
 import { GameScreen } from './ui/GameScreen';
 import { RestoreDialog } from './ui/RestoreDialog';
+import { t, useLang } from './i18n';
+import { getLang } from './country';
 
 type Phase = { kind: 'main' } | { kind: 'nickname' } | { kind: 'game'; player: PlayerSummary; guest: boolean; key: number };
 
+/** 정적 HTML은 한국어가 기본이라, 실행 중에 선택한 언어에 맞춰 제목·설명·OG 태그를 바꾼다(JS를 실행하는 크롤러·공유 미리보기용) */
+function applySiteMeta() {
+  const title = t('app.siteTitle'), desc = t('app.siteDesc');
+  document.title = title;
+  const set = (sel: string, v: string) => document.head.querySelector(sel)?.setAttribute('content', v);
+  set('meta[name="description"]', desc);
+  set('meta[property="og:title"]', title);
+  set('meta[property="og:description"]', desc);
+  set('meta[property="og:locale"]', getLang() === 'ko' ? 'ko_KR' : 'en_US');
+  set('meta[property="og:image:alt"]', t('app.siteLogoAlt'));
+  set('meta[name="twitter:title"]', title);
+  set('meta[name="twitter:description"]', desc);
+}
+
 export function App() {
+  const lang = useLang();
+  useEffect(applySiteMeta, [lang]); // 나라가 바뀌면 다시 그린다(바꾸면 새로고침하지만 외부에서 바뀌어도 맞추기 위해)
   // 새로고침해도 항상 메인 화면부터 시작한다(3.1). 재방문 게스트는 [시작]을 누르면 쿠키의 방문자 ID로 같은 계정에 들어간다.
   const [phase, setPhase] = useState<Phase>({ kind: 'main' });
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +50,7 @@ export function App() {
       if (!(await resumeSession())) await api.startGuest();
       await route();
     } catch (e) {
-      setError(e instanceof ApiFailure ? e.message : '서버에 연결할 수 없어요');
+      setError(e instanceof ApiFailure ? e.message : t('app.serverUnreachable'));
     }
   }
 
@@ -43,7 +61,7 @@ export function App() {
     if (!r) return;
     googlePending.current = true;
     if ('error' in r) {
-      if (r.error !== 'access_denied') setError('구글 로그인에 실패했어요. 다시 시도해 주세요'); // 사용자가 취소한 경우는 조용히
+      if (r.error !== 'access_denied') setError(t('app.googleLoginFailedRetry')); // 사용자가 취소한 경우는 조용히
       googlePending.current = false;
       setAccount(false);
       return;
@@ -53,7 +71,7 @@ export function App() {
         if (result === 'WITHDRAWN') { setRestoreToken({ idToken: r.idToken, nonce: r.nonce }); setAccount(false); return; }
         return route();
       })
-      .catch((e) => { setError(e instanceof ApiFailure ? e.message : '구글 로그인에 실패했어요'); setAccount(false); })
+      .catch((e) => { setError(e instanceof ApiFailure ? e.message : t('app.googleLoginFailed')); setAccount(false); })
       .finally(() => { googlePending.current = false; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

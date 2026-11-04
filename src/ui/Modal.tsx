@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { t } from '../i18n';
 
 /** titleExtra: 제목 바로 옆에 두는 버튼 등(예: 키워드 공유) */
 interface Props { title: string; onClose(): void; children: ReactNode; className?: string; titleExtra?: ReactNode }
@@ -22,7 +23,7 @@ export function Modal({ title, onClose, children, className, titleExtra }: Props
       <section className={className ? `modal ${className}` : 'modal'} role="dialog" aria-modal="true" aria-label={title}>
         <header className="modal-head">
           <div className="modal-title"><h2>{title}</h2>{titleExtra}</div>
-          <button ref={closeRef} className="icon-button" onClick={onClose} aria-label="닫기">✕</button>
+          <button ref={closeRef} className="icon-button" onClick={onClose} aria-label={t('dialogs.close')}>✕</button>
         </header>
         <div className="modal-body">{children}</div>
       </section>

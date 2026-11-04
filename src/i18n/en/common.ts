@@ -1,0 +1,15 @@
+export default {
+  loading: 'Loading…',
+  stateActive: '🔥Active',
+  stateInactive: '💤Inactive',
+  stateBanned: '⛔Banned',
+  expiringSoon: 'Expiring soon',
+  remainingHM: '{h}h {m}m left',
+  remainingM: '{m}m left',
+  justNow: 'Just now',
+  minutesAgo: '{n}m ago',
+  hoursAgo: '{n}h ago',
+  backToProfile: '‹ My profile',
+  levelPrefix: 'Lv.',
+  levelSuffix: '',
+} as Record<string, string>;

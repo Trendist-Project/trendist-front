@@ -18,6 +18,7 @@ import { LevelText } from './LevelText';
 import { DashChip, type DashState } from './DashChip';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
+import { fmtNumber, t } from '../i18n';
 
 interface Props {
   initialPlayer: PlayerSummary;
@@ -182,9 +183,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     dismissTitleAlert();
     try {
       await api.setTitle(titleId);
-      successToast(`'${name}' 칭호를 장착했어요`);
+      successToast(t('gamescreen.equipped', { name }));
     } catch (e) {
-      showToast(e instanceof ApiFailure ? e.message : '칭호를 장착하지 못했어요');
+      showToast(e instanceof ApiFailure ? e.message : t('gamescreen.equipFailed'));
     }
   }, [dismissTitleAlert]);
 
@@ -260,15 +261,15 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             if (mine) setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
             // 다른 사람이 불꽃을 얻었다는 안내는 띄우지 않는다(불꽃은 그 원 둘레로 보인다)
             if (m.event === 'broken') {
-              if (mine) showToast(`💨 ${m.by ?? '누군가'}에게 져서 불꽃이 꺼졌어요`);
+              if (mine) showToast(t('gamescreen.flameOut', { by: m.by ?? t('gamescreen.someone') }));
             }
             break;
           }
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
-            showToast(m.wiped ? `불꽃에 키워드 ${m.wiped}개를 모두 잃었어요!`
-              : m.stolen ? `${m.by}에게 '${m.keyword}' ${m.score}점짜리 키워드를 빼앗겼어요`
-              : `${m.by}와 부딪혀 '${m.keyword}' ${m.score}점짜리 키워드를 잃었어요`);
+            showToast(m.wiped ? t('gamescreen.lostWiped', { n: m.wiped })
+              : m.stolen ? t('gamescreen.lostStolen', { by: m.by ?? '', kw: m.keyword ?? '', score: m.score })
+              : t('gamescreen.lostHit', { by: m.by ?? '', kw: m.keyword ?? '', score: m.score }));
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
@@ -277,12 +278,13 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             // 사람에게서 이기면 그 키워드를 빼앗는다: 없던 키워드는 보관함에 추가, 이미 있던 키워드는 남은 시간 갱신(4.3)
             // 봇을 이기면 봇의 키워드 대신 무작위 🔥 키워드를 얻는다. 이미 가진 키워드면 남은 시간 갱신(4.21)
             const key = performance.now();
-            const text = m.wiped ? `🔥 불꽃으로 ${m.target}의 키워드 ${m.wiped}개를 모두 날려 버렸어요!`
-              : m.stolen === 'BOT' ? `${m.target}을 이겨 '${m.keyword}' ${m.score}점 키워드를 얻었어요!`
-              : m.stolen === 'BOT_RENEWED' ? `${m.target}을 이겨 '${m.keyword}' 키워드를 갱신하였어요!`
-              : m.stolen === 'ADDED' ? `${m.target}의 '${m.keyword}' ${m.score}점을 빼앗아 보관함에 넣었어요!`
-              : m.stolen === 'RENEWED' ? `${m.target}의 '${m.keyword}' 키워드를 빼앗아 갱신하였어요!`
-              : m.keyword ? `${m.target}의 '${m.keyword}' ${m.score}점을 떨어뜨렸어요!` : `${m.target}을 이겼어요!`;
+            const hp = { target: m.target ?? '', kw: m.keyword ?? '', score: m.score ?? 0, n: m.wiped ?? 0 };
+            const text = m.wiped ? t('gamescreen.hitWiped', hp)
+              : m.stolen === 'BOT' ? t('gamescreen.hitBot', hp)
+              : m.stolen === 'BOT_RENEWED' ? t('gamescreen.hitBotRenewed', hp)
+              : m.stolen === 'ADDED' ? t('gamescreen.hitAdded', hp)
+              : m.stolen === 'RENEWED' ? t('gamescreen.hitRenewed', hp)
+              : m.keyword ? t('gamescreen.hitDropped', hp) : t('gamescreen.hitWon', hp);
             setHit({ text, key });
             if (m.stolen) {
               if (m.gained) arena.floatText(`+${m.gained}`);
@@ -313,7 +315,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     let dashHint: number | null = null;
     try {
       if (window.matchMedia('(pointer: coarse)').matches && !localStorage.getItem(DASH_HINT_KEY)) {
-        dashHint = window.setTimeout(() => { showToast('⚡ 조이스틱을 쥔 채 다른 손가락으로 화면을 탭하면 대시!'); try { localStorage.setItem(DASH_HINT_KEY, '1'); } catch { /* 저장 못 해도 된다 */ } }, 5000);
+        dashHint = window.setTimeout(() => { showToast(t('gamescreen.dashHint')); try { localStorage.setItem(DASH_HINT_KEY, '1'); } catch { /* 저장 못 해도 된다 */ } }, 5000);
       }
     } catch { /* 저장소를 못 쓰면 안내만 건너뛴다 */ }
     // 서버 왕복 시간을 2초마다 잰다(내 원 보정 허용 오차에 쓴다)
@@ -547,7 +549,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   useEffect(() => { saveHelpPref(showHelp); }, [showHelp]);
   useEffect(() => { saveTouchControl(touchControl); }, [touchControl]);
   const toggleTouchControl = useCallback(() => setTouchControl((v) => (v === 'joystick' ? 'tap' : 'joystick')), []);
-  const touchControlLabel = touchControl === 'joystick' ? '조이스틱' : '터치 이동';
+  const touchControlLabel = touchControl === 'joystick' ? t('gamescreen.joystick') : t('gamescreen.tapMove');
   const closePanel = useCallback(() => { setPanel(null); setProfileView('main'); }, []);
 
 
@@ -565,7 +567,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   // (검색은 공백을 무시하므로 누른 사람도 같은 키워드를 찾는다, 4.18). 채팅을 꺼 두었으면 켠다
   const shareKeyword = useCallback((text: string) => {
     const tag = `#${text.replace(/\s+/g, '')}`;
-    if (!connRef.current?.send({ type: 'chat', text: tag })) { showToast('연결된 뒤에 다시 공유해 주세요'); return; }
+    if (!connRef.current?.send({ type: 'chat', text: tag })) { showToast(t('gamescreen.shareAfterConnect')); return; }
     setChatView((v) => (v === 'off' ? 'open' : v));
   }, [showToast]);
   const searchKeyword = useCallback((text: string) => setSearchRequest({ text, key: performance.now() }), []);
@@ -576,26 +578,26 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       {kicked && (
         <div className="modal-backdrop kicked-backdrop" role="alertdialog" aria-labelledby="kicked-title">
           <div className="modal kicked-box">
-            <h2 id="kicked-title">접속이 끊겼어요</h2>
+            <h2 id="kicked-title">{t('gamescreen.kickedTitle')}</h2>
             <p>{kicked}</p>
-            <button className="primary" onClick={() => { location.href = '/'; }}>처음 화면으로</button>
+            <button className="primary" onClick={() => { location.href = '/'; }}>{t('gamescreen.toStart')}</button>
           </div>
         </div>
       )}
       <div className={showMinimap ? 'arena-wrap with-minimap' : 'arena-wrap'}>
         <canvas ref={canvasRef} className="arena"
-                aria-label="아레나. 방향키나 WASD로 이동하고 빈 바닥을 클릭하면 그곳으로 이동해요" />
+                aria-label={t('gamescreen.arenaAria')} />
         <div className="hud">
           {/* 모바일은 짧게(👥 3 · 🤖 7), PC는 글자로 */}
-          <span className="hud-online" aria-label={`현재 접속 ${online}명${bots > 0 ? `, 봇 ${bots}` : ''}`}>
-            <span className="hud-long">현재 접속 {online}명</span><span className="hud-short">👥 {online}</span>
-            {bots > 0 && <span className="muted"><span className="hud-long"> · 봇 {bots}</span><span className="hud-short"> · 🤖 {bots}</span></span>}
+          <span className="hud-online" aria-label={bots > 0 ? t('gamescreen.onlineAriaBots', { online, bots }) : t('gamescreen.onlineAria', { online })}>
+            <span className="hud-long">{t('gamescreen.onlineLong', { online })}</span><span className="hud-short">👥 {online}</span>
+            {bots > 0 && <span className="muted"><span className="hud-long">{t('gamescreen.botsLong', { bots })}</span><span className="hud-short"> · 🤖 {bots}</span></span>}
           </span>
-          {status !== 'open' && <span className="warn">{status === 'connecting' ? '연결 중…' : '연결이 끊겼어요. 다시 연결하는 중…'}</span>}
+          {status !== 'open' && <span className="warn">{status === 'connecting' ? t('gamescreen.connecting') : t('gamescreen.reconnecting')}</span>}
         </div>
         <div className="emote-dock">
           {emoteOpen && (
-            <div className="emote-palette" role="menu" aria-label="이모트">
+            <div className="emote-palette" role="menu" aria-label={t('gamescreen.emote')}>
               {EMOTES.map(([code, ch, label], i) => (
                 <button key={code} role="menuitem" title={`${label} (${i + 1})`} aria-label={label}
                         onClick={() => { sendEmoteRef.current(code); setEmoteOpen(false); }}>{ch}<kbd>{i + 1}</kbd></button>
@@ -604,83 +606,83 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           )}
           <div className="emote-row">
             <DashChip dash={dash} />
-            <button className="emote-toggle" aria-expanded={emoteOpen} aria-label="이모트" title="이모트 (E, 연 뒤 숫자 1~8)" onClick={() => setEmoteOpen((v) => !v)}>😀</button>
+            <button className="emote-toggle" aria-expanded={emoteOpen} aria-label={t('gamescreen.emote')} title={t('gamescreen.emoteTitle')} onClick={() => setEmoteOpen((v) => !v)}>😀</button>
           </div>
         </div>
         <div className="hud-bottom">
           <span><LevelText level={player.level} prefix="Lv." /></span>
-          <button className="hud-name" onClick={() => setPanel('profile')} title="내 정보">{player.nickname}</button>
-          <span>유행도 {Number(player.currentScore).toLocaleString()}</span>
+          <button className="hud-name" onClick={() => setPanel('profile')} title={t('gamescreen.myInfo')}>{player.nickname}</button>
+          <span>{t('gamescreen.score', { n: fmtNumber(Number(player.currentScore)) })}</span>
           <span className="muted hud-extra">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
-          <span className="muted hud-extra">키워드 {player.holdCount}개</span>
+          <span className="muted hud-extra">{t('gamescreen.keywordCount', { n: player.holdCount })}</span>
         </div>
         <div className="arena-tools">
           <div className="tool-row">
             {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
             {guest ? (
               // 누르면 바로 구글 계정 선택 페이지로(매번 계정을 고른다). 돌아오면 지금 기록에 연결된 채로 다시 게임에 들어온다
-              <button className="login-toggle" onClick={startGoogleLogin} aria-label="Google로 로그인" title="Google로 로그인">
-                🔑 <span className="tool-label">로그인</span>
+              <button className="login-toggle" onClick={startGoogleLogin} aria-label={t('gamescreen.loginGoogle')} title={t('gamescreen.loginGoogle')}>
+                🔑 <span className="tool-label">{t('gamescreen.login')}</span>
               </button>
             ) : (
               // 로그아웃: 서버가 갱신 토큰과 JWT를 무효로 하고 시작 화면으로 돌아간다
-              <button className="logout-toggle" onClick={onLogout} aria-label="로그아웃" title="로그아웃">
-                🚪 <span className="tool-label">로그아웃</span>
+              <button className="logout-toggle" onClick={onLogout} aria-label={t('gamescreen.logout')} title={t('gamescreen.logout')}>
+                🚪 <span className="tool-label">{t('gamescreen.logout')}</span>
               </button>
             )}
-            <button onClick={() => setPanel('profile')} aria-label="내 정보">👤 <span className="tool-label">내 정보</span></button>
-            {isAdmin && <button onClick={openAdmin} aria-label="관리자 페이지" title="관리자 페이지(새 탭)">🛠 <span className="tool-label">관리자</span></button>}
-            <button className="notice-toggle-button" onClick={() => setPanel('notice')} aria-label={noticeDot ? '공지사항(새 공지 있음)' : '공지사항'}>
-              📢 <span className="tool-label">공지사항</span>{noticeDot && <span className="dot-badge" aria-hidden="true" />}
+            <button onClick={() => setPanel('profile')} aria-label={t('gamescreen.myInfo')}>👤 <span className="tool-label">{t('gamescreen.myInfo')}</span></button>
+            {isAdmin && <button onClick={openAdmin} aria-label={t('gamescreen.adminPage')} title={t('gamescreen.adminTitle')}>🛠 <span className="tool-label">{t('gamescreen.admin')}</span></button>}
+            <button className="notice-toggle-button" onClick={() => setPanel('notice')} aria-label={noticeDot ? t('gamescreen.noticesAriaNew') : t('gamescreen.notices')}>
+              📢 <span className="tool-label">{t('gamescreen.notices')}</span>{noticeDot && <span className="dot-badge" aria-hidden="true" />}
             </button>
-            <button onClick={() => setPanel('guide')} aria-label="가이드·FAQ">📖 <span className="tool-label">가이드·FAQ</span></button>
-            <button className="minimap-toggle" aria-label="미니맵" aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
-                    title="미니맵 켜기/끄기 (M)">🗺 <span className="tool-label">미니맵</span> <kbd>M</kbd></button>
-            <button className="leaderboard-toggle" aria-label="리더보드" aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
-                    title="리더보드 켜기/끄기 (L)">🏆 <span className="tool-label">리더보드</span> <kbd>L</kbd></button>
-            <button className="inspect-toggle" aria-label="다른 플레이어 정보 보기" aria-pressed={inspect}
-                    onClick={() => setInspect((v) => !v)} title="누른 뒤 원을 탭하면 그 사람 정보를 봐요">🔍</button>
-            <button className="control-toggle" aria-label={`이동 방식: ${touchControlLabel}`} onClick={toggleTouchControl}
-                    title="터치 이동 방식 바꾸기(조이스틱 / 터치 이동)">{touchControl === 'joystick' ? '🕹' : '👆'} <span className="tool-label">{touchControlLabel}</span></button>
-            <button className="chat-toggle" aria-label="채팅" aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
-                    title="채팅 켜기/끄기 (C)">💬 <span className="tool-label">채팅</span> <kbd>C</kbd></button>
+            <button onClick={() => setPanel('guide')} aria-label={t('gamescreen.guide')}>📖 <span className="tool-label">{t('gamescreen.guide')}</span></button>
+            <button className="minimap-toggle" aria-label={t('gamescreen.minimap')} aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
+                    title={t('gamescreen.minimapTitle')}>🗺 <span className="tool-label">{t('gamescreen.minimap')}</span> <kbd>M</kbd></button>
+            <button className="leaderboard-toggle" aria-label={t('gamescreen.leaderboard')} aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
+                    title={t('gamescreen.leaderboardTitle')}>🏆 <span className="tool-label">{t('gamescreen.leaderboard')}</span> <kbd>L</kbd></button>
+            <button className="inspect-toggle" aria-label={t('gamescreen.inspectAria')} aria-pressed={inspect}
+                    onClick={() => setInspect((v) => !v)} title={t('gamescreen.inspectTitle')}>🔍</button>
+            <button className="control-toggle" aria-label={t('gamescreen.moveMode', { label: touchControlLabel })} onClick={toggleTouchControl}
+                    title={t('gamescreen.moveModeTitle')}>{touchControl === 'joystick' ? '🕹' : '👆'} <span className="tool-label">{touchControlLabel}</span></button>
+            <button className="chat-toggle" aria-label={t('gamescreen.chat')} aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
+                    title={t('gamescreen.chatTitle')}>💬 <span className="tool-label">{t('gamescreen.chat')}</span> <kbd>C</kbd></button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
-                    onClick={() => setShowHelp((v) => !v)} title={showHelp ? '조작 설명 접기' : '조작 설명 보기'}
-                    aria-label={showHelp ? '조작 설명 접기' : '조작 설명 보기'}>?</button>
+                    onClick={() => setShowHelp((v) => !v)} title={showHelp ? t('gamescreen.helpClose') : t('gamescreen.helpOpen')}
+                    aria-label={showHelp ? t('gamescreen.helpClose') : t('gamescreen.helpOpen')}>?</button>
             {/* 모바일: 위 버튼들은 숨기고(🔍만 남김) 이 메뉴에 이름과 함께 모은다 */}
-            <button className="menu-toggle" aria-label={noticeDot ? '메뉴(새 공지 있음)' : '메뉴'} aria-expanded={menuOpen} aria-controls="mobile-menu"
+            <button className="menu-toggle" aria-label={noticeDot ? t('gamescreen.menuAriaNew') : t('gamescreen.menu')} aria-expanded={menuOpen} aria-controls="mobile-menu"
                     onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}{noticeDot && !menuOpen && <span className="dot-badge" aria-hidden="true" />}</button>
           </div>
           {menuOpen && (
-            <nav id="mobile-menu" className="mobile-menu" aria-label="메뉴">
+            <nav id="mobile-menu" className="mobile-menu" aria-label={t('gamescreen.menu')}>
               {([
-                ['👤', '내 정보', () => setPanel('profile')],
-                ['📢', '공지사항', () => setPanel('notice')],
-                ['📖', '가이드·FAQ', () => setPanel('guide')],
+                ['👤', t('gamescreen.myInfo'), () => setPanel('profile')],
+                ['📢', t('gamescreen.notices'), () => setPanel('notice')],
+                ['📖', t('gamescreen.guide'), () => setPanel('guide')],
               ] as const).map(([icon, label, act]) => (
                 <button key={label} onClick={() => { setMenuOpen(false); act(); }}>
-                  <span aria-hidden="true">{icon}</span>{label}{label === '공지사항' && noticeDot && <span className="dot-badge inline" aria-hidden="true" />}
+                  <span aria-hidden="true">{icon}</span>{label}{label === t('gamescreen.notices') && noticeDot && <span className="dot-badge inline" aria-hidden="true" />}
                 </button>
               ))}
               <div className="mobile-menu-sep" />
               {([
-                ['🗺', '미니맵', showMinimap, () => setShowMinimap((v) => !v)],
-                ['🏆', '리더보드', showLeaderboard, () => setShowLeaderboard((v) => !v)],
-                ['💬', '채팅', chatView !== 'off', () => setChatView((v) => (v === 'off' ? 'open' : 'off'))],
-                ['❔', '조작 설명', showHelp, () => setShowHelp((v) => !v)],
+                ['🗺', t('gamescreen.minimap'), showMinimap, () => setShowMinimap((v) => !v)],
+                ['🏆', t('gamescreen.leaderboard'), showLeaderboard, () => setShowLeaderboard((v) => !v)],
+                ['💬', t('gamescreen.chat'), chatView !== 'off', () => setChatView((v) => (v === 'off' ? 'open' : 'off'))],
+                ['❔', t('gamescreen.help'), showHelp, () => setShowHelp((v) => !v)],
               ] as const).map(([icon, label, on, act]) => (
                 <button key={label} role="menuitemcheckbox" aria-checked={on} onClick={() => { setMenuOpen(false); act(); }}>
-                  <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? '켜짐' : '꺼짐'}</span>
+                  <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? t('gamescreen.on') : t('gamescreen.off')}</span>
                 </button>
               ))}
               <button onClick={() => { setMenuOpen(false); toggleTouchControl(); }}>
-                <span aria-hidden="true">{touchControl === 'joystick' ? '🕹' : '👆'}</span>이동 방식<span className="menu-state on">{touchControlLabel}</span>
+                <span aria-hidden="true">{touchControl === 'joystick' ? '🕹' : '👆'}</span>{t('gamescreen.moveModeLabel')}<span className="menu-state on">{touchControlLabel}</span>
               </button>
-              {isAdmin && <button onClick={() => { setMenuOpen(false); openAdmin(); }}><span aria-hidden="true">🛠</span>관리자 페이지</button>}
+              {isAdmin && <button onClick={() => { setMenuOpen(false); openAdmin(); }}><span aria-hidden="true">🛠</span>{t('gamescreen.adminPage')}</button>}
               <div className="mobile-menu-sep" />
               {guest
-                ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>Google로 로그인</button>
-                : <button onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>로그아웃</button>}
+                ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>{t('gamescreen.loginGoogle')}</button>
+                : <button onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>{t('gamescreen.logout')}</button>}
             </nav>
           )}
           {showLeaderboard && <Leaderboard myPlayerId={player.id} />}
@@ -691,25 +693,25 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             </div>
           )}
           {showHelp && (
-            <section id="controls-help" className="help-card" aria-label="조작 설명">
-              <h3>이렇게 놀아요</h3>
+            <section id="controls-help" className="help-card" aria-label={t('gamescreen.help')}>
+              <h3>{t('gamescreen.helpTitle')}</h3>
               <ul>
-                <li><strong>클릭</strong> 빈 바닥을 누르면 그곳으로 가요. 누르고 있으면 계속 따라가요.</li>
-                <li><strong>모바일</strong> 누른 자리에 생기는 조이스틱을 끌어서 움직여요. 메뉴의 [이동 방식]에서 누른 곳으로 가는 터치 이동으로 바꿀 수 있어요.</li>
-                <li><strong>다른 사람 정보</strong> PC는 그 원을 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭해요. </li>
-                <li><strong>방향키·WASD</strong> 누르는 방향으로 움직여요.</li>
-                <li><strong>⚡ 대시</strong> PC는 스페이스바, 모바일은 조이스틱을 쥔 채 다른 손가락으로 화면을 탭하면 잠깐 빨라져요. 이모트 버튼 왼쪽 ⚡에서 쿨타임을 볼 수 있어요.</li>
-                <li><strong>세이프존</strong> 파란 칸(가운데, 항상 있음)과 연두색 칸(5분 동안) 안에서는 부딪히지 않고 키워드도 잃지 않아요.</li>
-                <li><strong>검색 → 추가</strong> 뜨는 키워드를 찾아 추가하면 내 원이 커져요.</li>
-                <li><strong>M</strong> 미니맵을 켜고 꺼요.</li>
-                <li><strong>L</strong> 리더보드(접속 중인 사람 순위)를 켜고 꺼요.</li>
-                <li><strong>콤보</strong> 부딪혀 키워드를 연속으로 빼앗으면 Combo가 쌓이고, 5 Combo면 원 둘레가 불타올라요. 한 번이라도 빼앗기면 꺼져요. 불꽃으로 불꽃 없는 사람에게 닿으면 그 사람은 키워드를 전부 잃고, 그 자리에 ! 구슬이 떨어져요(먹으면 무조건 키워드 획득).</li>
-                <li><strong>E · 😀</strong> 이모트 창을 열고 1~8로 골라 원 위에 띄워요.</li>
-                <li><strong>Enter</strong> 채팅을 써요. Esc를 누르면 다시 움직여요. ▾로 접고, C로 끄고 켤 수 있어요.</li>
+                <li><strong>{t('gamescreen.help1k')}</strong> {t('gamescreen.help1')}</li>
+                <li><strong>{t('gamescreen.help2k')}</strong> {t('gamescreen.help2')}</li>
+                <li><strong>{t('gamescreen.help3k')}</strong> {t('gamescreen.help3')}</li>
+                <li><strong>{t('gamescreen.help4k')}</strong> {t('gamescreen.help4')}</li>
+                <li><strong>{t('gamescreen.help5k')}</strong> {t('gamescreen.help5')}</li>
+                <li><strong>{t('gamescreen.help6k')}</strong> {t('gamescreen.help6')}</li>
+                <li><strong>{t('gamescreen.help7k')}</strong> {t('gamescreen.help7')}</li>
+                <li><strong>{t('gamescreen.help8k')}</strong> {t('gamescreen.help8')}</li>
+                <li><strong>{t('gamescreen.help9k')}</strong> {t('gamescreen.help9')}</li>
+                <li><strong>{t('gamescreen.help10k')}</strong> {t('gamescreen.help10')}</li>
+                <li><strong>{t('gamescreen.help11k')}</strong> {t('gamescreen.help11')}</li>
+                <li><strong>{t('gamescreen.help12k')}</strong> {t('gamescreen.help12')}</li>
               </ul>
               <div className="help-actions">
-                <button onClick={() => setPanel('guide')}>가이드 더 보기</button>
-                <button onClick={() => setShowHelp(false)}>접기</button>
+                <button onClick={() => setPanel('guide')}>{t('gamescreen.guideMore')}</button>
+                <button onClick={() => setShowHelp(false)}>{t('gamescreen.fold')}</button>
               </div>
             </section>
           )}
@@ -720,19 +722,19 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                      onToggleCollapsed={() => setChatView((v) => (v === 'collapsed' ? 'open' : 'collapsed'))} />
         )}
         <div ref={joyRef} className="joystick" hidden aria-hidden="true"><div className="joystick-knob" /></div>
-        {inspect && <div className="inspect-hint" role="status">정보를 볼 원을 누르세요 · 빈 곳을 누르면 취소</div>}
+        {inspect && <div className="inspect-hint" role="status">{t('gamescreen.inspectHint')}</div>}
         {toast && <div className="toast" role="status">{toast}</div>}
         {titleAlert && (
           <div key={titleAlert.key} className="title-alert" role="status" aria-live="polite">
             <span className="title-alert-icon" aria-hidden="true">🏅</span>
             <div className="title-alert-text">
-              <span className="title-alert-kicker">새 칭호를 받았어요!</span>
+              <span className="title-alert-kicker">{t('gamescreen.newTitle')}</span>
               <strong>{titleAlert.name}</strong>
               <span className="muted small">{titleAlert.description}</span>
             </div>
             <div className="title-alert-actions">
-              <button className="primary" onClick={() => equipTitle(titleAlert.titleId, titleAlert.name)}>장착하기</button>
-              <button className="icon-button" onClick={dismissTitleAlert} aria-label="알림 닫기">✕</button>
+              <button className="primary" onClick={() => equipTitle(titleAlert.titleId, titleAlert.name)}>{t('gamescreen.equip')}</button>
+              <button className="icon-button" onClick={dismissTitleAlert} aria-label={t('gamescreen.dismissAria')}>✕</button>
             </div>
             <span className="title-alert-timer" aria-hidden="true" />
           </div>

@@ -1,0 +1,18 @@
+export default {
+  loadFailed: 'Couldn\'t load player info',
+  botDesc: 'A bot that roams the arena with you. It grows and shrinks by the same rules as players, and wins or loses when it bumps into others.',
+  score: 'Current trend score',
+  rank: 'Rank',
+  notRanked: 'Not ranked',
+  title: 'Player',
+  reportAria: 'Report {name}',
+  report: '🚩 Report',
+  admin: 'Admin',
+  commentScore: 'Comment score',
+  last7dTrend: 'Score trend, last 7 days',
+  keywords: 'Keywords held',
+  top3: 'Top 3 by score',
+  noKeywords: 'Not holding any keywords right now',
+  detailAria: 'View details for {text}',
+  reportPreview: 'Player: {name}',
+} as Record<string, string>;

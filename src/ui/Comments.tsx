@@ -3,6 +3,7 @@ import { api, ApiFailure } from '../api/client';
 import type { CommentItem, CommentPage } from '../api/types';
 import { ago } from './keywordFormat';
 import { ReportDialog } from './ReportDialog';
+import { fmtNumber, t } from '../i18n';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const MAX = 200; // 최소 글자 수 제한은 없다. 빈 댓글만 막는다
@@ -28,7 +29,7 @@ export function Comments({ keywordId, onError }: Props) {
       setTop(t);
       setPage(l);
     } catch (e) {
-      onError(e instanceof ApiFailure ? e.message : '댓글을 불러오지 못했어요');
+      onError(e instanceof ApiFailure ? e.message : t('comments.loadFailed'));
     }
   }, [keywordId, onError]);
 
@@ -43,7 +44,7 @@ export function Comments({ keywordId, onError }: Props) {
       setDraft('');
       if (pageNo === 0) await load(0); else setPageNo(0);
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '댓글을 쓰지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('comments.writeFailed'));
     } finally {
       setBusy(false);
     }
@@ -60,7 +61,7 @@ export function Comments({ keywordId, onError }: Props) {
       const r = await api.vote(c.id, v);
       patch(c.id, (x) => ({ ...x, ...r }));
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '투표하지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('comments.voteFailed'));
     }
   }
 
@@ -72,17 +73,17 @@ export function Comments({ keywordId, onError }: Props) {
       patch(updated.id, () => updated);
       setEditing(null);
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '댓글을 고치지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('comments.editFailed'));
     }
   }
 
   async function remove(c: CommentItem) {
-    if (!window.confirm('댓글을 지울까요?')) return;
+    if (!window.confirm(t('comments.confirmDelete'))) return;
     try {
       await api.deleteComment(c.id);
       await load(pageNo);
     } catch (err) {
-      onError(err instanceof ApiFailure ? err.message : '댓글을 지우지 못했어요');
+      onError(err instanceof ApiFailure ? err.message : t('comments.deleteFailed'));
     }
   }
 
@@ -90,35 +91,35 @@ export function Comments({ keywordId, onError }: Props) {
   const row = (c: CommentItem, medal?: string) => (
     <li key={`${medal ?? 'l'}-${c.id}`} className={`comment${c.deleted || c.withdrawn ? ' gone' : ''}${medal ? ' top' : ''}`}>
       <div className="comment-head">
-        {medal && <span className="medal" aria-label={`추천 ${MEDALS.indexOf(medal) + 1}위`}>{medal}</span>}
+        {medal && <span className="medal" aria-label={t('comments.rankAria', { n: MEDALS.indexOf(medal) + 1 })}>{medal}</span>}
         <strong>{c.nickname}</strong>
-        {c.mine && <span className="badge mine">나</span>}
-        <span className="muted small">{ago(c.createdAt)}{c.edited ? ' · 수정됨' : ''}</span>
+        {c.mine && <span className="badge mine">{t('comments.me')}</span>}
+        <span className="muted small">{ago(c.createdAt)}{c.edited ? t('comments.edited') : ''}</span>
       </div>
       {editing?.id === c.id ? (
         <form className="comment-edit" onSubmit={saveEdit}>
           <textarea value={editing.body} maxLength={MAX} rows={2} autoFocus
-                    onChange={(e) => setEditing({ id: c.id, body: e.target.value })} aria-label="댓글 고치기" />
+                    onChange={(e) => setEditing({ id: c.id, body: e.target.value })} aria-label={t('comments.editAria')} />
           <div className="comment-actions">
-            <button type="button" onClick={() => setEditing(null)}>취소</button>
-            <button className="primary">저장</button>
+            <button type="button" onClick={() => setEditing(null)}>{t('comments.cancel')}</button>
+            <button className="primary">{t('comments.save')}</button>
           </div>
         </form>
       ) : <p className="comment-body">{c.body}</p>}
       {!c.deleted && !c.withdrawn && editing?.id !== c.id && (
         <div className="comment-actions">
           <button className={`vote${c.myVote === 'LIKE' ? ' on' : ''}`} disabled={c.mine} onClick={() => vote(c, 'LIKE')}
-                  aria-pressed={c.myVote === 'LIKE'} aria-label={`추천 ${c.likeCount}`} title={c.mine ? '내 댓글에는 투표할 수 없어요' : '추천'}>
+                  aria-pressed={c.myVote === 'LIKE'} aria-label={t('comments.likeAria', { n: c.likeCount })} title={c.mine ? t('comments.ownVote') : t('comments.like')}>
             👍 {c.likeCount}
           </button>
           <button className={`vote${c.myVote === 'DISLIKE' ? ' on down' : ''}`} disabled={c.mine} onClick={() => vote(c, 'DISLIKE')}
-                  aria-pressed={c.myVote === 'DISLIKE'} aria-label={`비추천 ${c.dislikeCount}`} title={c.mine ? '내 댓글에는 투표할 수 없어요' : '비추천'}>
+                  aria-pressed={c.myVote === 'DISLIKE'} aria-label={t('comments.dislikeAria', { n: c.dislikeCount })} title={c.mine ? t('comments.ownVote') : t('comments.dislike')}>
             👎 {c.dislikeCount}
           </button>
           <span className="spacer" />
-          {c.editable && <button className="link" onClick={() => setEditing({ id: c.id, body: c.body })}>고치기</button>}
-          {c.mine && <button className="link" onClick={() => remove(c)}>지우기</button>}
-          {!c.mine && <button className="link" onClick={() => setReporting(c)}>신고</button>}
+          {c.editable && <button className="link" onClick={() => setEditing({ id: c.id, body: c.body })}>{t('comments.edit')}</button>}
+          {c.mine && <button className="link" onClick={() => remove(c)}>{t('comments.delete')}</button>}
+          {!c.mine && <button className="link" onClick={() => setReporting(c)}>{t('comments.report')}</button>}
         </div>
       )}
     </li>
@@ -126,36 +127,36 @@ export function Comments({ keywordId, onError }: Props) {
 
   const total = page?.total ?? 0;
   return (
-    <section className="comments" aria-label="댓글">
-      <h3>댓글 <span className="muted">{total.toLocaleString()}</span></h3>
+    <section className="comments" aria-label={t('comments.title')}>
+      <h3>{t('comments.title')} <span className="muted">{fmtNumber(total)}</span></h3>
       <form className="comment-write" onSubmit={write}>
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={MAX} rows={2}
-                  placeholder="이 키워드가 뭔지, 왜 뜨는지 알려 주세요" aria-label="댓글 쓰기" />
+                  placeholder={t('comments.placeholder')} aria-label={t('comments.writeAria')} />
         <div className="comment-actions">
           <span className="muted small">{length}/{MAX}</span>
           <span className="spacer" />
-          <button className="primary" disabled={busy || length === 0}>등록</button>
+          <button className="primary" disabled={busy || length === 0}>{t('comments.submit')}</button>
         </div>
       </form>
 
-      {page && total === 0 && <p className="muted empty-comments">아직 댓글이 없어요</p>}
+      {page && total === 0 && <p className="muted empty-comments">{t('comments.empty')}</p>}
       {top.length > 0 && <ol className="comment-list">{top.map((c, i) => row(c, MEDALS[i]))}</ol>}
       {page && page.items.length > 0 && (<>
-        <div className="comment-divider muted small">최신순</div>
+        <div className="comment-divider muted small">{t('comments.latest')}</div>
         <ol className="comment-list">{page.items.map((c) => row(c))}</ol>
       </>)}
       {page && page.totalPages > 1 && (
-        <nav className="pager" aria-label="댓글 페이지">
-          <button disabled={pageNo === 0} onClick={() => setPageNo((p) => p - 1)} aria-label="이전 페이지">‹</button>
+        <nav className="pager" aria-label={t('comments.pageNav')}>
+          <button disabled={pageNo === 0} onClick={() => setPageNo((p) => p - 1)} aria-label={t('comments.prevPage')}>‹</button>
           <span className="muted small">{pageNo + 1} / {page.totalPages}</span>
-          <button disabled={pageNo >= page.totalPages - 1} onClick={() => setPageNo((p) => p + 1)} aria-label="다음 페이지">›</button>
+          <button disabled={pageNo >= page.totalPages - 1} onClick={() => setPageNo((p) => p + 1)} aria-label={t('comments.nextPage')}>›</button>
         </nav>
       )}
       {reporting && (
         <ReportDialog target="COMMENT" targetId={reporting.id} preview={`${reporting.nickname}: ${reporting.body}`}
                       onClose={() => setReporting(null)} onDone={(err) => { setReporting(null); if (err) onError(err); }} />
       )}
-      {total > 0 && <p className="muted small disclaimer">사용자가 쓴 의견이며 사실 확인은 되지 않았어요</p>}
+      {total > 0 && <p className="muted small disclaimer">{t('comments.disclaimer')}</p>}
     </section>
   );
 }

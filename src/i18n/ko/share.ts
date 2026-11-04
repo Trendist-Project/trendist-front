@@ -1,0 +1,18 @@
+export default {
+  tooFast: '잠시 후 다시 열어 주세요',
+  createFailed: '카드를 만들지 못했어요',
+  linkCopied: '카드 링크를 복사했어요',
+  kakaoText: '{name}의 트렌드 성적표 · 유행도 {score}',
+  shareText: '내 유행도 {score}! 나랑 겨뤄 볼래?',
+  imageSaved: '이미지를 저장했어요',
+  statsPlays: '내 카드를 지금까지 {views}명이 봤고 {plays}명이 게임에 들어왔어요',
+  statsViews: '내 카드를 지금까지 {views}명이 봤어요',
+  title: '📸 자랑하기 카드',
+  imageAlt: '내 기록 카드 이미지',
+  creating: '카드를 만드는 중…',
+  kakao: '카카오톡 공유',
+  kakaoPreparing: '카카오톡 준비 중…',
+  shareCard: '📤 카드 공유',
+  saveImage: '⬇️ 이미지 저장',
+  copyLink: '🔗 링크 복사',
+} as Record<string, string>;
