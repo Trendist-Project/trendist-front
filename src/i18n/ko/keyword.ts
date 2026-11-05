@@ -21,6 +21,7 @@ export default {
   holderCount: '👥 {n}명',
   totalAdds: '누적 추가',
   totalSearches: '누적 검색',
+  views: '조회수',
   activityGraph: '활동 그래프',
   activity: '활동',
   period: '기간',

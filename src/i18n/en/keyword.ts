@@ -21,6 +21,7 @@ export default {
   holderCount: '👥 {n}',
   totalAdds: 'Total adds',
   totalSearches: 'Total searches',
+  views: 'Page views',
   activityGraph: 'Activity chart',
   activity: 'Activity',
   period: 'Period',

@@ -34,6 +34,8 @@ export interface KeywordCard {
   holderCount: number;
   totalPlusCount: number;
   searchCount: number;
+  /** 공개 키워드 페이지(4.28) 조회수 */
+  viewCount: number;
   plusedByMe: boolean;
   myExpiresAt: string | null;
   /** AI 한 줄 설명(4.12). 아직 없으면 null. aiCommentRequested: 내가 갱신 요청을 해 둔 상태 */

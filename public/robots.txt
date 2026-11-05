@@ -6,3 +6,4 @@ Disallow: /admin/
 Disallow: /api/
 
 Sitemap: https://trendist.kr/sitemap.xml
+# /sitemap.xml은 백엔드가 만든다(메인 주소 + 모든 키워드 페이지 /kr/keywords/…, /global/keywords/…)

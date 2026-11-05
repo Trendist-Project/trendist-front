@@ -223,7 +223,7 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .badge.state-활성, .badge.mine { border: 1px solid; }
 .badge.state-활성 { border-color: rgba(255,140,80,0.6); color: #ffb48a; }
 .badge.state-비활성 { color: var(--muted); }
-.kw-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.kw-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; }
 .kw-stats div { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #0f151f; }
 .kw-stats dt { font-size: 0.78rem; color: var(--muted); }
 .kw-stats dd { margin: 2px 0 0; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -329,7 +329,7 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .chat-input input { flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 0.85rem; }
 .chat-input input:focus { outline: none; background: rgba(255,255,255,0.04); }
 @media (max-width: 760px) {
-  .kw-stats { grid-template-columns: 1fr 1fr 1fr; }
+  .kw-stats { grid-template-columns: 1fr 1fr; }
   .kw-score strong { font-size: 2rem; }
 }
 

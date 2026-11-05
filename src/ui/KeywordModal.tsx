@@ -123,6 +123,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
           <div><dt>{t('keyword.holders')}</dt><dd>{t('keyword.holderCount', { n: fmtNumber(card.holderCount) })}</dd></div>
           <div><dt>{t('keyword.totalAdds')}</dt><dd>{fmtNumber(card.totalPlusCount)}</dd></div>
           <div><dt>{t('keyword.totalSearches')}</dt><dd>{fmtNumber(card.searchCount)}</dd></div>
+          <div><dt>{t('keyword.views')}</dt><dd>{fmtNumber(card.viewCount)}</dd></div>
         </dl>
 
         <section className="kw-activity" aria-label={t('keyword.activityGraph')}>
