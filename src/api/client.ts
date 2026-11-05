@@ -135,6 +135,7 @@ export const api = {
 
 export interface AdminStatus { admin: boolean }
 /** 관리자 긴급 안내 목록의 한 줄(4.29). status: ACTIVE(보이는 중) / ENDED(시간이 끝남) / CANCELED(관리자가 끝냄) */
+export interface AdminIntegration { code: string; label: string; url: string }
 export interface AdminEmergency { id: number; message: string; messageEn: string | null; createdAt: string; endsAt: string; canceledAt: string | null; status: 'ACTIVE' | 'ENDED' | 'CANCELED'; minutes: number }
 export interface AdminKeywordRow {
   id: number; text: string; normalized: string; state: string; source: string; trendValue: number; holderCount: number;
@@ -255,6 +256,8 @@ export const adminApi = {
   actReport: (id: number, a: { sanction: SanctionKind | null; days: number | null; reason: string; deleteContent: boolean; sameTarget: boolean }) =>
     request<{ changed: number; report: AdminReport }>('POST', `/api/admin/reports/${id}/act`, a),
   settings: () => request<AdminSetting[]>('GET', '/api/admin/settings'),
+  integrations: () => request<AdminIntegration[]>('GET', '/api/admin/integrations'),
+  updateIntegration: (code: string, url: string) => request<AdminIntegration>('PATCH', `/api/admin/integrations/${code}`, { url }),
   emergencyList: () => request<AdminEmergency[]>('GET', '/api/admin/emergency'),
   createEmergency: (r: { message: string; messageEn: string | null; minutes: number }) => request<AdminEmergency>('POST', '/api/admin/emergency', r),
   cancelEmergency: (id: number) => request<AdminEmergency>('POST', `/api/admin/emergency/${id}/cancel`),

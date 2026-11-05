@@ -572,3 +572,18 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .em-badge.ACTIVE { color: #ffb4bc; border-color: rgba(255,122,122,0.6); background: rgba(255,122,122,0.1); }
 .em-badge.ENDED, .em-badge.CANCELED { color: var(--muted); }
 .em-row.ENDED, .em-row.CANCELED { opacity: 0.75; }
+
+/* 연동 바로가기(13.15) */
+.int-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.int-main { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.int-icon { width: 48px; height: 48px; flex: none; border-radius: 10px; display: block; transition: transform 0.12s; }
+.int-icon:hover, .int-icon:focus-visible { transform: scale(1.08); }
+.int-icon svg { width: 100%; height: 100%; display: block; }
+.int-text { display: grid; gap: 2px; min-width: 0; flex: 1 1 200px; }
+.int-name { font-weight: 700; color: inherit; text-decoration: none; }
+.int-name:hover { text-decoration: underline; }
+.int-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.int-open { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); text-decoration: none; color: inherit; font-weight: 600; }
+.int-open:hover { border-color: #7aa7ff; }
+.int-edit { display: grid; gap: 8px; }
+.int-edit input { width: 100%; box-sizing: border-box; }
