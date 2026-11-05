@@ -1,6 +1,7 @@
 export default {
   equipped: "Equipped the '{name}' title",
   equipFailed: "Couldn't equip the title",
+  emergencyLabel: 'Emergency',
   someone: 'someone',
   flameOut: '💨 You lost to {by} and your flame went out',
   lostWiped: 'You lost all {n} keywords to the flame!',

@@ -544,3 +544,31 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .bulk-summary .fail { color: #ff9a9a; font-weight: 600; }
 .bulk-summary .ok { font-weight: 600; }
 .bulk-summary button { margin-left: auto; }
+
+/* ---------------------------------------------------------------- 긴급 안내(4.29): 지금 보이는 것 → 쓰기(미리 보기) → 지난 기록 */
+.em { gap: 16px; max-width: 920px; }
+.em h2 { margin: 0; font-size: 1.1rem; }
+.em-intro { margin: 0; max-width: 70ch; line-height: 1.6; }
+.em-now { display: grid; gap: 10px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 14px; background: var(--panel); }
+.em-now.on { border: 1px solid #ff7a7a; background: linear-gradient(135deg, rgba(255,122,122,0.1), transparent 70%), var(--panel); }
+.em-now-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.em-left { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.em-left b { color: #ffb4bc; font-size: 1.15rem; }
+.em-now .emergency-bar, .em-preview .emergency-bar { border-radius: 10px; border: 1px solid rgba(255,122,122,0.55); }
+.em-form { display: grid; gap: 16px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+.em-form textarea, .em-form input:not([type="number"]) { font: inherit; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; background: #0f151f; color: inherit; border: 1px solid var(--line); }
+.em-form .notice-field textarea { resize: vertical; line-height: 1.55; min-height: 0; height: auto; } /* 공지 작성 칸의 큰 최소 높이를 쓰지 않는다 */
+.em-form textarea:focus, .em-form input:focus { outline: none; border-color: var(--accent); }
+.em-durations { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.em-custom { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; color: var(--muted); font-size: 0.9rem; }
+.em-custom input { width: 84px; padding: 6px 8px; text-align: center; border-radius: 10px; border: 1px solid var(--line); background: #0f151f; color: var(--text); font: inherit; }
+.em-preview { min-height: 36px; }
+.em-empty { margin: 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.em-history { display: grid; gap: 10px; }
+.em-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.em-row { display: grid; gap: 4px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.em-row-main { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.em-row-text { overflow-wrap: anywhere; }
+.em-badge.ACTIVE { color: #ffb4bc; border-color: rgba(255,122,122,0.6); background: rgba(255,122,122,0.1); }
+.em-badge.ENDED, .em-badge.CANCELED { color: var(--muted); }
+.em-row.ENDED, .em-row.CANCELED { opacity: 0.75; }

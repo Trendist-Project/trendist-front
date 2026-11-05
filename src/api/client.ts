@@ -3,7 +3,7 @@ import { errorText } from '../i18n';
 import { getAdminCountry } from './adminCountry';
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
-  AiCommentPage, AiCommentRow, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
+  AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
 } from './types';
 
 export class ApiFailure extends Error {
@@ -125,6 +125,8 @@ export const api = {
   roomPlayerHistory: (entityNo: number) => request<ScoreHistory>('GET', `/api/room/players/${entityNo}/score-history?range=7d`),
   rankings: () => request<RankingEntry[]>('GET', `/api/rankings?country=${getCountry()}`),
   notices: () => request<Notice[]>('GET', '/api/notices'),
+  /** 지금 보여 줄 긴급 안내(4.29). 없으면 notice가 null */
+  emergency: () => request<{ notice: EmergencyNotice | null }>('GET', '/api/emergency'),
   guideCategories: () => request<GuideCategory[]>('GET', '/api/guide/categories'),
   guideArticles: (code: string) => request<GuideArticle[]>('GET', `/api/guide/categories/${encodeURIComponent(code)}/articles`),
 };
@@ -132,6 +134,8 @@ export const api = {
 // ---------------------------------------------------------------- 관리자(13): /api/admin/**는 ROLE_ADMIN만
 
 export interface AdminStatus { admin: boolean }
+/** 관리자 긴급 안내 목록의 한 줄(4.29). status: ACTIVE(보이는 중) / ENDED(시간이 끝남) / CANCELED(관리자가 끝냄) */
+export interface AdminEmergency { id: number; message: string; messageEn: string | null; createdAt: string; endsAt: string; canceledAt: string | null; status: 'ACTIVE' | 'ENDED' | 'CANCELED'; minutes: number }
 export interface AdminKeywordRow {
   id: number; text: string; normalized: string; state: string; source: string; trendValue: number; holderCount: number;
   totalPlusCount: number; searchCount: number; viewCount: number; externalUntil: string | null; activatedAt: string | null;
@@ -251,6 +255,9 @@ export const adminApi = {
   actReport: (id: number, a: { sanction: SanctionKind | null; days: number | null; reason: string; deleteContent: boolean; sameTarget: boolean }) =>
     request<{ changed: number; report: AdminReport }>('POST', `/api/admin/reports/${id}/act`, a),
   settings: () => request<AdminSetting[]>('GET', '/api/admin/settings'),
+  emergencyList: () => request<AdminEmergency[]>('GET', '/api/admin/emergency'),
+  createEmergency: (r: { message: string; messageEn: string | null; minutes: number }) => request<AdminEmergency>('POST', '/api/admin/emergency', r),
+  cancelEmergency: (id: number) => request<AdminEmergency>('POST', `/api/admin/emergency/${id}/cancel`),
   notices: () => request<AdminNotice[]>('GET', '/api/admin/notices'),
   createNotice: (n: AdminNoticeInput) => request<AdminNotice>('POST', '/api/admin/notices', n),
   updateNotice: (id: number, n: AdminNoticeInput) => request<AdminNotice>('PUT', `/api/admin/notices/${id}`, n),

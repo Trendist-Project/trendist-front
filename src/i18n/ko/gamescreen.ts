@@ -2,6 +2,7 @@ export default {
   equipped: "'{name}' 칭호를 장착했어요",
   equipFailed: '칭호를 장착하지 못했어요',
   someone: '누군가',
+  emergencyLabel: '긴급 안내',
   flameOut: '💨 {by}에게 져서 불꽃이 꺼졌어요',
   lostWiped: '불꽃에 키워드 {n}개를 모두 잃었어요!',
   lostStolen: "{by}에게 '{kw}' {score}점짜리 키워드를 빼앗겼어요",

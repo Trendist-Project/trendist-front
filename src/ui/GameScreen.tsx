@@ -18,6 +18,7 @@ import { LevelText } from './LevelText';
 import { DashChip, type DashState } from './DashChip';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
+import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t } from '../i18n';
 
 interface Props {
@@ -105,6 +106,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const connRef = useRef<GameConnection | null>(null);
   const [player, setPlayer] = useState(initialPlayer);
   const [online, setOnline] = useState(0);
+  const { notice: emergency, apply: applyEmergency } = useEmergency(); // 긴급 안내(4.29): 맨 위 한 줄. 서버 알림은 apply로 바로 반영
   const [bots, setBots] = useState(0);
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
@@ -220,6 +222,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             conn.send({ type: 'ping', t: performance.now() });
             break;
           case 'tuning': arena.setTuning(m); break;
+          case 'emergency': applyEmergency(m.notice); break;
           case 'titleGranted': showTitleAlert(m.titleId, m.name, m.description); break;
           case 'roster': arena.setRoster(m.players, m.flameAt); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
           case 'score':
@@ -574,6 +577,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const closeKeyword = useCallback(() => setOpenKeyword(null), []);
 
   return (
+    <div className="game-shell">
+      {emergency && <EmergencyBar text={emergencyText(emergency)} />}
     <div className="game">
       {kicked && (
         <div className="modal-backdrop kicked-backdrop" role="alertdialog" aria-labelledby="kicked-title">
@@ -764,6 +769,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                       onLogout={onLogout} onWithdrawn={onWithdrawn} initialView={profileView} />
       )}
 
+    </div>
     </div>
   );
 }

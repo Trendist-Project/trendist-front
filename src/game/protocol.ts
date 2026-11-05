@@ -73,6 +73,7 @@ export type ServerMessage =
   | { type: 'emote'; e: number; code: string } // 이모트(4.26)
   // 연속 빼앗기 콤보(4.25). event: up(+1) / start(flameAt에 닿아 불꽃이 붙음) / reset(잃어서 콤보 끝) / broken(잃어서 불꽃까지 꺼짐, by가 끈 사람)
   | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken'; flameAt: number; by?: string; byE?: number }
+  | { type: 'emergency'; notice: import('../api/types').EmergencyNotice | null } // 긴급 안내가 올라오거나 끝났다(4.29). null이면 걷는다
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
