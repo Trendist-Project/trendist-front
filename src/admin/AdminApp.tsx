@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   adminApi, resumeSession,
-  type AdminKeywordPage, type AdminKeywordQuery, type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
+  type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
 } from '../api/client';
 import { ADMIN_COUNTRIES, getAdminCountry, setAdminCountry, type AdminCountry } from '../api/adminCountry';
-import { STATE_BADGE } from '../ui/keywordFormat';
 import { RichText } from '../ui/RichText';
 import { GuidesTab } from './GuidesTab';
+import { KeywordsTab } from './KeywordsTab';
+import { BulkTab } from './BulkTab';
 import { DashboardTab } from './DashboardTab';
 import { StatsTab } from './StatsTab';
 import { SpectateTab } from './SpectateTab';
@@ -21,7 +22,7 @@ import { errMsg, fmt } from './format';
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
 type Tab = 'dashboard' | 'stats' | 'spectate' | 'users' | 'keywords' | 'ai' | 'add' | 'reports' | 'notices' | 'guides' | 'share' | 'settings';
-const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['spectate', '관전'], ['users', '사용자'], ['keywords', '키워드'], ['ai', 'AI 설명'], ['add', '키워드 추가'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
+const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['spectate', '관전'], ['users', '사용자'], ['keywords', '키워드'], ['ai', 'AI 설명'], ['add', '일괄 추가·금지'], ['reports', '신고'], ['notices', '공지'], ['guides', '가이드'], ['share', '공유'], ['settings', '설정']];
 
 
 export function AdminApp() {
@@ -76,204 +77,13 @@ export function AdminApp() {
       {tab === 'users' && <UsersTab key={jump.key} initialUserId={jump.userId} initialFilter={jump.filter} />}
       {tab === 'keywords' && <KeywordsTab />}
       {tab === 'ai' && <AiCommentsTab />}
-      {tab === 'add' && <AddTab />}
+      {tab === 'add' && <BulkTab />}
       {tab === 'reports' && <ReportsTab onGo={go} />}
       {tab === 'notices' && <NoticesTab />}
       {tab === 'guides' && <GuidesTab />}
       {tab === 'share' && <ShareTab />}
       {tab === 'settings' && <SettingsTab />}
     </main>
-  );
-}
-
-// ---------------------------------------------------------------- 키워드 목록(13.1, 13.6)
-
-const SORTS: [string, string][] = [
-  ['text', '키워드'], ['state', '상태'], ['source', '소스'], ['trendValue', '점수'], ['holderCount', '가진 사람'],
-  ['totalPlusCount', '누적 추가'], ['searchCount', '누적 검색'], ['activatedAt', '🔥된 때'], ['externalUntil', '유지 끝'], ['createdAt', '등록'],
-];
-const SORTABLE = new Set(['trendValue', 'holderCount', 'totalPlusCount', 'searchCount', 'activatedAt', 'externalUntil', 'createdAt']);
-const STATES: [string, string][] = [['', '전체'], ['활성', '🔥 활성'], ['비활성', '💤 비활성'], ['금지', '⛔ 금지']];
-const SOURCES: [string, string][] = [['', '전체'], ['google', 'google'], ['admin', 'admin'], ['internal', 'internal']];
-
-/** 필터 한 줄: 여러 개를 고를 수 있는 칩. 아무것도 안 고르면 [전체]. 눌러서 켜고 끈다. */
-function MultiChipFilter({ label, options, values, counts, onChange }: {
-  label: string; options: [string, string][]; values: string[]; counts?: Record<string, number>; onChange(v: string[]): void;
-}) {
-  const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : undefined;
-  const toggle = (v: string) => {
-    if (!v) return onChange([]);
-    const next = values.includes(v) ? values.filter((x) => x !== v) : [...values, v];
-    onChange(next.length === options.length - 1 ? [] : next); // 전부 골랐으면 전체와 같다
-  };
-  return (
-    <div className="admin-chip-filter" role="group" aria-label={label}>
-      <span className="admin-chip-label">{label}</span>
-      {options.map(([v, text]) => {
-        const on = v ? values.includes(v) : values.length === 0;
-        const n = counts ? (v ? counts[v] ?? 0 : total) : undefined;
-        return (
-          <button key={v || 'all'} type="button" role="checkbox" aria-checked={on}
-                  className={`sort-chip${on ? ' active' : ''}`} onClick={() => toggle(v)}>
-            {text}{n !== undefined && <span className="chip-count">{n.toLocaleString()}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function KeywordsTab() {
-  const [query, setQuery] = useState<AdminKeywordQuery>({ sort: 'trendValue', dir: 'desc', page: 0 });
-  const [qInput, setQInput] = useState('');
-  const [data, setData] = useState<AdminKeywordPage | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmBan, setConfirmBan] = useState<number | null>(null);
-
-  const load = useCallback(() => {
-    adminApi.keywords(query).then((d) => { setData(d); setError(null); }).catch((e) => setError(errMsg(e)));
-  }, [query]);
-  useEffect(load, [load]);
-
-  const sortBy = (key: string) => {
-    if (!SORTABLE.has(key)) return;
-    setQuery((q) => ({ ...q, page: 0, sort: key, dir: q.sort === key && q.dir === 'desc' ? 'asc' : 'desc' }));
-  };
-  const toggleBan = async (id: number, banned: boolean) => {
-    setConfirmBan(null);
-    try { await adminApi.ban(id, banned); load(); } catch (e) { setError(errMsg(e)); }
-  };
-  const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
-
-  return (
-    <section className="admin-panel">
-      <div className="admin-filter-box">
-        <form className="admin-search" onSubmit={(e: FormEvent) => { e.preventDefault(); setQuery((q) => ({ ...q, page: 0, q: qInput.trim() })); }}>
-          <input value={qInput} onChange={(e) => setQInput(e.target.value)} placeholder="🔍 키워드 검색" aria-label="키워드 검색" />
-          <button type="submit" className="primary">검색</button>
-          <span className="muted small">{data ? `${data.total.toLocaleString()}개` : ''}</span>
-        </form>
-        <MultiChipFilter label="상태" options={STATES} values={query.state ?? []} counts={data?.stateCounts}
-                         onChange={(v) => setQuery((q) => ({ ...q, page: 0, state: v }))} />
-        <MultiChipFilter label="소스" options={SOURCES} values={query.source ?? []}
-                         onChange={(v) => setQuery((q) => ({ ...q, page: 0, source: v }))} />
-      </div>
-      {error && <p className="error">{error}</p>}
-      <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              {SORTS.map(([key, label]) => (
-                <th key={key} className={SORTABLE.has(key) ? 'sortable' : undefined} onClick={() => sortBy(key)}
-                    aria-sort={query.sort === key ? (query.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
-                  {label}{query.sort === key ? (query.dir === 'asc' ? ' ↑' : ' ↓') : ''}
-                </th>
-              ))}
-              <th>관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.items.map((k) => (
-              <tr key={k.id} className={k.state === '금지' ? 'banned' : undefined}>
-                <td><strong>{k.text}</strong></td>
-                <td>{STATE_BADGE[k.state] ?? k.state}</td>
-                <td>{k.source}</td>
-                <td className="num">{k.trendValue}</td>
-                <td className="num">{k.holderCount.toLocaleString()}</td>
-                <td className="num">{k.totalPlusCount.toLocaleString()}</td>
-                <td className="num">{k.searchCount.toLocaleString()}</td>
-                <td>{fmt(k.activatedAt)}</td>
-                <td>{fmt(k.externalUntil)}</td>
-                <td>{fmt(k.createdAt)}</td>
-                <td>
-                  {k.state === '금지' ? <button onClick={() => toggleBan(k.id, false)}>해제</button>
-                    : confirmBan === k.id ? (
-                      <span className="confirm">
-                        <button className="danger" onClick={() => toggleBan(k.id, true)}>금지 확인</button>
-                        <button onClick={() => setConfirmBan(null)}>취소</button>
-                      </span>
-                    ) : <button onClick={() => setConfirmBan(k.id)}>금지</button>}
-                </td>
-              </tr>
-            ))}
-            {data && data.items.length === 0 && <tr><td colSpan={SORTS.length + 1} className="muted">키워드가 없어요</td></tr>}
-          </tbody>
-        </table>
-      </div>
-      <div className="admin-pager">
-        <button disabled={query.page <= 0} onClick={() => setQuery((q) => ({ ...q, page: q.page - 1 }))}>‹ 이전</button>
-        <span>{query.page + 1} / {pages}</span>
-        <button disabled={query.page + 1 >= pages} onClick={() => setQuery((q) => ({ ...q, page: q.page + 1 }))}>다음 ›</button>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------- 키워드 추가(13.7): 쉼표로 여러 개, 확인 후 추가
-
-type AddResult = { text: string; ok: boolean; message: string };
-
-function parseKeywords(input: string) {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of input.split(/[,，\n]/)) {
-    const t = raw.trim().replace(/\s+/g, ' ');
-    const key = t.replace(/\s+/g, '').toLowerCase(); // 서버 정규화처럼 공백·대소문자는 같은 키워드로 본다
-    if (!t || seen.has(key)) continue;
-    seen.add(key);
-    out.push(t);
-  }
-  return out;
-}
-
-function AddTab() {
-  const [input, setInput] = useState('');
-  const [pending, setPending] = useState<string[] | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState<AddResult[]>([]);
-
-  async function apply() {
-    if (!pending) return;
-    setBusy(true);
-    const out: AddResult[] = [];
-    for (const text of pending) {
-      try {
-        const r = await adminApi.addKeyword(text);
-        out.push({ text, ok: true, message: `${r.created ? '새로 만듦' : '이미 있던 키워드를 admin으로'} · 🔥 ${r.trendValue}점 · ${fmt(r.externalUntil)}까지` });
-      } catch (e) {
-        out.push({ text, ok: false, message: errMsg(e) });
-      }
-      setResults([...out]);
-    }
-    setBusy(false);
-    setPending(null);
-    setInput('');
-  }
-
-  return (
-    <section className="admin-panel">
-      <p className="muted small">관리자가 넣은 키워드는 바로 🔥활성이 되고 반영 소스가 <code>admin</code>이에요. 넣은 때부터 7일(설정 <code>external_hold_hours</code>) 동안 유지되고, 끝나면 internal로 내려가요. 여러 개는 쉼표로 나눠 적어요.</p>
-      {!pending ? (
-        <form className="admin-add" onSubmit={(e: FormEvent) => { e.preventDefault(); const list = parseKeywords(input); if (list.length) { setPending(list); setResults([]); } }}>
-          <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3} placeholder="예) 양쯔깐루, 두바이 쫀득 쿠키, 말차라떼" aria-label="추가할 키워드" />
-          <button className="primary" type="submit" disabled={!parseKeywords(input).length}>확인</button>
-        </form>
-      ) : (
-        <div className="admin-confirm">
-          <p><strong>{pending.length}개</strong>를 🔥활성 키워드로 추가할까요?</p>
-          <ul className="admin-chips">{pending.map((k) => <li key={k}>{k}</li>)}</ul>
-          <div className="admin-actions">
-            <button className="primary" onClick={apply} disabled={busy}>{busy ? '추가하는 중…' : '추가'}</button>
-            <button onClick={() => setPending(null)} disabled={busy}>다시 고치기</button>
-          </div>
-        </div>
-      )}
-      {results.length > 0 && (
-        <ul className="admin-results">
-          {results.map((r) => <li key={r.text} className={r.ok ? 'ok' : 'fail'}>{r.ok ? '✔' : '✖'} <strong>{r.text}</strong> · {r.message}</li>)}
-        </ul>
-      )}
-    </section>
   );
 }
 

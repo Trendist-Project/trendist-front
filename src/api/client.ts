@@ -133,10 +133,12 @@ export const api = {
 
 export interface AdminStatus { admin: boolean }
 export interface AdminKeywordRow {
-  id: number; text: string; state: string; source: string; trendValue: number; holderCount: number;
-  totalPlusCount: number; searchCount: number; externalUntil: string | null; activatedAt: string | null;
+  id: number; text: string; normalized: string; state: string; source: string; trendValue: number; holderCount: number;
+  totalPlusCount: number; searchCount: number; viewCount: number; externalUntil: string | null; activatedAt: string | null;
   bannedAt: string | null; createdAt: string;
 }
+/** 키워드 한 개 조회(13.6): 등록 전이라도 규칙에 맞는지(valid, reason)와 기존 행(keyword, 없으면 null) */
+export interface AdminKeywordLookup { text: string; normalized: string; valid: boolean; reason: string | null; keyword: AdminKeywordRow | null }
 export interface AdminKeywordPage { items: AdminKeywordRow[]; total: number; page: number; size: number; stateCounts: Record<string, number> }
 export interface AdminAdded { id: number; text: string; state: string; trendValue: number; holderCount: number; externalUntil: string; created: boolean }
 export interface AdminReport {
@@ -238,6 +240,9 @@ export const adminApi = {
   aiDismiss: (id: number) => request<AiCommentRow>('POST', `/api/admin/ai-comments/${id}/dismiss`),
   keywords: (q: AdminKeywordQuery) => request<AdminKeywordPage>('GET', `/api/admin/keywords?${qs({ country: getAdminCountry(), size: 50, ...q, state: q.state?.join(','), source: q.source?.join(',') })}`),
   addKeyword: (text: string) => request<AdminAdded>('POST', '/api/admin/keywords', { text, country: getAdminCountry() }),
+  lookupKeyword: (text: string) => request<AdminKeywordLookup>('GET', `/api/admin/keywords/lookup?${qs({ country: getAdminCountry(), text })}`),
+  /** 등록 전 단어도 바로 금지한다(없으면 금지 상태로 새로 등록) */
+  banKeywordText: (text: string) => request<AdminKeywordRow>('POST', '/api/admin/keywords/ban-text', { text, country: getAdminCountry() }),
   ban: (id: number, banned: boolean) => request<AdminKeywordRow>('POST', `/api/admin/keywords/${id}/${banned ? 'ban' : 'unban'}`),
   reports: (status: string, page: number) => request<AdminReportPage>('GET', `/api/admin/reports?${qs({ status, page })}`),
   setReportStatus: (id: number, status: string, sameTarget: boolean) =>

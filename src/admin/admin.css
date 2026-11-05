@@ -445,3 +445,102 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 /* 관리자 나라 선택(KR/GLOBAL) */
 .admin-country { display: inline-flex; align-items: center; gap: 6px; }
 .admin-country select { padding: 2px 6px; }
+
+/* ---------------------------------------------------------------- 키워드 화면(13.6): 상태 요약 → 검색 → 조회 카드 → 목록 */
+.admin button.danger.solid { background: #8f2a36; border-color: #ff7a7a; color: #fff; font-weight: 700; }
+.admin button.danger.solid:hover:not(:disabled) { background: #a4303e; }
+.akw { gap: 14px; }
+.akw-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.akw-stat { display: grid; gap: 2px; justify-items: start; text-align: left; padding: 12px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); transition: border-color 0.12s, background 0.12s, transform 0.12s; }
+.akw-stat:hover { border-color: #3a475c; transform: translateY(-1px); }
+.akw-stat-label { font-size: 0.8rem; color: var(--muted); }
+.akw-stat strong { font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.akw-stat.on { border-color: var(--accent); background: rgba(63,182,139,0.1); box-shadow: 0 0 0 1px var(--accent) inset; }
+.akw-stat.s-금지.on { border-color: #ff7a7a; background: rgba(255,122,122,0.08); box-shadow: 0 0 0 1px #ff7a7a inset; }
+.akw-stat.s-금지 strong { color: #ff9a9a; }
+.akw-stat.s-활성 strong { color: #ffb48a; }
+
+.akw-search { position: relative; display: flex; gap: 8px; align-items: center; }
+.akw-search input { flex: 1; min-width: 0; height: 48px; padding: 0 44px 0 42px; font-size: 1rem; border-radius: 14px; background: #0f151f; }
+.akw-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(63,182,139,0.18); }
+.akw-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: 0.8; }
+.akw-clear { position: absolute; right: 86px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 0; background: #1d2635; color: var(--muted); }
+.akw-search > button.primary { height: 48px; padding: 0 22px; border-radius: 14px; }
+
+.akw-card { display: grid; gap: 12px; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); }
+.akw-card.new { border: 1px dashed var(--accent); background: linear-gradient(135deg, rgba(63,182,139,0.1), transparent 70%), var(--panel); }
+.akw-card.found { border-color: #3a475c; }
+.akw-card.banned { border-color: rgba(255,122,122,0.5); background: linear-gradient(135deg, rgba(255,122,122,0.08), transparent 70%), var(--panel); }
+.akw-card.invalid { border-color: rgba(255,176,32,0.5); }
+.akw-card p { margin: 0; }
+.akw-skeleton { height: 96px; background: linear-gradient(90deg, #141b26, #1b2433, #141b26); background-size: 200% 100%; animation: akw-shimmer 1.2s linear infinite; }
+@keyframes akw-shimmer { to { background-position: -200% 0; } }
+.akw-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.akw-word { font-size: 1.35rem; overflow-wrap: anywhere; }
+.akw-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.akw-metrics div { padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: #0f151f; min-width: 0; }
+.akw-metrics dt { font-size: 0.74rem; color: var(--muted); }
+.akw-metrics dd { margin: 2px 0 0; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.akw-metrics dd.small { font-size: 0.82rem; font-weight: 600; }
+.akw-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.akw-confirm { display: grid; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--accent); background: rgba(63,182,139,0.08); }
+.akw-confirm.danger { border-color: #ff7a7a; background: rgba(255,122,122,0.08); }
+
+.akw-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--line); background: #1d2635; white-space: nowrap; }
+.akw-badge.s-활성 { color: #ffb48a; border-color: rgba(255,140,80,0.6); background: rgba(255,140,80,0.08); }
+.akw-badge.s-비활성 { color: var(--muted); }
+.akw-badge.s-금지 { color: #ff9a9a; border-color: rgba(255,122,122,0.6); background: rgba(255,122,122,0.08); }
+.akw-badge.s-new { color: #9fe0c3; border-color: var(--accent); background: rgba(63,182,139,0.1); }
+.akw-badge.s-warn { color: var(--warn); border-color: rgba(255,176,32,0.6); }
+.akw-source { font-size: 0.75rem; padding: 1px 8px; border-radius: 6px; background: #1d2635; color: #9fb3c8; }
+.akw-link { color: var(--muted); text-decoration: none; margin-left: 6px; padding: 0 4px; border-radius: 6px; }
+.akw-link:hover, .akw-link:focus-visible { color: var(--accent); background: #1d2635; }
+.akw-link.wide { margin-left: auto; font-size: 0.85rem; }
+
+.akw-filter-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.akw-sources { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.akw-count { margin-left: auto; }
+.akw-table-wrap { max-height: 70vh; }
+.akw-table th.num { text-align: right; }
+.akw-table tbody tr:hover td { background: rgba(255,255,255,0.03); }
+.akw-table tr.akw-hit td { background: rgba(63,182,139,0.1); }
+.akw-table tr.akw-hit td:first-child { box-shadow: 3px 0 0 var(--accent) inset; }
+.akw-key { display: flex; align-items: center; gap: 2px; min-width: 120px; }
+.akw-table td:first-child, .akw-table th:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; }
+.akw-table th:first-child { background: #151d2a; z-index: 2; }
+.akw-row-actions { display: inline-flex; gap: 4px; }
+.akw-row-actions button { padding: 4px 10px; font-size: 0.8rem; }
+.akw-empty { text-align: center; padding: 28px 12px !important; white-space: normal !important; }
+@media (max-width: 900px) { .akw-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .akw-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .akw-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .akw-search > button.primary { padding: 0 14px; }
+  .akw-clear { right: 70px; }
+}
+@media (prefers-reduced-motion: reduce) { .akw-skeleton { animation: none; } .akw-stat { transition: none; } }
+
+/* ---------------------------------------------------------------- 일괄 추가·금지(13.7) */
+.bulk { gap: 14px; }
+.bulk-modes { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); justify-self: start; }
+.bulk-mode { border: 0; background: transparent; padding: 8px 18px; border-radius: 10px; font-weight: 600; color: var(--muted); }
+.bulk-mode.on.add { background: var(--accent); color: #062014; }
+.bulk-mode.on.ban { background: #8f2a36; color: #fff; }
+.bulk-hint { margin: 0; max-width: 70ch; line-height: 1.6; }
+.bulk-form { display: grid; gap: 10px; }
+.bulk-form textarea { width: 100%; font: inherit; line-height: 1.6; padding: 12px 14px; border-radius: 14px; background: #0f151f; color: inherit; border: 1px solid var(--line); resize: vertical; min-height: 120px; }
+.bulk-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(63,182,139,0.18); }
+.bulk-preview { display: grid; gap: 8px; }
+.bulk-count { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bulk-count.over { color: #ff7a7a; font-weight: 700; }
+.admin-chips li.more { color: var(--muted); background: transparent; }
+.bulk-confirm { display: grid; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--accent); background: rgba(63,182,139,0.06); }
+.bulk-confirm.ban { border-color: #ff7a7a; background: rgba(255,122,122,0.06); }
+.bulk-confirm p { margin: 0; }
+.bulk-progress { display: grid; gap: 4px; }
+.bulk-progress progress { width: 100%; height: 8px; accent-color: var(--accent); }
+.bulk-result { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.bulk-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.bulk-summary .fail { color: #ff9a9a; font-weight: 600; }
+.bulk-summary .ok { font-weight: 600; }
+.bulk-summary button { margin-left: auto; }
