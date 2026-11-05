@@ -31,6 +31,7 @@ html, body, #root { height: auto; min-height: 100%; overflow: auto; }
 th[aria-sort] .th-arrow { opacity: 1; color: var(--accent); }
 .admin-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .admin-table tr.banned td { opacity: 0.55; }
+.admin-table tr.banned td:last-child { opacity: 1; } /* 마지막 칸의 [해제] 버튼은 흐리게 하지 않는다(비활성처럼 보이지 않게) */
 .admin-pager { display: flex; gap: 10px; align-items: center; justify-content: center; }
 .admin .confirm { display: inline-flex; gap: 4px; }
 .admin button.danger { border-color: #ff7a7a; color: #ff9a9a; }
@@ -587,3 +588,14 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .int-open:hover { border-color: #7aa7ff; }
 .int-edit { display: grid; gap: 8px; }
 .int-edit input { width: 100%; box-sizing: border-box; }
+
+/* 관리자 화면의 모든 버튼: 마우스를 올리면 선택되는 것처럼 색이 채워지고, 누르면 살짝 눌린다.
+ * 고른 상태(.on)·따로 호버가 있는 것(서식 도구, 구간 선택, 관전 목록, 대시보드 타일)·글자 링크처럼 생긴 버튼은 뺀다 */
+.admin button { transition: background-color 0.12s, border-color 0.12s, color 0.12s, transform 0.08s; }
+.admin button:not(:disabled):not(.on):not(.th-sort):not(.link-btn):not(.link-danger):not(.dash-tile):not(.dash-card-button):not(.admin-switch):not(.notice-toggle):not(.markup-toolbar *):not(.seg *):not(.mon-list *):hover {
+  background: rgba(63,182,139,0.22); border-color: var(--accent); color: #fff;
+}
+.admin button.danger:not(:disabled):not(.solid):hover { background: rgba(255,122,122,0.25); border-color: #ff7a7a; color: #fff; }
+.admin button.primary:not(:disabled):hover { background: #52cfa3; border-color: #52cfa3; color: #062014; }
+.admin button.primary.danger:not(:disabled):hover { background: #ee7070; border-color: #ee7070; color: #fff; }
+.admin button:not(:disabled):not(.th-sort):not(.link-btn):active { transform: translateY(1px); }
