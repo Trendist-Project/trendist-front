@@ -66,6 +66,9 @@ const ZONE_LINE = '#a6e04a';
 const ZONE_BLINK_MS = 30000;   // 사라지기 30초 전부터 깜빡인다
 interface Zone { id: number; x: number; y: number; size: number; until: number }
 const BOT_BASE = '#d9534f'; // NPC 봇 원의 바탕색(4.21)
+/** 대시 꼬리(4.27): 최근 WAKE_MS 동안 지나온 경로를 꼬리로 쓰고, 길이는 기본 길이의 WAKE_MAX배까지만 늘린다 */
+const WAKE_MS = 240;
+const WAKE_MAX = 2.2;
 // 화면 크기 보정(모바일): 짧은 변이 이보다 작으면 그 비율만큼 더 넓게 보여 준다(최소 배율 아래로는 줄이지 않는다)
 const VIEW_REF_SHORT = 720;
 const VIEW_MIN_SCALE = 0.6;
@@ -129,6 +132,8 @@ export class Arena {
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
   private shields = new Map<number, number>();
   private dashFx = new Map<number, { at: number; ms: number }>(); // 대시 중인 원 번호 → 시작 시각, 지속 ms(4.27)
+  /** 대시 중인 원이 지나온 경로(오래된 것 → 최근 것). 꼬리 빛이 이 경로를 따라 휘어지게 한다(4.27). at은 마지막으로 기록한 시각 */
+  private dashPaths = new Map<number, { pts: { x: number; y: number; t: number }[]; at: number }>();
   /** 채팅 말풍선(4.13): 보낸 사람 아이콘 위에 3초 */
   private bubbles = new Map<number, { text: string; at: number }>();
   /** 길게 누르는 중인 다른 원(정보 팝업, 4.11): 그 원 둘레에 링이 ms 동안 차오른다 */
@@ -731,6 +736,101 @@ export class Arena {
   }
 
   /**
+   * 대시 꼬리 빛(4.27): 원이 실제로 지나온 경로를 따라 휘어지는 하늘색 꼬리. 방향을 꺾으면 꼬리도 부드러운 곡선으로 따라온다.
+   * 경로는 대시 중 프레임마다 기록하고(너무 가까운 점은 건너뜀), 꼬리 길이만큼만 남긴다. 아직 경로가 짧은 대시 시작 직후에는
+   * 진행 방향의 반대쪽으로 곧게 이어 붙여 처음부터 같은 길이로 보이게 한다.
+   * 한 번 칠하면 끝이 둥글고 가장자리가 층진 띠가 되므로, 같은 경로를 "짧을수록 넓은" 여러 겹으로 겹쳐 그린다. 머리 쪽은 겹이 쌓여 진하고
+   * 꼬리 끝은 한 겹이라 옅고 좁아져 이음새 없이 사라진다.
+   */
+  private drawWake(ctx: CanvasRenderingContext2D, e: EntityState, now: number, k: number, px: number) {
+    const baseLen = e.r * 2.8 + 56 * px; // 가만히 서 있어도 보이는 최소 길이(큰 원에서는 이 길이가 그대로 쓰인다)
+    // 1) 경로 기록: 오래 끊겼거나 갑자기 멀리 이동(재접속·순간 이동)했으면 처음부터 다시
+    let rec = this.dashPaths.get(e.e);
+    if (!rec || now - rec.at > 150) { rec = { pts: [], at: now }; this.dashPaths.set(e.e, rec); }
+    rec.at = now;
+    const newest = rec.pts[rec.pts.length - 1];
+    if (newest && Math.hypot(e.x - newest.x, e.y - newest.y) > 400 * px + e.r * 4) rec.pts.length = 0;
+    const last = rec.pts[rec.pts.length - 1];
+    if (!last || Math.hypot(e.x - last.x, e.y - last.y) >= Math.max(e.r * 0.15, 3 * px)) rec.pts.push({ x: e.x, y: e.y, t: now });
+
+    // 꼬리 길이: 최근 WAKE_MS 동안 지나온 거리(빠를수록 길다). 꺾는 구간이 곡선으로 충분히 보이게 하되, 처음 길이의 WAKE_MAX배까지만 늘린다
+    let travelled = 0, from = { x: e.x, y: e.y };
+    for (let i = rec.pts.length - 1; i >= 0 && now - rec.pts[i].t <= WAKE_MS; i--) {
+      travelled += Math.hypot(rec.pts[i].x - from.x, rec.pts[i].y - from.y); from = rec.pts[i];
+    }
+    const wakeLen = Math.min(baseLen * WAKE_MAX, Math.max(baseLen, travelled));
+    // 2) 머리(지금 위치)에서 거꾸로 따라가며 꼬리 길이만큼 모은다
+    const path: { x: number; y: number }[] = [{ x: e.x, y: e.y }];
+    let len = 0;
+    let keepFrom = 0;
+    for (let i = rec.pts.length - 1; i >= 0 && len < wakeLen; i--) {
+      const q = rec.pts[i], prev = path[path.length - 1];
+      const d = Math.hypot(q.x - prev.x, q.y - prev.y);
+      if (d < 0.01) continue;
+      if (len + d >= wakeLen) {
+        const f = (wakeLen - len) / d; // 길이를 넘는 마지막 구간은 딱 맞게 자른다
+        path.push({ x: prev.x + (q.x - prev.x) * f, y: prev.y + (q.y - prev.y) * f });
+        len = wakeLen; keepFrom = Math.max(0, i - 1);
+        break;
+      }
+      path.push(q); len += d;
+    }
+    if (keepFrom > 0) rec.pts.splice(0, keepFrom); // 꼬리보다 오래된 점은 버린다
+    if (len < wakeLen) {
+      // 경로가 아직 짧다: 마지막 구간의 방향(없으면 거북이 머리 방향)으로 곧게 이어 붙인다
+      let bx: number, by: number;
+      if (path.length >= 2) {
+        const a = path[path.length - 2], c = path[path.length - 1], d = Math.hypot(c.x - a.x, c.y - a.y) || 1;
+        bx = (c.x - a.x) / d; by = (c.y - a.y) / d;
+      } else {
+        const ang = (this.headings.get(e.e)?.a ?? 0) - Math.PI / 2;
+        bx = -Math.cos(ang); by = -Math.sin(ang);
+      }
+      const c = path[path.length - 1];
+      path.push({ x: c.x + bx * (wakeLen - len), y: c.y + by * (wakeLen - len) });
+      len = wakeLen;
+    }
+
+    // 3) 경로 위의 누적 길이로, 머리에서 frac만큼까지의 점들을 돌려준다
+    const cum: number[] = [0];
+    for (let i = 1; i < path.length; i++) cum.push(cum[i - 1] + Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y));
+    const total = cum[cum.length - 1] || 1;
+    const upTo = (frac: number) => {
+      const target = total * frac, out = [path[0]];
+      for (let i = 1; i < path.length; i++) {
+        if (cum[i] >= target) {
+          const f = (target - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1);
+          out.push({ x: path[i - 1].x + (path[i].x - path[i - 1].x) * f, y: path[i - 1].y + (path[i].y - path[i - 1].y) * f });
+          return out;
+        }
+        out.push(path[i]);
+      }
+      return out;
+    };
+    // 점들을 지나는 부드러운 곡선(이웃한 점의 중간점을 끝으로 하는 2차 곡선)
+    const trace = (pts: { x: number; y: number }[]) => {
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) ctx.quadraticCurveTo(pts[i].x, pts[i].y, (pts[i].x + pts[i + 1].x) / 2, (pts[i].y + pts[i + 1].y) / 2);
+      if (pts.length > 1) ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    };
+
+    // 4) 겹쳐 그리기: j번째 겹은 머리에서 (j+1)/L 길이까지, 길수록 좁다. 머리 쪽 누적 진하기가 처음 꼬리(0.62)와 같도록 겹당 진하기를 정한다
+    const L = 14, full = Math.max(e.r * 1.9, 14 * px), layerAlpha = (1 - Math.pow(1 - 0.62, 1 / L)) * k;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = `rgba(127,219,255,${layerAlpha})`;
+    for (let j = 0; j < L; j++) {
+      const frac = (j + 1) / L;
+      ctx.lineWidth = full * (0.1 + 0.9 * (1 - frac + 1 / L) ** 1.15);
+      trace(upTo(frac)); ctx.stroke();
+    }
+    // 가운데 밝고 가는 심: 속도감을 주는 흰 줄기(꼬리 앞쪽 절반만)
+    ctx.strokeStyle = `rgba(214,245,255,${0.42 * k})`;
+    ctx.lineWidth = Math.max(2 * px, e.r * 0.16);
+    trace(upTo(0.5)); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+  }
+
+  /**
    * 대시 강조(4.27): 누구 화면에서나 보이게 하늘색·흰색으로(콤보 불꽃의 주황과 구분). 둘레 빛, 뒤로 늘어나는 속도선, 시작할 때 퍼지는
    * 충격파 고리는 원 뒤에(front=false), 시작할 때 튀어 오르는 ⚡는 원 위에(front=true) 그린다. 멀리서도 보이게 최소 두께를 화면 픽셀로 잡는다.
    * 모션 줄이기 설정과 관계없이 그리되(알아볼 수 있어야 하므로), 깜빡임 없이 부드럽게 나타나고 사라진다.
@@ -739,7 +839,7 @@ export class Arena {
     const fx = this.dashFx.get(e.e);
     if (!fx) return;
     const now = performance.now(), t = now - fx.at;
-    if (t >= fx.ms) { if (front) this.dashFx.delete(e.e); return; }
+    if (t >= fx.ms) { if (front) { this.dashFx.delete(e.e); this.dashPaths.delete(e.e); } return; }
     const px = 1 / this.zoom;
     if (front) {
       if (t < 700) {
@@ -760,20 +860,7 @@ export class Arena {
       ctx.lineWidth = w;
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + w / 2, 0, Math.PI * 2); ctx.stroke();
     }
-    // 꼬리 빛: 진행 방향은 거북이 머리 방향(위쪽이 0)에서 구한다. 원 뒤로 갈수록 좁아지며 사라지는 하늘색 띠
-    const ang = (this.headings.get(e.e)?.a ?? 0) - Math.PI / 2;
-    const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
-    const wakeLen = e.r * 2.8 + 56 * px, wakeW = e.r * 0.95;
-    const wx = e.x - dx * e.r * 0.4, wy = e.y - dy * e.r * 0.4, tx = wx - dx * wakeLen, ty = wy - dy * wakeLen;
-    const wake = ctx.createLinearGradient(wx, wy, tx, ty);
-    wake.addColorStop(0, `rgba(127,219,255,${0.62 * k})`);
-    wake.addColorStop(0.5, `rgba(127,219,255,${0.3 * k})`);
-    wake.addColorStop(1, 'rgba(127,219,255,0)');
-    ctx.fillStyle = wake;
-    ctx.beginPath();
-    ctx.moveTo(wx + nx * wakeW, wy + ny * wakeW); ctx.lineTo(tx + nx * wakeW * 0.2, ty + ny * wakeW * 0.2);
-    ctx.lineTo(tx - nx * wakeW * 0.2, ty - ny * wakeW * 0.2); ctx.lineTo(wx - nx * wakeW, wy - ny * wakeW);
-    ctx.closePath(); ctx.fill();
+    this.drawWake(ctx, e, now, k, px);
     // 시작 충격파: 0.5초 동안 퍼지며 옅어지는 고리
     if (t < 500) {
       const s = t / 500, ease = 1 - (1 - s) ** 3;
@@ -792,7 +879,7 @@ export class Arena {
     const look = this.names.get(e.e);
     const t = performance.now() / 1000;
     // 콤보 불꽃(4.25): 원보다 먼저 그려 둘레 바깥으로만 타오르게 한다
-    if (look && !look.bot && look.combo >= this.flameAt) drawComboFlames(ctx, e.x, e.y, e.r, t, 1 / this.zoom);
+    if (look && look.combo >= this.flameAt) drawComboFlames(ctx, e.x, e.y, e.r, t, 1 / this.zoom);
     this.drawDashFx(ctx, e, false); // 대시: 빛·속도선·충격파는 원 뒤(4.27)
     // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(11레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
     ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
