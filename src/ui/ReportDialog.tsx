@@ -11,7 +11,7 @@ const REASONS = [
 ];
 
 interface Props {
-  target: 'COMMENT' | 'CHAT' | 'PLAYER';
+  target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER';
   targetId: number;
   /** 신고하는 글 미리보기(누가 뭐라고 썼는지) */
   preview: string;
@@ -21,7 +21,7 @@ interface Props {
 }
 
 /**
- * 댓글·채팅·플레이어 신고(13.5). 사유를 하나 고르고 보낸다. 같은 글은 한 번만 신고할 수 있고, 관리자가 검토한다.
+ * 키워드·댓글·채팅·플레이어 신고(13.5). 사유를 하나 고르고 보낸다. 같은 글은 한 번만 신고할 수 있고, 관리자가 검토한다.
  * 키워드 창 위에 겹쳐 뜨므로 Esc는 이 창만 닫는다(캡처 단계에서 받아 아래 창으로 넘기지 않는다).
  */
 export function ReportDialog({ target, targetId, preview, onDone, onClose }: Props) {
@@ -58,7 +58,7 @@ export function ReportDialog({ target, targetId, preview, onDone, onClose }: Pro
     <div className="modal-backdrop report-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <form className="modal report-dialog" role="dialog" aria-modal="true" aria-label={t('dialogs.reportLabel')} onSubmit={submit}>
         <header className="modal-head">
-          <h2>{target === 'COMMENT' ? t('dialogs.reportComment') : t('dialogs.reportChat')}</h2>
+          <h2>{target === 'KEYWORD' ? t('dialogs.reportKeyword') : target === 'COMMENT' ? t('dialogs.reportComment') : t('dialogs.reportChat')}</h2>
           <button type="button" className="icon-button" onClick={onClose} aria-label={t('dialogs.close')}>✕</button>
         </header>
         <div className="modal-body">

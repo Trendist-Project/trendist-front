@@ -27,6 +27,7 @@ export default {
   reportDone: "Reported. An admin will take a look",
   reportFailed: "Couldn't send the report",
   reportLabel: 'Report',
+  reportKeyword: 'Report keyword',
   reportComment: 'Report comment',
   reportChat: 'Report chat message',
   reportReason: 'Reason',

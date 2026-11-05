@@ -27,6 +27,7 @@ export default {
   reportDone: '신고했어요. 관리자가 확인할게요',
   reportFailed: '신고하지 못했어요',
   reportLabel: '신고하기',
+  reportKeyword: '키워드 신고',
   reportComment: '댓글 신고',
   reportChat: '채팅 신고',
   reportReason: '신고 사유',

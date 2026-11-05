@@ -6,6 +6,7 @@ import { GeminiIcon } from './GeminiIcon';
 import { Comments } from './Comments';
 import { remaining, STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
+import { ReportDialog } from './ReportDialog';
 import { successToast } from './toast';
 import { fmtNumber, t } from '../i18n';
 
@@ -34,6 +35,7 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
   const [busy, setBusy] = useState(false);
   const [shared, setShared] = useState(false); // 공유 직후 잠깐 버튼을 막는다(채팅은 1초에 1회)
   const [aiBusy, setAiBusy] = useState(false);
+  const [reporting, setReporting] = useState(false); // 키워드 신고 창
 
   useEffect(() => {
     api.keyword(keywordId).then(setCard).catch(() => setFailed(true));
@@ -84,11 +86,16 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
 
   return (
     <Modal title={card?.text ?? t('keyword.title')} onClose={onClose} className="keyword-modal"
-           titleExtra={card && onShare && (
-             <button className="kw-share" disabled={shared} title={t('keyword.shareTitle')} aria-label={t('keyword.shareAria', { text: card.text })}
-                     onClick={() => { onShare(card.text); setShared(true); window.setTimeout(() => setShared(false), 1500); }}>
-               {shared ? t('keyword.shared') : t('keyword.share')}
-             </button>
+           titleExtra={card && card.id !== null && (
+             <span className="kw-title-actions">
+               {onShare && (
+                 <button className="kw-share" disabled={shared} title={t('keyword.shareTitle')} aria-label={t('keyword.shareAria', { text: card.text })}
+                         onClick={() => { onShare(card.text); setShared(true); window.setTimeout(() => setShared(false), 1500); }}>
+                   {shared ? t('keyword.shared') : t('keyword.share')}
+                 </button>
+               )}
+               <button className="kw-share kw-report" title={t('keyword.reportTitle')} onClick={() => setReporting(true)}>{t('keyword.report')}</button>
+             </span>
            )}>
       {failed && <p className="muted">{t('keyword.loadFailed')}</p>}
       {!failed && !card && <p className="muted">{t('common.loading')}</p>}
@@ -143,6 +150,10 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
         </section>
 
         <Comments keywordId={keywordId} onError={onError} />
+        {reporting && card.id !== null && (
+          <ReportDialog target="KEYWORD" targetId={card.id} preview={t('keyword.reportPreview', { text: card.text })}
+                        onClose={() => setReporting(false)} onDone={(err) => { setReporting(false); if (err) onError(err); }} />
+        )}
       </>)}
     </Modal>
   );

@@ -17,7 +17,7 @@ import { AiCommentsTab } from './AiCommentsTab';
 import { UsersTab } from './UsersTab';
 import { MarkupEditor } from './MarkupEditor';
 import { successToast } from '../ui/toast';
-import { errMsg, fmt } from './format';
+import { adminConfirm, errMsg, fmt } from './format';
 
 /**
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
@@ -101,6 +101,7 @@ const ACT_DEFAULT: Record<string, { sanction: SanctionKind | null; days: number 
   채팅: { sanction: 'CHAT', days: 1, del: false },
   댓글: { sanction: 'COMMENT', days: 1, del: true },
   플레이어: { sanction: null, days: 1, del: false },
+  키워드: { sanction: null, days: 1, del: false },
 };
 const ACT_SANCTIONS: [SanctionKind | null, string][] = [[null, '제재 없이'], ['CHAT', '💬 채팅 정지'], ['COMMENT', '📝 댓글 작성 정지'], ['UPLOAD', '🎨 그림 저장 정지'], ['BAN', '⛔ 계정 금지']];
 const ACT_DAYS: [number | null, string][] = [[1, '1일'], [3, '3일'], [7, '7일'], [30, '30일'], [null, '영구']];
@@ -171,13 +172,16 @@ function ReportCard({ r, sameTarget, onDone, onDecide, onError, onGo }: {
   const [busy, setBusy] = useState(false);
   const canSanction = r.targetUserId !== null;
   const isComment = r.type === '댓글';
+  const isKeyword = r.type === '키워드';
+  const [banKeyword, setBanKeyword] = useState(false); // 키워드 신고: 조치하면서 그 키워드도 금지
   const label = ACT_SANCTIONS.find(([k]) => k === sanction)?.[1] ?? '';
 
   async function act() {
-    const what = [sanction ? `${label.replace(/^\S+\s/, '')} ${days ? `${days}일` : '영구'}` : null, del ? '댓글 지우기' : null].filter(Boolean).join(' + ') || '제재 없이 조치함';
-    if (!window.confirm(`${r.targetNickname ?? '대상'}: ${what}\n이렇게 처리하고 조치함으로 넘길까요?`)) return;
+    const what = [banKeyword ? '키워드 금지' : null, sanction ? `${label.replace(/^\S+\s/, '')} ${days ? `${days}일` : '영구'}` : null, del ? '댓글 지우기' : null].filter(Boolean).join(' + ') || '제재 없이 조치함';
+    if (!(await adminConfirm(`${r.targetNickname ?? '대상'}: ${what} — 이렇게 처리하고 조치함으로 넘길까요?`))) return;
     setBusy(true);
     try {
+      if (banKeyword && isKeyword) await adminApi.ban(r.targetId, true);
       const res = await adminApi.actReport(r.id, { sanction, days, reason: reason.trim(), deleteContent: del && isComment, sameTarget });
       successToast(`처리했어요: ${what}${res.changed > 1 ? ` (신고 ${res.changed}건 조치함)` : ''}`);
       onDone();
@@ -225,8 +229,11 @@ function ReportCard({ r, sameTarget, onDone, onDecide, onError, onGo }: {
           {isComment && !r.contentDeleted && (
             <label className="report-check"><input type="checkbox" checked={del} onChange={(e) => setDel(e.target.checked)} /> 신고된 댓글 지우기(사용자에게 "삭제된 댓글"로 보여요)</label>
           )}
+          {isKeyword && (
+            <label className="report-check"><input type="checkbox" checked={banKeyword} onChange={(e) => setBanKeyword(e.target.checked)} /> 이 키워드를 금지하기(금지어가 들어 있는 키워드도 함께 막혀요)</label>
+          )}
           <div className="admin-actions">
-            <button className="danger" disabled={busy} onClick={act}>{sanction || del ? '제재하고 조치함' : '조치함(제재 없이)'}</button>
+            <button className="danger" disabled={busy} onClick={act}>{banKeyword ? '키워드 금지하고 조치함' : sanction || del ? '제재하고 조치함' : '조치함(제재 없이)'}</button>
             <button disabled={busy} onClick={() => onDecide(r.id, 'REJECTED')}>문제없음</button>
           </div>
         </div>

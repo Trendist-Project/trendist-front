@@ -117,7 +117,7 @@ export const api = {
   writeComment: (id: number, body: string) => request<CommentItem>('POST', `/api/keywords/${id}/comments`, { body }),
   editComment: (commentId: number, body: string) => request<CommentItem>('PATCH', `/api/comments/${commentId}`, { body }),
   deleteComment: (commentId: number) => request<void>('DELETE', `/api/comments/${commentId}`),
-  report: (target: 'COMMENT' | 'CHAT' | 'PLAYER', targetId: number, reason: string) =>
+  report: (target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER', targetId: number, reason: string) =>
     request<void>('POST', '/api/reports', { target, targetId, reason }),
   vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
   scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
