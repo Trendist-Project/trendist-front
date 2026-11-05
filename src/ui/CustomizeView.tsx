@@ -25,6 +25,14 @@ const fromSlot = (s: ProfileSlot): Draft => ({
   nameColor: s.look.nameColor ?? null, nameStyle: s.look.nameStyle ?? null, inner: s.inner, art: s.art, artChanged: false,
   trailEffectId: s.trailEffectId, borderEffectId: s.borderEffectId,
 });
+/**
+ * 이 칸의 기본 모습(초기화): 바탕색·테두리는 서버가 주는 기본값, 이름표 글자색·모양과 이동·테두리 효과는 끄고, 원 안은 성장 캐릭터로 되돌린다.
+ * 그려 둔 그림은 지우지 않고 그대로 남겨 두어서(다시 [내 그림]을 고를 수 있다) 그림을 바꾸는 간격(art_change_minutes)도 쓰지 않는다.
+ */
+const defaultDraft = (box: ProfileBox, s: ProfileSlot): Draft => ({
+  background: box.defaults.background, borderColor: box.defaults.borderColor, borderWidth: box.defaults.borderWidth,
+  nameColor: null, nameStyle: null, inner: 'GROWTH', art: s.art, artChanged: false, trailEffectId: null, borderEffectId: null,
+});
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify({ ...a, art: null }) === JSON.stringify({ ...b, art: null }) && !a.artChanged && !b.artChanged;
 const codeOf = (list: EffectOption[], id: number | null) => (id == null ? null : list.find((e) => e.id === id)?.code ?? null);
 
@@ -95,6 +103,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
   const [drawing, setDrawing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null); // 초기화한 뒤 [저장]을 눌러야 적용된다는 안내
 
   useEffect(() => {
     api.profiles().then((b) => { setBox(b); setSlot(b.equippedSlot); setDraft(fromSlot(b.slots[b.equippedSlot - 1])); })
@@ -104,19 +113,26 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
   const current = box?.slots[slot - 1];
   const dirty = !!current && !!draft && !sameDraft(fromSlot(current), draft);
   const initialCells = useMemo(() => decodeArt(draft?.art ?? null), [drawing]); // eslint-disable-line react-hooks/exhaustive-deps
+  const isDefault = !!box && !!current && !!draft && sameDraft(defaultDraft(box, current), draft);
   const guestLocked = !!box && box.unlocked && box.trails.length > 0 && box.trails.every((e) => !e.unlocked) && !box.canDraw;
 
   function pickSlot(n: number) {
     if (!box || n === slot) return;
     if (dirty && !window.confirm(t('customize.confirmSwitch'))) return;
-    setSlot(n); setDraft(fromSlot(box.slots[n - 1])); setDrawing(false); setMessage(null);
+    setSlot(n); setDraft(fromSlot(box.slots[n - 1])); setDrawing(false); setMessage(null); setHint(null);
+  }
+
+  /** 이 칸의 모습만 기본으로 되돌린다(아직 저장하지 않는다. [되돌리기]로 취소하고 [저장]으로 적용) */
+  function reset() {
+    if (!box || !current) return;
+    setDraft(defaultDraft(box, current)); setMessage(null); setHint(t('customize.resetHint'));
   }
 
   async function run(f: () => Promise<ProfileBox>, done: string) {
     setBusy(true); setMessage(null);
     try {
       const b = await f();
-      setBox(b); setDraft(fromSlot(b.slots[slot - 1]));
+      setBox(b); setDraft(fromSlot(b.slots[slot - 1])); setHint(null);
       successToast(done);
     } catch (e) {
       setMessage(e instanceof ApiFailure ? e.message : t('customize.saveFailed'));
@@ -234,7 +250,9 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
 
           <div className="profile-actions">
             {message && <p className="error small" role="alert">{message}</p>}
-            <button type="button" disabled={busy || !dirty} onClick={() => { setDraft(fromSlot(current)); setMessage(null); }}>{t('customize.revert')}</button>
+            {hint && <p className="muted small profile-hint" role="status">{hint}</p>}
+            <button type="button" className="profile-reset" disabled={busy || isDefault} title={t('customize.resetTitle')} onClick={reset}>{t('customize.reset')}</button>
+            <button type="button" disabled={busy || !dirty} onClick={() => { setDraft(fromSlot(current)); setMessage(null); setHint(null); }}>{t('customize.revert')}</button>
             <button type="button" className={current.equipped ? 'primary' : undefined} disabled={busy || !dirty} onClick={() => save(false)}>
               {busy ? t('customize.saving') : t('customize.save')}
             </button>

@@ -1,7 +1,7 @@
 import { t as tr } from '../i18n';
 import type { EntityState, MinimapEntry, RosterEntry, Snapshot, Tuning } from './protocol';
 import { borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
-import { artImage, drawArt } from './pixelArt';
+import { artImage, artPose, drawArt } from './pixelArt';
 import { drawBorderEffect, drawComboFlames, drawNameTag, EMOTE_CHAR } from './skin';
 
 const EMOTE_MS = 2500;
@@ -81,6 +81,9 @@ const MINIMAP_MARGIN = 12;
 // 아이콘이 가는 쪽을 바라본다(4.2). 이보다 느리면 방향을 바꾸지 않고(멈추면 마지막 방향 그대로), 초당 이 비율로 돌아간다
 const HEADING_MIN_SPEED = 25;
 const HEADING_TURN_RATE = 12;
+/** 픽셀 그림(4.9): 오른쪽이 앞이라 가는 방향을 바라보게 돌고, 방향이 세로축을 넘어가면 딜레이 없이 좌우 반전한다.
+ * 세로축 근처에서 깜빡이지 않도록 가로 성분(cos)이 이 값을 넘어야 반대쪽으로 바뀐다(0.12면 세로축에서 약 7° 더 간 때) */
+const ART_FLIP_DEADBAND = 0.12;
 
 /**
  * 캔버스 아레나 렌더러(8절). 스냅샷은 React state가 아니라 이 객체에 둔다.
@@ -100,7 +103,7 @@ export class Arena {
   /** 이모트(4.26): 원 위에 2.5초 뜨는 이모지 */
   private emotes = new Map<number, { code: string; at: number }>();
   /** 엔티티마다 머리 방향(라디안, 0 = 위)과 지난 프레임 위치 */
-  private headings = new Map<number, { a: number; x: number; y: number }>();
+  private headings = new Map<number, { a: number; x: number; y: number; t: number; face: 1 | -1 }>();
   private trails = new Trails();
   private half = 1500;
   private tuning: Tuning | null = null;
@@ -886,7 +889,11 @@ export class Arena {
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
     // 픽셀 그림(4.9)이 있으면 성장 캐릭터 대신 그린다. 아직 못 받았으면 받는 동안 거북이를 그린다
     const art = look?.art && !look.bot ? artImage(look.art) : null;
-    if (art) drawArt(ctx, art, e.x, e.y, e.r);
+    if (art) {
+      const h = this.headings.get(e.e);
+      const pose = h ? artPose(h.t, h.face) : { scaleX: 1 as const, rotation: 0 }; // 가는 방향을 바라보고, 세로축을 넘으면 바로 좌우 반전
+      drawArt(ctx, art, e.x, e.y, e.r, pose.scaleX, pose.rotation);
+    }
     // 레벨이 오를수록 거북이 부위가 하나씩 생기고 선명해진다(4.9). 테두리를 그 위에 그려 가장자리를 깔끔하게 덮는다
     else drawTurtle(ctx, e.x, e.y, e.r, lvl, this.headings.get(e.e)?.a ?? 0);
     ctx.strokeStyle = look?.borderColor ?? '#11372a';
@@ -935,12 +942,19 @@ export class Arena {
     for (const e of list) {
       seen.add(e.e);
       let h = this.headings.get(e.e);
-      if (!h) { h = { a: 0, x: e.x, y: e.y }; this.headings.set(e.e, h); }
+      if (!h) { h = { a: 0, x: e.x, y: e.y, t: 0, face: 1 }; this.headings.set(e.e, h); }
       let vx: number, vy: number;
       if (e.me) { vx = this.me.vx; vy = this.me.vy; } else { vx = (e.x - h.x) / Math.max(dt, 0.001); vy = (e.y - h.y) / Math.max(dt, 0.001); }
       h.x = e.x; h.y = e.y;
       const speed = Math.hypot(vx, vy);
       if (speed < HEADING_MIN_SPEED || speed > maxSpeed * 4) continue; // 너무 빠르면 순간 이동(입장·보정)
+      // 픽셀 그림의 방향(4.9): 0 = 오른쪽. 가는 쪽으로 부드럽게 돌고, 세로축을 넘어가면 좌우 반전 쪽(face)이 바뀐다. 멈추면 마지막 방향을 그대로 둔다
+      let dt2 = Math.atan2(vy, vx) - h.t;
+      dt2 = Math.atan2(Math.sin(dt2), Math.cos(dt2));
+      h.t += dt2 * Math.min(1, dt * HEADING_TURN_RATE);
+      const c = Math.cos(h.t);
+      if (h.face === 1 && c < -ART_FLIP_DEADBAND) h.face = -1;
+      else if (h.face === -1 && c > ART_FLIP_DEADBAND) h.face = 1;
       let d = Math.atan2(vy, vx) + Math.PI / 2 - h.a;
       d = Math.atan2(Math.sin(d), Math.cos(d)); // 가까운 쪽으로 돈다
       h.a += d * Math.min(1, dt * HEADING_TURN_RATE);

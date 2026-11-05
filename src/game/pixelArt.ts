@@ -21,12 +21,25 @@ export function artImage(url: string): HTMLImageElement | null {
 }
 
 /** 원 안으로 잘라 그린다. 바탕색 원은 먼저 칠해 두어 투명한 칸에 보인다. */
-export function drawArt(ctx: CanvasRenderingContext2D, img: CanvasImageSource, x: number, y: number, r: number) {
+export function drawArt(ctx: CanvasRenderingContext2D, img: CanvasImageSource, x: number, y: number, r: number, scaleX = 1, rotation = 0) {
   ctx.save();
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip(); // 원 모양 잘라내기는 먼저 하므로 그림이 돌아도 원 밖으로 나가지 않는다
   ctx.imageSmoothingEnabled = false;
+  // scaleX: 1이면 그대로, -1이면 좌우 반전. rotation: 라디안(시계 방향이 +). 반전을 먼저 하고 그 뒤에 돌린다
+  if (scaleX !== 1 || rotation !== 0) { ctx.translate(x, y); ctx.rotate(rotation); ctx.scale(scaleX, 1); ctx.translate(-x, -y); }
   ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
   ctx.restore();
+}
+
+/**
+ * 가는 방향(theta, 라디안, 0 = 오른쪽, 아래쪽이 +)에서 그림의 자세를 구한다(4.9). 그림은 오른쪽이 앞이라, 그 방향을 바라보게 돌린다.
+ * 방향이 세로축(위·아래)을 넘어 왼쪽으로 가면 좌우 반전하고 그만큼 반대로 돌려서, 그림이 거꾸로 서지 않고 회전은 늘 ±90° 안에 있다.
+ * face를 주면(세로축 근처에서 깜빡이지 않게 쥐고 있는 값) 그 값을 따른다. 없으면 방향으로 정한다.
+ */
+export function artPose(theta: number, face?: 1 | -1): { scaleX: 1 | -1; rotation: number } {
+  const f = face ?? (Math.cos(theta) >= -1e-9 ? 1 : -1); // 정확히 세로(±90°)일 때는 부동소수점 오차와 관계없이 늘 같은 쪽(반전 없음)
+  const rot = f === 1 ? theta : theta - Math.PI;
+  return { scaleX: f, rotation: Math.atan2(Math.sin(rot), Math.cos(rot)) };
 }
 
 /** 칸 글자와 팔레트로 32×32 캔버스를 만든다(편집기 미리 보기용). */

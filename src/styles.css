@@ -736,6 +736,17 @@ button.link-back:hover { color: var(--text); }
 .pixel-canvas { display: block; border-radius: 8px; border: 1px solid var(--line); touch-action: none; cursor: crosshair; image-rendering: pixelated; }
 .pixel-canvas.tool-picker { cursor: copy; }
 .pixel-canvas.tool-fill { cursor: cell; }
+.pixel-facing { display: flex; align-items: center; gap: 8px; width: min(352px, calc(100vw - 48px)); font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.pixel-facing-front { color: var(--accent); }
+.pixel-facing-line { flex: 1; height: 2px; border-radius: 2px; position: relative; background: linear-gradient(90deg, rgba(148,163,184,0.2), var(--accent)); }
+.pixel-facing-line::after { content: ''; position: absolute; right: -2px; top: 50%; transform: translateY(-50%); border-style: solid; border-width: 5px 0 5px 8px; border-color: transparent transparent transparent var(--accent); }
+.pixel-facing-help { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; width: min(352px, calc(100vw - 48px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #0f151f; }
+.pixel-facing-help p { margin: 0; flex: 1; min-width: 160px; font-size: 0.8rem; line-height: 1.45; color: var(--muted); }
+.pixel-flip { flex: none; padding: 7px 14px; font-weight: 700; border-color: var(--accent); background: rgba(63, 182, 139, 0.14); }
+.pixel-flip:hover { background: rgba(63, 182, 139, 0.26); }
+.pixel-dirs { display: flex; gap: 14px; flex-wrap: wrap; }
+.pixel-dirs figure { margin: 0; display: grid; justify-items: center; gap: 4px; }
+.pixel-dirs figcaption { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
 .pixel-under { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
 .pixel-moves { display: inline-flex; gap: 4px; }
 .pixel-moves button { padding: 4px 9px; }
@@ -817,7 +828,8 @@ button.link-back:hover { color: var(--text); }
 .profile-sections { display: grid; gap: 12px; align-content: start; }
 .profile-actions { flex: none; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center;
   padding-top: 10px; background: var(--panel); border-top: 1px solid var(--line); }
-.profile-actions .error { flex-basis: 100%; margin: 0; }
+.profile-actions .error, .profile-actions .profile-hint { flex-basis: 100%; margin: 0; }
+.profile-actions .profile-reset { margin-right: auto; } /* [초기화]는 왼쪽에 떨어뜨려 저장 버튼과 헷갈리지 않게 */
 .customize-draw { display: grid; gap: 10px; align-content: start; }
 @media (max-width: 760px) {
   /* 좁은 화면: 칸 탭은 세 개를 한 줄에 작게, 미리 보기는 화면 높이의 1/4 정도로 줄여 꾸밈 항목이 보일 자리를 남긴다 */

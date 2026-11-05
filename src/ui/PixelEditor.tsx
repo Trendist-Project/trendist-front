@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { borderLineWidth } from '../game/turtle';
-import { ART_SIZE, drawArt, encodeArt } from '../game/pixelArt';
+import { ART_SIZE, artPose, drawArt, encodeArt } from '../game/pixelArt';
 import { t } from '../i18n';
 
 /**
  * 픽셀 그림 편집기(4.9): 32×32 칸에 직접 그린다. 투명한 칸은 원의 바탕색이 보이고, 원 밖의 칸은 아레나에서 잘려 보이지 않는다.
- * 도구: 펜·지우개·채우기·스포이드, 붓 크기 1~3, 좌우 대칭, 되돌리기·다시 하기, 한 칸씩 옮기기·좌우 뒤집기·전체 지우기.
+ * 도구: 펜·지우개·채우기·스포이드, 붓 크기 1~3, 좌우 대칭, 되돌리기·다시 하기, 한 칸씩 옮기기·전체 지우기.
+ * 보는 방향: 아레나에서 그림은 "오른쪽이 앞"이라 가는 방향을 바라보게 돌고, 세로축을 넘어 왼쪽으로 가면 좌우로 뒤집힌다. 그래서 편집 칸 위에 앞(오른쪽)을
+ * 가리키는 표시를 두고, 왼쪽을 보고 그렸을 때는 [↔ 좌우 반전] 한 번으로 그림 전체를 뒤집게 하며, 오른쪽·위·왼쪽·아래로 갈 때의 모습을 바로 보여 준다.
  */
 type Tool = 'pen' | 'eraser' | 'fill' | 'picker';
 type Cells = (string | null)[];
@@ -26,6 +28,9 @@ interface Props {
   /** 저장 버튼 글자 */
   saveLabel?: string;
 }
+
+/** 이동 방향 미리 보기: 가는 방향(라디안, 0 = 오른쪽, 아래가 +)과 문구 */
+const DIRS: [number, string][] = [[0, 'moveRight'], [-Math.PI / 2, 'moveUp'], [Math.PI, 'moveLeft'], [Math.PI / 2, 'moveDown']];
 
 const N = ART_SIZE;
 const VIEW = 352; // 편집 칸 화면 크기(px)
@@ -273,16 +278,24 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
 
       <div className="pixel-main">
         <div className="pixel-canvas-wrap">
+          <div className="pixel-facing" aria-hidden="true">
+            <span className="pixel-facing-back">{t('pixel.facingBack')}</span>
+            <span className="pixel-facing-line" />
+            <span className="pixel-facing-front">{t('pixel.facingFront')}</span>
+          </div>
           <canvas ref={canvasRef} className={`pixel-canvas tool-${tool}`} style={{ width: VIEW, height: VIEW }}
                   onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
                   aria-label={t('pixel.canvasAria')} />
+          <div className="pixel-facing-help">
+            <p>{t('pixel.facingNote')}</p>
+            <button type="button" className="pixel-flip" onClick={flip} title={t('pixel.flipAllTitle')}>{t('pixel.flipAll')}</button>
+          </div>
           <div className="pixel-under">
             <div className="pixel-moves" aria-label={t('pixel.moveArt')}>
               <button type="button" onClick={() => shift(0, -1)} title={t('pixel.up')}>↑</button>
               <button type="button" onClick={() => shift(0, 1)} title={t('pixel.down')}>↓</button>
               <button type="button" onClick={() => shift(-1, 0)} title={t('pixel.left')}>←</button>
               <button type="button" onClick={() => shift(1, 0)} title={t('pixel.right')}>→</button>
-              <button type="button" onClick={flip} title={t('pixel.flip')}>⇋</button>
             </div>
             <label className="pixel-check"><input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> {t('pixel.grid')}</label>
             <button type="button" className="link-danger" onClick={() => change(new Array(N * N).fill(null))} disabled={empty}>{t('pixel.clearAll')}</button>
@@ -319,6 +332,12 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
           <div className="pixel-previews" aria-label={t('pixel.arenaLook')}>
             {[96, 44, 20].map((s) => <ArtPreview key={s} cells={cells} size={s} background={background} borderColor={borderColor} borderWidth={borderWidth} />)}
           </div>
+          <div className="pixel-dirs" role="group" aria-label={t('pixel.dirPreview')}>
+            {DIRS.map(([theta, key]) => (
+              <figure key={key}><ArtPreview cells={cells} size={52} background={background} borderColor={borderColor} borderWidth={borderWidth} theta={theta} />
+                <figcaption>{t(`pixel.${key}`)}</figcaption></figure>
+            ))}
+          </div>
           <p className={tooMany ? 'error small' : 'muted small'}>{t('pixel.colorsUsed', { used: colorsUsed, max: maxColors })}{tooMany ? t('pixel.tooMany') : ''}</p>
         </div>
       </div>
@@ -336,8 +355,8 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
 }
 
 /** 원 안에 칸이 또렷하게 보이는 작은 미리 보기(아레나와 같은 그림) */
-function ArtPreview({ cells, size, background, borderColor, borderWidth }: {
-  cells: Cells; size: number; background: string; borderColor: string | null; borderWidth: number | null;
+function ArtPreview({ cells, size, background, borderColor, borderWidth, theta = 0 }: {
+  cells: Cells; size: number; background: string; borderColor: string | null; borderWidth: number | null; theta?: number; // theta: 가는 방향(0 = 오른쪽). 그 방향을 바라보게 돌린 모습
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -356,10 +375,11 @@ function ArtPreview({ cells, size, background, borderColor, borderWidth }: {
     art.width = N; art.height = N;
     const actx = art.getContext('2d')!;
     cells.forEach((v, i) => { if (v) { actx.fillStyle = v; actx.fillRect(i % N, Math.floor(i / N), 1, 1); } });
-    drawArt(ctx, art, x, y, r);
+    const pose = artPose(theta);
+    drawArt(ctx, art, x, y, r, pose.scaleX, pose.rotation);
     ctx.strokeStyle = borderColor ?? '#11372a';
     ctx.lineWidth = borderLineWidth(r, borderWidth);
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-  }, [cells, size, background, borderColor, borderWidth]);
+  }, [cells, size, background, borderColor, borderWidth, theta]);
   return <canvas ref={ref} style={{ width: size + 8, height: size + 8 }} aria-hidden="true" />;
 }
