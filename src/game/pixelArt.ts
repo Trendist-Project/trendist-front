@@ -32,14 +32,33 @@ export function drawArt(ctx: CanvasRenderingContext2D, img: CanvasImageSource, x
 }
 
 /**
- * 가는 방향(theta, 라디안, 0 = 오른쪽, 아래쪽이 +)에서 그림의 자세를 구한다(4.9). 그림은 오른쪽이 앞이라, 그 방향을 바라보게 돌린다.
- * 방향이 세로축(위·아래)을 넘어 왼쪽으로 가면 좌우 반전하고 그만큼 반대로 돌려서, 그림이 거꾸로 서지 않고 회전은 늘 ±90° 안에 있다.
+ * 가는 방향(theta, 라디안, 0 = 오른쪽, 아래쪽이 +)에서 그림의 자세를 구한다(4.9). 그림은 왼쪽이 앞이라, 그 방향을 바라보게 돌린다.
+ * 방향이 세로축(위·아래)을 넘어 오른쪽으로 가면 좌우 반전하고 그만큼 반대로 돌려서, 그림이 거꾸로 서지 않고 회전은 늘 ±90° 안에 있다.
  * face를 주면(세로축 근처에서 깜빡이지 않게 쥐고 있는 값) 그 값을 따른다. 없으면 방향으로 정한다.
  */
 export function artPose(theta: number, face?: 1 | -1): { scaleX: 1 | -1; rotation: number } {
-  const f = face ?? (Math.cos(theta) >= -1e-9 ? 1 : -1); // 정확히 세로(±90°)일 때는 부동소수점 오차와 관계없이 늘 같은 쪽(반전 없음)
+  // face: 1 = 오른쪽 반쪽으로 가는 중(반전), -1 = 왼쪽 반쪽(그대로). 정확히 세로(±90°)일 때는 부동소수점 오차와 관계없이 늘 반전 없는 쪽
+  const f = face ?? (Math.cos(theta) >= -1e-9 ? 1 : -1);
   const rot = f === 1 ? theta : theta - Math.PI;
-  return { scaleX: f, rotation: Math.atan2(Math.sin(rot), Math.cos(rot)) };
+  return { scaleX: f === 1 ? -1 : 1, rotation: Math.atan2(Math.sin(rot), Math.cos(rot)) };
+}
+
+/**
+ * 그림이 가는 방향을 따라 도는 상태(아레나와 꾸미기 미리 보기가 같이 쓴다). t = 지금 그림이 보는 방향(라디안, 0 = 오른쪽),
+ * face = 1이면 오른쪽 반쪽(좌우 반전), -1이면 왼쪽 반쪽. 세로축 근처에서 깜빡이지 않도록 세로축에서 약 7° 더 간 뒤에 face가 바뀐다.
+ */
+export interface ArtHeading { t: number; face: 1 | -1 }
+const ART_TURN_RATE = 12; // 초당 이 비율로 가는 방향에 다가간다(머리 방향 회전과 같은 빠르기, 4.2)
+const ART_FLIP_DEADBAND = 0.12;
+
+/** 가는 방향(target, 라디안)으로 dt초만큼 부드럽게 돌고, 세로축을 넘으면 face를 바꾼다 */
+export function turnArt(h: ArtHeading, target: number, dt: number) {
+  let d = target - h.t;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  h.t += d * Math.min(1, dt * ART_TURN_RATE);
+  const c = Math.cos(h.t);
+  if (h.face === 1 && c < -ART_FLIP_DEADBAND) h.face = -1;
+  else if (h.face === -1 && c > ART_FLIP_DEADBAND) h.face = 1;
 }
 
 /** 칸 글자와 팔레트로 32×32 캔버스를 만든다(편집기 미리 보기용). */

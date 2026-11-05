@@ -6,7 +6,7 @@ import { GoogleButton } from './GoogleButton';
 import { LookPreview } from './LookPreview';
 import { Modal } from './Modal';
 import { PixelEditor } from './PixelEditor';
-import { successToast } from './toast';
+import { confirmToast, successToast } from './toast';
 import { t } from '../i18n';
 
 interface Props { level: number; nickname?: string; onBack(): void; onClose(): void }
@@ -103,6 +103,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
   const [drawing, setDrawing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [previewMoving, setPreviewMoving] = useState(true); // 큰 미리 보기: 움직이기 / 멈춰있기
   const [hint, setHint] = useState<string | null>(null); // 초기화한 뒤 [저장]을 눌러야 적용된다는 안내
 
   useEffect(() => {
@@ -116,9 +117,15 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
   const isDefault = !!box && !!current && !!draft && sameDraft(defaultDraft(box, current), draft);
   const guestLocked = !!box && box.unlocked && box.trails.length > 0 && box.trails.every((e) => !e.unlocked) && !box.canDraw;
 
-  function pickSlot(n: number) {
+  /** 저장하지 않고 내 정보로 돌아간다(바꾼 것이 있으면 한 번 묻는다) */
+  async function cancel() {
+    if (dirty && !(await confirmToast(t('customize.confirmCancel')))) return;
+    onBack();
+  }
+
+  async function pickSlot(n: number) {
     if (!box || n === slot) return;
-    if (dirty && !window.confirm(t('customize.confirmSwitch'))) return;
+    if (dirty && !(await confirmToast(t('customize.confirmSwitch')))) return;
     setSlot(n); setDraft(fromSlot(box.slots[n - 1])); setDrawing(false); setMessage(null); setHint(null);
   }
 
@@ -169,8 +176,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
           <PixelEditor initial={initialCells} background={draft.background} borderColor={draft.borderColor} borderWidth={draft.borderWidth}
                        presets={box.colors} maxColors={box.maxColors} busy={busy} changeableAt={box.artChangeableAt}
                        onSave={(art) => { setDraft({ ...draft, art, artChanged: true, inner: 'PIXEL' }); setDrawing(false); }}
-                       onCancel={() => setDrawing(false)} />
-          <p className="muted small">{t('customize.drawNote', { slot })}</p>
+                       onCancel={() => setDrawing(false)} notes={[t('customize.drawNote', { slot }), t('customize.drawRule')]} />
         </div>
       ) : (
         <div className="profile-editor">
@@ -191,7 +197,11 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
             </div>
 
             <div className="profile-preview">
-              <LookPreview look={lookOf(draft, box)} level={level} art={draft.inner === 'PIXEL' ? draft.art : null} name={nickname} width={320} height={180} />
+              <LookPreview look={lookOf(draft, box)} level={level} art={draft.inner === 'PIXEL' ? draft.art : null} name={nickname} width={320} height={180} paused={!previewMoving} />
+              <div className="preview-mode" role="group" aria-label={t('customize.previewMode')}>
+                <button type="button" className={previewMoving ? 'chip active' : 'chip'} aria-pressed={previewMoving} onClick={() => setPreviewMoving(true)}>{t('customize.previewMove')}</button>
+                <button type="button" className={!previewMoving ? 'chip active' : 'chip'} aria-pressed={!previewMoving} onClick={() => setPreviewMoving(false)}>{t('customize.previewStill')}</button>
+              </div>
               {dirty && <span className="profile-dirty">{t('customize.dirty')}</span>}
             </div>
           </div>
@@ -253,6 +263,7 @@ export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
             {hint && <p className="muted small profile-hint" role="status">{hint}</p>}
             <button type="button" className="profile-reset" disabled={busy || isDefault} title={t('customize.resetTitle')} onClick={reset}>{t('customize.reset')}</button>
             <button type="button" disabled={busy || !dirty} onClick={() => { setDraft(fromSlot(current)); setMessage(null); setHint(null); }}>{t('customize.revert')}</button>
+            <button type="button" disabled={busy} title={t('customize.titleCancel')} onClick={cancel}>{t('customize.cancel')}</button>
             <button type="button" className={current.equipped ? 'primary' : undefined} disabled={busy || !dirty} onClick={() => save(false)}>
               {busy ? t('customize.saving') : t('customize.save')}
             </button>

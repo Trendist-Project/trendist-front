@@ -17,7 +17,7 @@ export default {
   titles: '칭호',
   noTitle: '달고 있는 칭호 없음',
   customize: '꾸미기',
-  customizeOpen: '프로필 3개에 색·그림·효과를 저장하고 골라 쓰기',
+  customizeOpen: '색·그림·효과로 내 원 꾸미기',
   customizeLocked: '11레벨부터 열려요',
   shareCard: '자랑하기 카드',
   shareCardDesc: '내 기록을 이미지로 만들어 공유하기',

@@ -27,10 +27,12 @@ interface Props {
   onCancel(): void;
   /** 저장 버튼 글자 */
   saveLabel?: string;
+  /** 기본 안내(점선 원 밖 등) 아래에 덧붙일 안내. 버튼 바로 위 한 상자에 같이 보여 준다 */
+  notes?: string[];
 }
 
 /** 이동 방향 미리 보기: 가는 방향(라디안, 0 = 오른쪽, 아래가 +)과 문구 */
-const DIRS: [number, string][] = [[0, 'moveRight'], [-Math.PI / 2, 'moveUp'], [Math.PI, 'moveLeft'], [Math.PI / 2, 'moveDown']];
+const DIRS: [number, string][] = [[Math.PI, 'moveLeft'], [-Math.PI / 2, 'moveUp'], [0, 'moveRight'], [Math.PI / 2, 'moveDown']];
 
 const N = ART_SIZE;
 const VIEW = 352; // 편집 칸 화면 크기(px)
@@ -47,7 +49,7 @@ const inCircle = (x: number, y: number) => {
   return cx * cx + cy * cy <= (N / 2) * (N / 2);
 };
 
-export function PixelEditor({ initial, background, borderColor, borderWidth, presets, maxColors, busy, changeableAt, onSave, onCancel, saveLabel = t('pixel.save') }: Props) {
+export function PixelEditor({ initial, background, borderColor, borderWidth, presets, maxColors, busy, changeableAt, onSave, onCancel, saveLabel = t('pixel.save'), notes = [] }: Props) {
   const [cells, setCells] = useState<Cells>(initial);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(presets[0] ?? '#ffffff');
@@ -279,9 +281,9 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
       <div className="pixel-main">
         <div className="pixel-canvas-wrap">
           <div className="pixel-facing" aria-hidden="true">
-            <span className="pixel-facing-back">{t('pixel.facingBack')}</span>
-            <span className="pixel-facing-line" />
             <span className="pixel-facing-front">{t('pixel.facingFront')}</span>
+            <span className="pixel-facing-line" />
+            <span className="pixel-facing-back">{t('pixel.facingBack')}</span>
           </div>
           <canvas ref={canvasRef} className={`pixel-canvas tool-${tool}`} style={{ width: VIEW, height: VIEW }}
                   onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
@@ -342,7 +344,9 @@ export function PixelEditor({ initial, background, borderColor, borderWidth, pre
         </div>
       </div>
 
-      <p className="muted small">{t('pixel.note')}</p>
+      <ul className="pixel-notes">
+        {[t('pixel.note'), ...notes].map((n) => <li key={n}>{n}</li>)}
+      </ul>
       <div className="pixel-actions">
         {waitMs > 0 && <span className="muted small">{t('pixel.wait', { n: Math.ceil(waitMs / 60000) })}</span>}
         <button type="button" className="pixel-cancel" disabled={busy} onClick={onCancel}>{t('pixel.cancel')}</button>

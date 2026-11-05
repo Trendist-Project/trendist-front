@@ -17,7 +17,7 @@ export default {
   titles: 'Titles',
   noTitle: 'No title equipped',
   customize: 'Customize',
-  customizeOpen: 'Save colors, art and effects in 3 profiles and pick one',
+  customizeOpen: 'Colors, art and effects for your orb',
   customizeLocked: 'Unlocks at level 11',
   shareCard: 'Share card',
   shareCardDesc: 'Turn your record into an image to share',
