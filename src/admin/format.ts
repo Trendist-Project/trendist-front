@@ -12,6 +12,11 @@ const loadHoldHours = () => (holdHours ??= adminApi.settings()
   .catch(() => { holdHours = null; return null; }));
 
 /** 짧게 "7일" / "36시간", 길게 "7일(168시간)" / "36시간". 아직 못 읽었으면 "설정된 기간" */
+import { confirmToast } from '../ui/toast';
+
+/** 관리자 화면용 확인 토스트(한국어 버튼): [예]를 누르면 true */
+export const adminConfirm = (text: string) => confirmToast(text, { yes: '예', no: '아니오' });
+
 export function useHoldText(): { short: string; long: string } {
   const [h, setH] = useState<number | null>(null);
   useEffect(() => { let on = true; loadHoldHours().then((v) => { if (on) setH(v); }); return () => { on = false; }; }, []);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adminApi, type AdminGuideArticle, type AdminGuideArticleInput, type AdminGuideCategory, type AdminGuideCategoryInput } from '../api/client';
 import { RichText } from '../ui/RichText';
-import { errMsg, fmt } from './format';
+import { adminConfirm, errMsg, fmt } from './format';
 import { MarkupEditor } from './MarkupEditor';
 import { successToast } from '../ui/toast';
 
@@ -185,8 +185,8 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
   const dirty = editing !== null && (editing === 'new' ? form.title.trim() !== '' || form.body.trim() !== '' || !!form.titleEn?.trim() || !!form.bodyEn?.trim()
     : (() => { const a = list?.find((x) => x.id === editing); return !!a && (a.title !== form.title || a.body !== form.body || (a.titleEn ?? '') !== (form.titleEn ?? '') || (a.bodyEn ?? '') !== (form.bodyEn ?? '')); })());
 
-  function open(target: number | 'new') {
-    if (dirty && !window.confirm('저장하지 않은 내용이 있어요. 버리고 넘어갈까요?')) return;
+  async function open(target: number | 'new') {
+    if (dirty && !(await adminConfirm('저장하지 않은 내용이 있어요. 버리고 넘어갈까요?'))) return;
     const a = target === 'new' ? null : list?.find((x) => x.id === target);
     setEditing(target);
     setForm(a ? { title: a.title, body: a.body, titleEn: a.titleEn ?? '', bodyEn: a.bodyEn ?? '' } : EMPTY_ARTICLE);
@@ -215,7 +215,7 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
         <div className="notice-form-head">
           <h2>{editing === 'new' ? '✍️ 새 글 쓰기' : '✏️ 글 수정'}</h2>
           <span className="muted small">{category.name}</span>
-          <button type="button" className="notice-cancel" onClick={() => { if (!dirty || window.confirm('저장하지 않은 내용을 버릴까요?')) { setEditing(null); setForm(EMPTY_ARTICLE); } }} disabled={busy}>취소</button>
+          <button type="button" className="notice-cancel" onClick={async () => { if (!dirty || await adminConfirm('저장하지 않은 내용을 버릴까요?')) { setEditing(null); setForm(EMPTY_ARTICLE); } }} disabled={busy}>취소</button>
         </div>
         <label className="notice-field">
           <span className="notice-label">{category.displayType === 'FAQ' ? '질문' : '제목'}<span className={titleLen > TITLE_MAX ? 'count over' : 'count'}>{titleLen}/{TITLE_MAX}</span></span>

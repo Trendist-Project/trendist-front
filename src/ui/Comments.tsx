@@ -4,6 +4,7 @@ import type { CommentItem, CommentPage } from '../api/types';
 import { ago } from './keywordFormat';
 import { ReportDialog } from './ReportDialog';
 import { fmtNumber, t } from '../i18n';
+import { confirmToast } from './toast';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const MAX = 200; // 최소 글자 수 제한은 없다. 빈 댓글만 막는다
@@ -78,7 +79,7 @@ export function Comments({ keywordId, onError }: Props) {
   }
 
   async function remove(c: CommentItem) {
-    if (!window.confirm(t('comments.confirmDelete'))) return;
+    if (!(await confirmToast(t('comments.confirmDelete')))) return;
     try {
       await api.deleteComment(c.id);
       await load(pageNo);

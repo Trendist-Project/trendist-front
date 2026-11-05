@@ -4,7 +4,7 @@ import { artCanvas, drawArt } from '../game/pixelArt';
 import { borderLineWidth, drawTurtle } from '../game/turtle';
 import { STATE_BADGE } from '../ui/keywordFormat';
 import { successToast } from '../ui/toast';
-import { errMsg, fmt } from './format';
+import { adminConfirm, errMsg, fmt } from './format';
 
 /**
  * 관리자 사용자 관리(13.10): 닉네임·번호로 찾고 종류·상태로 거르며, 한 사람을 열어 기록·꾸미기·보관함·댓글·채팅·받은 신고·제재 이력을 본다.
@@ -173,7 +173,7 @@ function UserDetail({ userId, onChanged, onClose }: { userId: number; onChanged(
   }, [userId]);
 
   async function act(f: () => Promise<AdminUserDetail | void>, done: string, confirmText?: string) {
-    if (confirmText && !window.confirm(confirmText)) return;
+    if (confirmText && !(await adminConfirm(confirmText))) return;
     setBusy(true); setError(null);
     try {
       const x = await f();
