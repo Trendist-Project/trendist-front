@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 # 관리자 화면과 API는 검색 대상이 아니다. /share/는 막지 않는다:
-# 메신저(페이스북·트위터 등)의 미리보기 수집기가 robots.txt를 따르므로 막으면 카드 미리보기가 사라진다(공유 페이지 자체는 noindex).
+# 메신저(페이스북·트위터 등)의 미리보기 수집기가 robots.txt를 따르므로 막으면 카드 미리보기가 사라진다(공유 페이지는 검색에도 노출한다: index, 사이트맵 포함).
 Disallow: /admin/
 Disallow: /api/
 
