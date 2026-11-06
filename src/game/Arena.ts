@@ -104,6 +104,8 @@ export class Arena {
   private headings = new Map<number, { a: number; x: number; y: number; t: number; face: 1 | -1 }>();
   private trails = new Trails();
   private half = 1500;
+  private halfTarget = 1500; // 서버가 알린 활동 영역(스냅샷은 초당 10번이라 계단처럼 변한다). 화면의 벽은 이쪽으로 부드럽게 다가간다
+  private halfInit = false;
   private tuning: Tuning | null = null;
   private me = { e: -1, x: 0, y: 0, vx: 0, vy: 0, r: 16, initialized: false };
   /** 보정 때 생긴 화면 오프셋. 화면에는 me + offset을 그리고, offset은 0으로 줄어든다. */
@@ -122,6 +124,7 @@ export class Arena {
    * 관전 모드(13.13, 관리자 모니터링): 내 원이 없고 카메라를 직접 움직인다. x·y는 카메라 중심, zoom은 확대 배율,
    * follow는 따라가는 원의 번호, fit이 true면 아레나 전체가 한눈에 들어오게 맞춘다.
    */
+  private dead = false;
   private spec: { x: number; y: number; zoom: number; follow: number | null; fit: boolean } | null = null;
   /** 마지막으로 그린 미니맵 자리(클릭하면 카메라가 그리로 간다) */
   private minimapRect: { x0: number; y0: number; size: number } | null = null;
@@ -311,6 +314,25 @@ export class Arena {
   private specZoomLimits() { const f = this.fitZoom(); return { min: f * 0.7, max: 3 }; }
 
   /** 아레나 전체 보기 */
+  /** 죽어서 구경 중(4.31): 내 원이 없으므로 미니맵의 내 점을 그리지 않는다. 카메라는 죽은 자리에 둔다 */
+  /** 화면에 보이는 세계 범위(가로·세로 절반, px)가 바뀌면 서버에 알린다(관심 영역 전송). 줌이 바뀌는 중이면 더 넓은 쪽(목표와 지금 중 작은 줌)으로 알려 가장자리에서 원이 늦게 나타나지 않게 한다 */
+  onView?: (halfW: number, halfH: number) => void;
+  private viewSent = { hw: 0, hh: 0, at: 0 };
+  /** 리스폰·다시 들어온 뒤: 대시 상태(남은 시간·배수)를 지운다(서버는 새 원이라 쿨타임도 없다) */
+  resetDash() { this.dashLeft = 0; this.dashMult = 1; }
+  resendView() { this.viewSent.hw = 0; }
+  private reportView(w: number, h: number, targetZoom: number, now: number) {
+    if (this.spec || !this.onView || w <= 0 || h <= 0) return;
+    const z = Math.min(this.zoom, targetZoom);
+    if (!(z > 0)) return;
+    const hw = w / 2 / z, hh = h / 2 / z, s = this.viewSent;
+    const changed = s.hw === 0 || Math.abs(hw - s.hw) > s.hw * 0.1 || Math.abs(hh - s.hh) > s.hh * 0.1;
+    if (!changed || (s.hw !== 0 && now - s.at < 300)) return;
+    s.hw = hw; s.hh = hh; s.at = now;
+    this.onView(Math.round(hw), Math.round(hh));
+  }
+
+  setDead(v: boolean) { this.dead = v; if (v) this.clearControl(); }
   spectatorFit() { if (this.spec) { this.spec.fit = true; this.spec.follow = null; } }
 
   /** 한 원을 따라간다(null이면 해제). 따라가면 확대는 그대로 두고 중심만 그 원으로 옮긴다 */
@@ -385,7 +407,8 @@ export class Arena {
   }
 
   applySnapshot(s: Snapshot) {
-    this.half = s.half;
+    this.halfTarget = s.half;
+    if (!this.halfInit) { this.half = s.half; this.halfInit = true; }
     const serverMs = s.tick * TICK_MS;
     const sample = s.receivedAt - serverMs;
     // 가장 빨리 도착한 스냅샷을 기준으로 삼고(늦게 온 것에 끌려가지 않게), 시계가 조금씩 어긋나는 것만 천천히 따라간다.
@@ -397,6 +420,7 @@ export class Arena {
     else this.clockOffset += (sample - this.clockOffset) * 0.002;
     const seen = new Set<number>();
     for (const e of s.entities) {
+      e.me = !this.spec && e.e === this.me.e; // 내 원은 서버가 표시하지 않는다: welcome으로 받은 내 번호로 찾는다
       seen.add(e.e);
       const i = this.entities.get(e.e) ?? { buf: [], cur: e };
       i.buf.push({ t: serverMs, s: e });
@@ -539,6 +563,11 @@ export class Arena {
     const dt = Math.min(0.1, (rafTime - this.last) / 1000);
     this.last = rafTime;
     const now = rafTime;
+    // 활동 영역의 벽을 서버 값으로 부드럽게 이동한다(커지거나 줄 때 계단처럼 튀지 않게)
+    if (this.half !== this.halfTarget) {
+      this.half += (this.halfTarget - this.half) * Math.min(1, dt * 5);
+      if (Math.abs(this.halfTarget - this.half) < 0.5) this.half = this.halfTarget;
+    }
     if (!this.spec) this.predictUntil(performance.now()); // 조작 시각과 같은 시계로 잰다
     // 보정 오프셋은 움직이는 동안(또는 크게 어긋났을 때)만 줄인다. 멈춘 상태에서 작은 보정이 눈에 보이지 않게 하려는 것이다
     if (!this.spec && this.isMeMoving() || this.serverMoving || Math.hypot(this.offset.x, this.offset.y) > HIDDEN_OFFSET_LIMIT) {
@@ -567,6 +596,7 @@ export class Arena {
     const radiusZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 280));
     const targetZoom = Math.min(radiusZoom * viewScale, (short * ME_MAX_SHARE) / (2 * Math.max(this.me.r, 1)));
     if (!this.spec) this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * 6);
+    this.reportView(w, h, targetZoom, now);
 
     // 아레나 바깥은 어둡게
     ctx.fillStyle = '#0b0f17';
@@ -684,7 +714,7 @@ export class Arena {
       ctx.fillStyle = this.names.get(m.e)?.bot ? 'rgba(217,83,79,0.85)' : 'rgba(200,215,235,0.75)'; // 봇은 빨간 점
       ctx.beginPath(); ctx.arc(toX(p.x), toY(p.y), Math.max(2, p.r * s), 0, Math.PI * 2); ctx.fill();
     }
-    if (!this.spec) {
+    if (!this.spec && !this.dead) {
       ctx.fillStyle = '#3fb68b';
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;

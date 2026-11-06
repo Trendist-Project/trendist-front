@@ -12,6 +12,8 @@ export default {
   totalSearches: 'Total searches',
   steals: 'Steals',
   botHunts: 'Bot wins',
+  kills: 'Knockouts',
+  defeats: 'Defeats',
   activeDays: 'Days active',
   countDays: '{n}',
   titles: 'Titles',

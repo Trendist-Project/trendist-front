@@ -19,6 +19,8 @@ export interface PlayerSummary {
   stealCount: number;
   botWinCount: number;
   activeDays: number;
+  killCount: number; // 죽인 횟수(4.31)
+  defeatCount: number; // 패배한 횟수(4.31)
 }
 
 export interface Me { userId: number; guest: boolean; player: PlayerSummary | null }

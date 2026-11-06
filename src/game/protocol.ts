@@ -67,13 +67,15 @@ export type ServerMessage =
   | { type: 'spectating'; country: string; spectators: number } // 관전 접속이 받아들여짐(관리자 관전, 13.13)
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
+  | { type: 'died'; by: string; byE: number } // 죽음(4.31): 키워드가 없는 채로 져서 죽었다. 죽인 쪽 이름
+  | { type: 'kill'; target: string } // 내가 상대를 죽였다(4.31)
   | { type: 'levelFx'; e: number; level: number } // 레벨업 이펙트(4.30): 그 원에서 빛기둥이 솟는다
   | { type: 'dashFx'; e: number; ms: number } // 누군가 대시를 시작했다(4.27): 그 원에 강조 효과를 그린다
   | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
   | { type: 'roster'; players: RosterEntry[]; flameAt?: number }
   | { type: 'emote'; e: number; code: string } // 이모트(4.26)
   // 연속 빼앗기 콤보(4.25). event: up(+1) / start(flameAt에 닿아 불꽃이 붙음) / reset(잃어서 콤보 끝) / broken(잃어서 불꽃까지 꺼짐, by가 끈 사람)
-  | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken'; flameAt: number; by?: string; byE?: number }
+  | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken' | 'expired'; flameAt: number; by?: string; byE?: number }
   | { type: 'emergency'; notice: import('../api/types').EmergencyNotice | null } // 긴급 안내가 올라오거나 끝났다(4.29). null이면 걷는다
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다

@@ -12,6 +12,8 @@ export default {
   totalSearches: '누적 검색',
   steals: '빼앗기',
   botHunts: '봇 사냥',
+  kills: '처치',
+  defeats: '패배',
   activeDays: '활동한 날',
   countDays: '{n}일',
   titles: '칭호',

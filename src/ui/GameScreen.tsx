@@ -111,6 +111,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
+  const [dead, setDead] = useState<{ by: string; waiting: boolean } | null>(null); // 죽음(4.31): 흑백 화면에 머물며 리스폰을 기다린다
   const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number }>({ combo: 0, flameAt: 5, key: 0 }); // 4.25
   const [emoteOpen, setEmoteOpen] = useState(false); // 이모트 고르기(4.26)
   const emoteOpenRef = useRef(false); // 키 입력 처리(한 번만 등록)에서 최신 값을 본다
@@ -204,6 +205,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     let ready = false;
     let resyncDir = () => {};
     let myEntity = -1;
+    arena.onView = (hw, hh) => { if (ready) conn.send({ type: 'view', hw, hh }); }; // 관심 영역 전송: 내 화면 둘레의 원만 받는다
     const toLine = (m: ChatMessage): ChatLine => ({ id: m.id, e: m.e, nickname: m.nickname, text: m.text, at: m.at, mine: m.e === myEntity });
     const conn = new GameConnection({
       onSnapshot: (s) => arena.applySnapshot(s),
@@ -215,7 +217,10 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       onMessage: (m: ServerMessage) => {
         switch (m.type) {
           case 'welcome':
+            setDead(null); arena.setDead(false); // 처음 들어왔거나 리스폰했다
+            setDash(null); arena.resetDash(); // 새 원이라 대시 남은 시간·쿨타임 표시도 지운다(서버는 이미 초기화)
             arena.setMe(m.entityNo, m.x, m.y);
+            arena.resendView(); // 다시 들어왔으니 보이는 범위를 서버에 다시 알린다
             myEntity = m.entityNo;
             ready = true;
             resyncDir(); // 다시 연결됐을 때 아직 누르고 있는 방향키가 있으면 서버와 예측에 함께 다시 넣는다
@@ -263,6 +268,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             const mine = m.e === myEntity;
             if (mine) setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
             // 다른 사람이 불꽃을 얻었다는 안내는 띄우지 않는다(불꽃은 그 원 둘레로 보인다)
+            if (m.event === 'expired' && mine) showToast(t('gamescreen.comboExpired')); // 콤보 유지시간이 끝났다(4.25)
             if (m.event === 'broken') {
               if (mine) showToast(t('gamescreen.flameOut', { by: m.by ?? t('gamescreen.someone') }));
             }
@@ -294,6 +300,17 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
               setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
             }
             window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3000);
+            break;
+          }
+          case 'died':
+            // 죽음(4.31): 입력을 끊고 마지막 장면을 흑백으로 두며, 누가 죽였는지 알려 준다
+            ready = false; arena.clearControl();
+            setDead({ by: m.by, waiting: false }); arena.setDead(true);
+            break;
+          case 'kill': { // 내가 죽였다(4.31)
+            const key = performance.now();
+            setHit({ text: t('gamescreen.killed', { target: m.target }), key });
+            window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3500);
             break;
           }
           case 'shield': arena.showShield(m.e, m.ms); break;
@@ -591,8 +608,20 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         </div>
       )}
       <div className={showMinimap ? 'arena-wrap with-minimap' : 'arena-wrap'}>
-        <canvas ref={canvasRef} className="arena"
+        <canvas ref={canvasRef} className={dead ? 'arena dead' : 'arena'}
                 aria-label={t('gamescreen.arenaAria')} />
+        {dead && (
+          <div className="death-overlay" role="alertdialog" aria-labelledby="death-title">
+            <div className="death-box">
+              <h2 id="death-title">💀 {t('gamescreen.diedTitle')}</h2>
+              <p>{t('gamescreen.diedBy', { by: dead.by })}</p>
+              <button className="primary" autoFocus disabled={dead.waiting || status !== 'open'}
+                      onClick={() => { setDead({ by: dead.by, waiting: true }); connRef.current?.send({ type: 'respawn' }); }}>
+                {dead.waiting ? t('gamescreen.respawning') : t('gamescreen.respawn')}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="hud">
           {/* 모바일은 짧게(👥 3 · 🤖 7), PC는 글자로 */}
           <span className="hud-online" aria-label={bots > 0 ? t('gamescreen.onlineAriaBots', { online, bots }) : t('gamescreen.onlineAria', { online })}>

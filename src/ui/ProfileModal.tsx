@@ -99,6 +99,8 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         <div><dt>{t('profile.totalSearches')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.searchCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.steals')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.stealCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.botHunts')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.botWinCount ?? 0) })}</dd></div>
+        <div><dt>{t('profile.kills')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.killCount ?? 0) })}</dd></div>
+        <div><dt>{t('profile.defeats')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.defeatCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.activeDays')}</dt><dd>{t('profile.countDays', { n: fmtNumber(player.activeDays ?? 0) })}</dd></div>
       </dl>
 

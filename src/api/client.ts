@@ -198,7 +198,7 @@ export interface AdminUserDetail {
   user: AdminUserRow; lastLoginAt: string | null; deletedAt: string | null; nicknameChangedAt: string | null; lastPlayedAt: string | null;
   stats: {
     exp: number; level: number; score: number; holdCount: number; totalPlusCount: number; searchCount: number; commentScore: number;
-    stealCount: number; botWinCount: number; orbCount: number; loseCount: number; activeDays: number;
+    stealCount: number; botWinCount: number; orbCount: number; loseCount: number; activeDays: number; killCount: number; defeatCount: number;
     titleCount: number; title: string | null; commentCount: number; chatCount: number;
   };
   look: Look; art: PixelArtData | null;
