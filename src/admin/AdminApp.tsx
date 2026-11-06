@@ -355,18 +355,19 @@ function SettingsTab() {
           <code>{s.name}</code>
           <p>{s.description}</p>
           <div className="set-meta">
-            <span>범위 <b>{s.min ?? ''} ~ {s.max ?? ''}</b>{s.type === 'INT' ? ' · 정수' : ''}</span>
-            <span>기본값 <b>{s.defaultValue ?? '-'}</b></span>
+            <span>범위 <b>{s.min ?? ''} ~ {s.max ?? ''}</b>{s.unit ? ` ${s.unit}` : ''}{s.type === 'INT' ? ' · 정수' : ''}</span>
+            <span>기본값 <b>{s.defaultValue ?? '-'}</b>{s.defaultValue != null && s.unit ? ` ${s.unit}` : ''}</span>
             <span>수정 {fmt(s.updatedAt)}</span>
           </div>
         </div>
         <div className="set-edit-col">
           <form className="set-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
-            <input value={v} inputMode="decimal" onChange={(e) => setDraft((d) => ({ ...d, [s.name]: e.target.value }))} aria-label={`${s.name} 값`} />
+            <input value={v} inputMode="decimal" onChange={(e) => setDraft((d) => ({ ...d, [s.name]: e.target.value }))} aria-label={`${s.name} 값${s.unit ? `(${s.unit})` : ''}`} />
+            {s.unit && <span className="set-unit" aria-hidden="true">{s.unit}</span>}
             <button type="submit" className={dirty ? 'primary' : undefined} disabled={!dirty}>저장</button>
           </form>
           {s.defaultValue != null && !isDefault && (
-            <button type="button" className="set-reset" onClick={() => setDraft((d) => ({ ...d, [s.name]: s.defaultValue as string }))}>기본값({s.defaultValue})으로</button>
+            <button type="button" className="set-reset" onClick={() => setDraft((d) => ({ ...d, [s.name]: s.defaultValue as string }))}>기본값({s.defaultValue}{s.unit ? ` ${s.unit}` : ''})으로</button>
           )}
           {msg[s.name] && <div className={msg[s.name].ok ? 'ok small' : 'error small'}>{msg[s.name].text}</div>}
         </div>

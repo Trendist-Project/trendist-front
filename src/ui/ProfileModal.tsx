@@ -112,7 +112,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         </button>
         <button className="profile-link" onClick={() => setView('customize')}>
           <span aria-hidden="true">🎨</span>
-          <span><strong>{t('profile.customize')}</strong><span className="muted small">{player.level >= 11 ? t('profile.customizeOpen') : t('profile.customizeLocked')}</span></span>
+          <span><strong>{t('profile.customize')}</strong><span className="muted small">{player.level >= 10 ? t('profile.customizeOpen') : t('profile.customizeLocked')}</span></span>
           <span aria-hidden="true">›</span>
         </button>
         <button className="profile-link" onClick={() => setView('share')}>

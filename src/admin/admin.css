@@ -379,6 +379,7 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .set-edit-col { display: grid; gap: 6px; justify-items: end; }
 .set-edit { display: flex; gap: 8px; align-items: center; }
 .set-edit input { width: 120px; text-align: right; font-variant-numeric: tabular-nums; }
+.set-unit { min-width: 3em; color: var(--muted); font-size: 0.82rem; white-space: nowrap; text-align: left; }
 .set-edit button { min-width: 56px; white-space: nowrap; }
 .set-reset { border: 0; background: transparent; padding: 0; font-size: 0.76rem; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
 .set-reset:hover { color: var(--text); }

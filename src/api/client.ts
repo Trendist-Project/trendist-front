@@ -156,7 +156,8 @@ export interface AdminReportPage { items: AdminReport[]; total: number; page: nu
 export interface AdminSetting {
   name: string; value: string; type: string; min: number | null; max: number | null; description: string | null;
   defaultValue: string | null; updatedAt: string;
-  group: string; // 관리자 화면에서 묶어 보여 주는 그룹(13.3)
+  group: string; // 설정 그룹 테이블(setting_groups)의 그룹 이름. 관리자 화면에서 묶어 보여 준다(13.3)
+  unit: string | null; // 값 뒤에 붙여 보여 줄 단위(초, px 등). 단위가 없으면 null
 }
 /** state·source는 여러 개를 고를 수 있다(비어 있으면 전체) */
 export interface AdminKeywordQuery { state?: string[]; source?: string[]; q?: string; sort: string; dir: 'asc' | 'desc'; page: number }
