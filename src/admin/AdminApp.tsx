@@ -321,6 +321,7 @@ function SettingsTab() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [filter, setFilter] = useState('');
+  const [group, setGroup] = useState<string | null>(null); // 고른 그룹(없으면 전체)
 
   useEffect(() => { adminApi.settings().then(setItems).catch(() => setItems([])); }, []);
 
@@ -338,8 +339,40 @@ function SettingsTab() {
     }
   };
 
-  const shown = (items ?? []).filter((s) => !filter || s.name.includes(filter) || (s.description ?? '').includes(filter));
-  const dirtyCount = (items ?? []).filter((s) => draft[s.name] !== undefined && draft[s.name] !== s.value).length;
+  const matched = (items ?? []).filter((s) => !filter || s.name.includes(filter) || (s.description ?? '').includes(filter));
+  const groupNames = [...new Set((items ?? []).map((s) => s.group))]; // 서버가 그룹 순서대로 준다
+  const countOf = (g: string) => matched.filter((s) => s.group === g).length;
+  const shown = group ? matched.filter((s) => s.group === group) : matched;
+  const dirtyOf = (list: AdminSetting[]) => list.filter((s) => draft[s.name] !== undefined && draft[s.name] !== s.value).length;
+  const dirtyCount = dirtyOf(items ?? []);
+  const row = (s: AdminSetting) => {
+    const v = draft[s.name] ?? s.value;
+    const dirty = draft[s.name] !== undefined && draft[s.name] !== s.value;
+    const isDefault = s.defaultValue != null && v === s.defaultValue;
+    return (
+      <li key={s.name} className={`set-row${dirty ? ' dirty' : ''}`}>
+        <div className="set-info">
+          <code>{s.name}</code>
+          <p>{s.description}</p>
+          <div className="set-meta">
+            <span>범위 <b>{s.min ?? ''} ~ {s.max ?? ''}</b>{s.type === 'INT' ? ' · 정수' : ''}</span>
+            <span>기본값 <b>{s.defaultValue ?? '-'}</b></span>
+            <span>수정 {fmt(s.updatedAt)}</span>
+          </div>
+        </div>
+        <div className="set-edit-col">
+          <form className="set-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
+            <input value={v} inputMode="decimal" onChange={(e) => setDraft((d) => ({ ...d, [s.name]: e.target.value }))} aria-label={`${s.name} 값`} />
+            <button type="submit" className={dirty ? 'primary' : undefined} disabled={!dirty}>저장</button>
+          </form>
+          {s.defaultValue != null && !isDefault && (
+            <button type="button" className="set-reset" onClick={() => setDraft((d) => ({ ...d, [s.name]: s.defaultValue as string }))}>기본값({s.defaultValue})으로</button>
+          )}
+          {msg[s.name] && <div className={msg[s.name].ok ? 'ok small' : 'error small'}>{msg[s.name].text}</div>}
+        </div>
+      </li>
+    );
+  };
   return (
     <section className="admin-panel">
       <header className="ap-head">
@@ -347,42 +380,36 @@ function SettingsTab() {
           <h2>게임 설정</h2>
           <p>저장하면 서버가 바로 읽고, 게임 방에는 1초 안에 반영돼요. 범위를 벗어난 값은 저장되지 않아요.</p>
         </div>
-        {items && <span className="ap-total" role="status"><strong>{shown.length}</strong>{filter ? ` / ${items.length}` : ''}개</span>}
+        {items && <span className="ap-total" role="status"><strong>{shown.length}</strong>{filter || group ? ` / ${items.length}` : ''}개</span>}
       </header>
       <div className="set-toolbar">
         <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="이름·설명으로 찾기" aria-label="설정 찾기" />
         {dirtyCount > 0 && <span className="set-dirty-note">저장하지 않은 변경 {dirtyCount}개</span>}
       </div>
-      <ul className="set-list">
-        {shown.map((s) => {
-          const v = draft[s.name] ?? s.value;
-          const dirty = draft[s.name] !== undefined && draft[s.name] !== s.value;
-          const isDefault = s.defaultValue != null && v === s.defaultValue;
-          return (
-            <li key={s.name} className={`set-row${dirty ? ' dirty' : ''}`}>
-              <div className="set-info">
-                <code>{s.name}</code>
-                <p>{s.description}</p>
-                <div className="set-meta">
-                  <span>범위 <b>{s.min ?? ''} ~ {s.max ?? ''}</b>{s.type === 'INT' ? ' · 정수' : ''}</span>
-                  <span>기본값 <b>{s.defaultValue ?? '-'}</b></span>
-                  <span>수정 {fmt(s.updatedAt)}</span>
-                </div>
-              </div>
-              <div className="set-edit-col">
-                <form className="set-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
-                  <input value={v} inputMode="decimal" onChange={(e) => setDraft((d) => ({ ...d, [s.name]: e.target.value }))} aria-label={`${s.name} 값`} />
-                  <button type="submit" className={dirty ? 'primary' : undefined} disabled={!dirty}>저장</button>
-                </form>
-                {s.defaultValue != null && !isDefault && (
-                  <button type="button" className="set-reset" onClick={() => setDraft((d) => ({ ...d, [s.name]: s.defaultValue as string }))}>기본값({s.defaultValue})으로</button>
-                )}
-                {msg[s.name] && <div className={msg[s.name].ok ? 'ok small' : 'error small'}>{msg[s.name].text}</div>}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {items && groupNames.length > 1 && (
+        <div className="set-groups" role="tablist" aria-label="설정 그룹">
+          <button type="button" role="tab" aria-selected={group === null} className={group === null ? 'on' : undefined} onClick={() => setGroup(null)}>전체 <span>{matched.length}</span></button>
+          {groupNames.map((g) => {
+            const n = countOf(g), d = dirtyOf((items ?? []).filter((s) => s.group === g));
+            return (
+              <button key={g} type="button" role="tab" aria-selected={group === g} className={group === g ? 'on' : undefined} disabled={n === 0}
+                      onClick={() => setGroup(group === g ? null : g)}>
+                {g} <span>{n}</span>{d > 0 && <i className="set-dot" title="저장하지 않은 변경이 있어요" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {groupNames.filter((g) => shown.some((s) => s.group === g)).map((g) => {
+        const list = shown.filter((s) => s.group === g);
+        const d = dirtyOf(list);
+        return (
+          <details key={g} className="set-group" open>
+            <summary><h3>{g}</h3><span className="set-count">{list.length}개</span>{d > 0 && <span className="set-dirty-note">변경 {d}개</span>}</summary>
+            <ul className="set-list">{list.map(row)}</ul>
+          </details>
+        );
+      })}
       {items && shown.length === 0 && <div className="ap-empty">찾는 설정이 없어요</div>}
     </section>
   );

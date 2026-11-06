@@ -156,6 +156,7 @@ export interface AdminReportPage { items: AdminReport[]; total: number; page: nu
 export interface AdminSetting {
   name: string; value: string; type: string; min: number | null; max: number | null; description: string | null;
   defaultValue: string | null; updatedAt: string;
+  group: string; // 관리자 화면에서 묶어 보여 주는 그룹(13.3)
 }
 /** state·source는 여러 개를 고를 수 있다(비어 있으면 전체) */
 export interface AdminKeywordQuery { state?: string[]; source?: string[]; q?: string; sort: string; dir: 'asc' | 'desc'; page: number }
