@@ -6,6 +6,7 @@ import { drawBorderEffect, drawComboFlames, drawNameTag, EMOTE_CHAR } from './sk
 
 const EMOTE_MS = 2500;
 import { Trails } from './trails';
+import { drawLevelUp, FX_MAX, LEVELUP_MS, type LevelFx } from './fx';
 
 /** 다른 엔티티의 최근 스냅샷들(서버 시각 ms 순). 조금 늦은 시각을 두 스냅샷 사이로 보간해 그린다. */
 interface Interp { buf: { t: number; s: EntityState }[]; cur: EntityState }
@@ -131,6 +132,7 @@ export class Arena {
   private floatTexts: { text: string; at: number; color: string }[] = [];
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
   private shields = new Map<number, number>();
+  private levelFxs: LevelFx[] = []; // 레벨업 빛기둥(4.30)
   private dashFx = new Map<number, { at: number; ms: number }>(); // 대시 중인 원 번호 → 시작 시각, 지속 ms(4.27)
   /** 대시 중인 원이 지나온 경로(오래된 것 → 최근 것). 꼬리 빛이 이 경로를 따라 휘어지게 한다(4.27). at은 마지막으로 기록한 시각 */
   private dashPaths = new Map<number, { pts: { x: number; y: number; t: number }[]; at: number }>();
@@ -245,6 +247,23 @@ export class Arena {
   /** e 원에 ms 동안 무적 표시(보호막 + 카운트다운)를 띄운다. */
   /** 누군가(e) 대시를 시작했다. 그 원에 충격파·속도선·하늘색 빛을 ms 동안 그린다(4.27). */
   showDashFx(e: number, ms: number) { this.dashFx.set(e, { at: performance.now(), ms }); }
+  /** 레벨업 이펙트(4.30): 레벨이 오른 원(e)에서 빛기둥이 솟는다(모두에게 같은 고정 연출). 모션 줄이기 설정이면 그리지 않는다. */
+  showLevelFx(e: number, level: number) {
+    if (this.reducedMotion) return;
+    const now = performance.now(), pos = this.entityPos(e, now);
+    if (!pos) return;
+    if (this.levelFxs.length >= FX_MAX) this.levelFxs.shift();
+    this.levelFxs.push({ e, at: now, level, x: pos.x, y: pos.y, r: pos.r });
+  }
+  private drawLevelFxs(ctx: CanvasRenderingContext2D, now: number) {
+    if (this.levelFxs.length === 0) return;
+    this.levelFxs = this.levelFxs.filter((f) => now - f.at < LEVELUP_MS);
+    for (const f of this.levelFxs) {
+      const pos = this.entityPos(f.e, now); // 원이 움직이면 따라간다. 나가 버렸으면 마지막 자리에서 끝까지
+      if (pos) { f.x = pos.x; f.y = pos.y; f.r = pos.r; }
+      drawLevelUp(ctx, f, (now - f.at) / LEVELUP_MS, this.zoom);
+    }
+  }
   showShield(e: number, ms: number) { this.shields.set(e, performance.now() + ms); }
 
   /** 내 원이 부딪혀 튕겼다. 서버처럼 목표를 지우고, 같은 거리를 같은 감속으로 예측에도 밀어 준다(크게 밀려도 화면이 순간 이동하지 않게). */
@@ -594,6 +613,7 @@ export class Arena {
     this.drawBubbles(ctx, now);
     this.drawEmotes(ctx, now);
     this.drawShields(ctx, now);
+    this.drawLevelFxs(ctx, now);
     ctx.restore();
     if (!this.spec) this.drawFloatTexts(ctx, w, h, now);
     if (this.minimapVisible && (this.me.initialized || this.spec)) this.drawMinimap(ctx, w, h);

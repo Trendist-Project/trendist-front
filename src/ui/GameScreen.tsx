@@ -298,6 +298,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           }
           case 'shield': arena.showShield(m.e, m.ms); break;
           case 'knock': arena.applyKnock(m.dx, m.dy, m.ms); break;
+          case 'levelFx': arena.showLevelFx(m.e, m.level); break; // 레벨업 이펙트(4.30)
           case 'dashFx': arena.showDashFx(m.e, m.ms); break; // 누군가 대시를 시작했다: 그 원에 강조 효과(4.27)
           case 'dash': {
             // 대시 시작(4.27): 예측을 같은 속도로 올리고 아래 표시줄에 남은 시간·쿨타임을 보여 준다
