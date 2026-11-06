@@ -10,10 +10,10 @@ import { errMsg, fmt, useHoldText } from './format';
  */
 const SORTS: [string, string][] = [
   ['text', '키워드'], ['state', '상태'], ['source', '소스'], ['trendValue', '점수'], ['holderCount', '가진 사람'],
-  ['totalPlusCount', '누적 추가'], ['searchCount', '누적 검색'], ['viewCount', '조회수'], ['activatedAt', '🔥된 때'], ['externalUntil', '유지 끝'], ['createdAt', '등록'],
+  ['addCount', '추가수'], ['searchCount', '검색수'], ['viewCount', '조회수'], ['activatedAt', '🔥된 때'], ['externalUntil', '유지 끝'], ['createdAt', '등록'],
 ];
-const SORTABLE = new Set(['trendValue', 'holderCount', 'totalPlusCount', 'searchCount', 'viewCount', 'activatedAt', 'externalUntil', 'createdAt']);
-const NUMERIC = new Set(['trendValue', 'holderCount', 'totalPlusCount', 'searchCount', 'viewCount']);
+const SORTABLE = new Set(['trendValue', 'holderCount', 'addCount', 'searchCount', 'viewCount', 'activatedAt', 'externalUntil', 'createdAt']);
+const NUMERIC = new Set(['trendValue', 'holderCount', 'addCount', 'searchCount', 'viewCount']);
 const STATE_CARDS: [string, string][] = [['', '전체'], ['활성', '🔥 활성'], ['비활성', '💤 비활성'], ['금지', '⛔ 금지']];
 const SOURCES: [string, string][] = [['', '전체'], ['google', 'google'], ['admin', 'admin'], ['internal', 'internal']];
 
@@ -148,7 +148,7 @@ export function KeywordsTab() {
                 <td><span className="akw-source">{k.source}</span></td>
                 <td className="num">{k.trendValue}</td>
                 <td className="num">{k.holderCount.toLocaleString()}</td>
-                <td className="num">{k.totalPlusCount.toLocaleString()}</td>
+                <td className="num">{k.addCount.toLocaleString()}</td>
                 <td className="num">{k.searchCount.toLocaleString()}</td>
                 <td className="num">{k.viewCount.toLocaleString()}</td>
                 <td>{fmt(k.activatedAt)}</td>
@@ -256,8 +256,8 @@ function LookupCard({ lookup, onChanged, onError }: { lookup: AdminKeywordLookup
       <dl className="akw-metrics">
         <div><dt>점수</dt><dd>{k.trendValue}</dd></div>
         <div><dt>가진 사람</dt><dd>{k.holderCount.toLocaleString()}</dd></div>
-        <div><dt>누적 추가</dt><dd>{k.totalPlusCount.toLocaleString()}</dd></div>
-        <div><dt>누적 검색</dt><dd>{k.searchCount.toLocaleString()}</dd></div>
+        <div><dt>추가수</dt><dd>{k.addCount.toLocaleString()}</dd></div>
+        <div><dt>검색수</dt><dd>{k.searchCount.toLocaleString()}</dd></div>
         <div><dt>조회수</dt><dd>{k.viewCount.toLocaleString()}</dd></div>
         <div><dt>{k.state === '금지' ? '금지한 때' : '유지 끝'}</dt><dd className="small">{fmt(k.state === '금지' ? k.bannedAt : k.externalUntil)}</dd></div>
       </dl>

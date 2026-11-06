@@ -128,8 +128,8 @@ export function KeywordModal({ keywordId, onClose, onPlused, onError, onShare }:
 
         <dl className="kw-stats">
           <div><dt>{t('keyword.holders')}</dt><dd>{t('keyword.holderCount', { n: fmtNumber(card.holderCount) })}</dd></div>
-          <div><dt>{t('keyword.totalAdds')}</dt><dd>{fmtNumber(card.totalPlusCount)}</dd></div>
-          <div><dt>{t('keyword.totalSearches')}</dt><dd>{fmtNumber(card.searchCount)}</dd></div>
+          <div><dt>{t('keyword.adds')}</dt><dd>{fmtNumber(card.addCount)}</dd></div>
+          <div><dt>{t('keyword.searches')}</dt><dd>{fmtNumber(card.searchCount)}</dd></div>
           <div><dt>{t('keyword.views')}</dt><dd>{fmtNumber(card.viewCount)}</dd></div>
         </dl>
 

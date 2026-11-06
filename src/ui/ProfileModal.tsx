@@ -37,7 +37,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
   const [range, setRange] = useState<ScoreRange>('24h');
   const [history, setHistory] = useState<ScoreHistory | null>(null);
 
-  // 열 때 최신 기록(누적 검색 등)으로 한 번 다시 읽는다. 검색은 화면의 플레이어 요약을 바꾸지 않는다
+  // 열 때 최신 기록(검색수 등)으로 한 번 다시 읽는다. 검색은 화면의 플레이어 요약을 바꾸지 않는다
   useEffect(() => {
     api.me().then((m) => { if (m.player) onChanged(m.player); }).catch(() => { /* 가진 값으로 보여 준다 */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,8 +95,8 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         <div><dt>EXP</dt><dd>{player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</dd></div>
         <div><dt>{t('profile.myScore')}</dt><dd>{fmtNumber(Number(player.currentScore))}</dd></div>
         <div><dt>{t('profile.heldKeywords')}</dt><dd>{t('profile.countItems', { n: player.holdCount })}</dd></div>
-        <div><dt>{t('profile.totalAdds')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.totalPlusCount) })}</dd></div>
-        <div><dt>{t('profile.totalSearches')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.searchCount ?? 0) })}</dd></div>
+        <div><dt>{t('profile.adds')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.addCount) })}</dd></div>
+        <div><dt>{t('profile.searches')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.searchCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.steals')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.stealCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.botHunts')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.botWinCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.kills')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.killCount ?? 0) })}</dd></div>

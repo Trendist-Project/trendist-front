@@ -9,9 +9,9 @@ export interface PlayerSummary {
   nextLevelExp: number;
   currentScore: number;
   holdCount: number;
-  totalPlusCount: number;
+  addCount: number;
   commentScore: number;
-  /** 누적 검색 횟수 */
+  /** 검색수 */
   searchCount: number;
   /** 다음에 닉네임을 바꿀 수 있는 시각. null이면 지금 바꿀 수 있다. */
   nicknameChangeableAt: string | null;
@@ -34,7 +34,7 @@ export interface KeywordCard {
   state: KeywordState;
   trendValue: number;
   holderCount: number;
-  totalPlusCount: number;
+  addCount: number;
   searchCount: number;
   /** 공개 키워드 페이지(4.28) 조회수 */
   viewCount: number;
@@ -69,7 +69,7 @@ export interface MyKeyword {
 /** 활동 그래프의 점(9.9). t는 구간 시작, search·plus는 구간 증분, holders는 구간 끝의 가진 사람 수. live면 집계 중. */
 export interface ActivityPoint { t: string; search: number; plus: number; holders: number; live: boolean }
 export type ActivityRange = '24h' | '7d' | '30d' | '180d';
-export interface Activity { range: ActivityRange; timezone: string; points: ActivityPoint[]; totalSearch: number; totalPlus: number; holders: number }
+export interface Activity { range: ActivityRange; timezone: string; points: ActivityPoint[]; searchCount: number; addCount: number; holders: number }
 
 /** 키워드 댓글(4.12). 삭제·탈퇴 댓글은 body가 안내 문구로 온다. */
 export interface CommentItem {

@@ -139,7 +139,7 @@ export interface AdminIntegration { code: string; label: string; url: string }
 export interface AdminEmergency { id: number; message: string; messageEn: string | null; createdAt: string; endsAt: string; canceledAt: string | null; status: 'ACTIVE' | 'ENDED' | 'CANCELED'; minutes: number }
 export interface AdminKeywordRow {
   id: number; text: string; normalized: string; state: string; source: string; trendValue: number; holderCount: number;
-  totalPlusCount: number; searchCount: number; viewCount: number; externalUntil: string | null; activatedAt: string | null;
+  addCount: number; searchCount: number; viewCount: number; externalUntil: string | null; activatedAt: string | null;
   bannedAt: string | null; createdAt: string;
 }
 /** 키워드 한 개 조회(13.6): 등록 전이라도 규칙에 맞는지(valid, reason)와 기존 행(keyword, 없으면 null) */
@@ -192,14 +192,14 @@ export interface StatRow extends StatPeriod { t: string; avgOnline: number; live
 export interface AdminUserRow {
   userId: number; playerId: number; nickname: string; type: 'GUEST' | 'GOOGLE'; admin: boolean; withdrawn: boolean;
   bannedUntil: string | null; uploadBannedUntil: string | null; commentBannedUntil: string | null;
-  level: number; score: number; holdCount: number; totalPlusCount: number; reportCount: number;
+  level: number; score: number; holdCount: number; addCount: number; reportCount: number;
   createdAt: string; lastSeenAt: string | null; online: boolean; chatBannedUntil: string | null;
 }
 export interface AdminUserPage { items: AdminUserRow[]; total: number; page: number; size: number }
 export interface AdminUserDetail {
   user: AdminUserRow; lastLoginAt: string | null; deletedAt: string | null; nicknameChangedAt: string | null; lastPlayedAt: string | null;
   stats: {
-    exp: number; level: number; score: number; holdCount: number; totalPlusCount: number; searchCount: number; commentScore: number;
+    exp: number; level: number; score: number; holdCount: number; addCount: number; searchCount: number; commentScore: number;
     stealCount: number; botWinCount: number; orbCount: number; loseCount: number; activeDays: number; killCount: number; defeatCount: number;
     titleCount: number; title: string | null; commentCount: number; chatCount: number;
   };

@@ -101,7 +101,7 @@ export function UsersTab({ initialUserId = null, initialFilter = 'all' }: { init
               <th>닉네임</th>
               {sortTh('level', '레벨')}{sortTh('score', '유행도')}
               <th>보유</th>
-              {sortTh('plus', '누적 추가')}
+              {sortTh('plus', '추가수')}
               <th>신고</th>
               {sortTh('seen', '최근 접속')}{sortTh('created', '가입')}
             </tr></thead>
@@ -113,7 +113,7 @@ export function UsersTab({ initialUserId = null, initialFilter = 'all' }: { init
                   <td className="num">{u.level}</td>
                   <td className="num">{u.score.toLocaleString()}</td>
                   <td className="num">{u.holdCount}</td>
-                  <td className="num">{u.totalPlusCount.toLocaleString()}</td>
+                  <td className="num">{u.addCount.toLocaleString()}</td>
                   <td className={u.reportCount > 0 ? 'num warn' : 'num'}>{u.reportCount}</td>
                   <td>{u.online ? '지금' : ago(u.lastSeenAt)}</td>
                   <td>{fmt(u.createdAt).slice(0, 10)}</td>
@@ -191,7 +191,7 @@ function UserDetail({ userId, onChanged, onClose }: { userId: number; onChanged(
   const u = d.user, s = d.stats;
   const facts: [string, string | number][] = [
     ['레벨', `${s.level} (EXP ${s.exp.toLocaleString()})`], ['현재 유행도', s.score.toLocaleString()], ['보유 키워드', s.holdCount],
-    ['누적 추가', s.totalPlusCount.toLocaleString()], ['누적 검색', s.searchCount.toLocaleString()], ['댓글 점수', s.commentScore],
+    ['추가수', s.addCount.toLocaleString()], ['검색수', s.searchCount.toLocaleString()], ['댓글 점수', s.commentScore],
     ['빼앗기', s.stealCount], ['봇 사냥', s.botWinCount], ['? 구슬', s.orbCount], ['잃기', s.loseCount], ['처치', s.killCount], ['패배', s.defeatCount], ['활동한 날', s.activeDays],
     ['칭호', `${s.titleCount}개${s.title ? ` · 장착 ${s.title}` : ''}`], ['댓글', s.commentCount], ['채팅(30일)', s.chatCount],
   ];
