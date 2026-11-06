@@ -8,7 +8,7 @@ export interface Series { key: string; label: string; color: string; dashed?: bo
 
 const H = 220, PAD_L = 40, PAD_R = 12, PAD_T = 12, PAD_B = 26;
 
-/** 축 최댓값: 1·2·5 × 10ⁿ 중 값보다 큰 가장 작은 수 */
+/** 축 최댓값: 1·2·4·5·10 × 10ⁿ 중 값보다 큰 가장 작은 수 */
 function niceMax(v: number) {
   if (v <= 0) return 4;
   const p = Math.pow(10, Math.floor(Math.log10(v)));

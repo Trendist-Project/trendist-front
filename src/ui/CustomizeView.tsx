@@ -94,7 +94,7 @@ function EffectPicker({ label, options, value, onChange }: { label: string; opti
 /**
  * 꾸미기(4.9): 프로필 1~3번 칸에 바탕색·테두리·이름표·원 안에 그릴 것(성장 캐릭터 / 내 그림)·테두리 효과·이동 효과를 저장하고,
  * 한 칸을 장착한다. 고르는 동안은 위의 미리 보기에만 보이고 [저장]해야 그 칸에 들어간다. 장착한 칸을 저장하면 아레나에 바로 보인다.
- * 11레벨부터, 그림과 효과는 Google로 로그인한 사용자만.
+ * 10레벨부터, 그림과 효과는 Google로 로그인한 사용자만.
  */
 export function CustomizeView({ level, nickname, onBack, onClose }: Props) {
   const [box, setBox] = useState<ProfileBox | null>(null);

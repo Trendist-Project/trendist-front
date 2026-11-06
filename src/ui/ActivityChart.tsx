@@ -11,7 +11,7 @@ const COLORS = { search: '#5aa9e6', plus: '#3fb68b', holders: '#f2b84b' };
 interface Props { activity: Activity; showHolders: boolean }
 
 /**
- * 키워드 활동 그래프(4.12). 검색 수(실선)와 추가 수(파선)를 부드러운 곡선으로 그리고, 켜면 가진 사람 수를 오른쪽 축의 점선으로 겹친다.
+ * 키워드 활동 그래프(4.12). 검색수(실선)와 추가수(파선)를 부드러운 곡선으로 그리고, 켜면 가진 사람 수를 오른쪽 축의 점선으로 겹친다.
  * 이번 시간·오늘은 집계 중이라 마지막 구간을 점선으로 그리고 끝점이 깜빡인다. 가장 높은 점에 "최고"를 단다.
  */
 export function ActivityChart({ activity, showHolders }: Props) {
@@ -77,7 +77,7 @@ export function ActivityChart({ activity, showHolders }: Props) {
             <clipPath id="chart-reveal"><rect className="chart-reveal" x="0" y="0" width={width} height={HEIGHT} /></clipPath>
           </defs>
 
-          {/* 눈금: 왼쪽은 검색·추가 수, 오른쪽은 가진 사람 수 */}
+          {/* 눈금: 왼쪽은 검색수·추가수, 오른쪽은 가진 사람 수 */}
           {[0, 0.5, 1].map((f) => (
             <g key={f}>
               <line x1={PAD.left} x2={width - PAD.right} y1={PAD.top + innerH * (1 - f)} y2={PAD.top + innerH * (1 - f)} className="chart-grid" />

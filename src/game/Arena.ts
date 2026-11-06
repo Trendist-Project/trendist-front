@@ -931,7 +931,7 @@ export class Arena {
     // 콤보 불꽃(4.25): 원보다 먼저 그려 둘레 바깥으로만 타오르게 한다
     if (look && look.combo >= this.flameAt) drawComboFlames(ctx, e.x, e.y, e.r, t, 1 / this.zoom);
     this.drawDashFx(ctx, e, false); // 대시: 빛·속도선·충격파는 원 뒤(4.27)
-    // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(11레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
+    // 바탕색: 봇은 빨간색(4.21), 사람은 꾸민 색(10레벨부터, 4.9). 꾸미지 않았으면 성장 캐릭터의 정해진 색
     ctx.fillStyle = look?.bot ? BOT_BASE : look?.bg ?? TURTLE_BASE;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
     // 픽셀 그림(4.9)이 있으면 성장 캐릭터 대신 그린다. 아직 못 받았으면 받는 동안 거북이를 그린다

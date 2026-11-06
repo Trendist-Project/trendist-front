@@ -15,7 +15,7 @@ type LineKind = 'heading' | 'bullet' | 'number' | 'tip';
 const PREFIX: Record<LineKind, RegExp> = { heading: /^## /, bullet: /^- /, number: /^\d+\. /, tip: /^> ?/ };
 
 /**
- * 공지·가이드 본문 편집기(13.4). 서식 단추가 본문 문법(RichText)을 대신 써 준다. 저장은 지금처럼 글자(문법)라서
+ * 공지·가이드 본문 편집기(13.4). 서식 단추가 본문 문법(RichText)을 대신 써 준다. 저장은 글자(문법)라서
  * HTML을 넣지 않고, 화면은 늘 RichText로만 그린다(태그가 섞여도 글자로 보인다). 옆의 미리 보기로 결과를 바로 본다.
  * 단추로 바꾼 것도 브라우저의 되돌리기(Ctrl+Z)로 되돌릴 수 있게 execCommand('insertText')로 넣는다.
  */
