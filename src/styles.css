@@ -142,6 +142,17 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
   100% { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
 }
 @keyframes orb-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+/* 모바일: 화면을 덜 가리도록 작고 낮게 */
+@media (max-width: 760px) {
+  .orb-reveal { top: 52px; min-width: 0; max-width: min(300px, calc(100% - 32px)); padding: 7px 14px 9px; border-width: 1.5px; border-radius: 12px; box-shadow: 0 0 16px rgba(255,200,74,0.4); }
+  .orb-reveal .orb-title { font-size: 0.78rem; }
+  .orb-reveal .orb-keyword { margin: 2px 0; gap: 6px; }
+  .orb-reveal .orb-keyword strong { font-size: 1.05rem; }
+  .orb-reveal .orb-keyword .badge { font-size: 0.7rem; }
+  .orb-reveal .small { font-size: 0.72rem; }
+  .orb-reveal .orb-gain { margin-top: 2px; font-size: 0.85rem; }
+  .orb-reveal .orb-miss { font-size: 1.15rem; }
+}
 @media (prefers-reduced-motion: reduce) { .orb-reveal, .orb-reveal .orb-timer, .miss-reveal .orb-miss { animation: none; } }
 
 /* 공지·가이드 창 */
