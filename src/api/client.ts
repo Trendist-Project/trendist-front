@@ -2,7 +2,7 @@ import { getCountry, getLang } from '../country';
 import { errorText } from '../i18n';
 import { getAdminCountry } from './adminCountry';
 import type {
-  Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
+  Activity, ActivityRange, PlayerCard, PlayerHit, PopularityResult, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
   AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo } from './types';
 
 export class ApiFailure extends Error {
@@ -79,6 +79,8 @@ function cached<T>(key: string, fetch: () => Promise<T>): Promise<T> {
   return p;
 }
 
+const infoCacheKeys = () => infoCache.keys();
+
 export const api = {
   allLevels: () => request<{ level: number; requiredExp: number }[]>('GET', '/api/game-info/levels'),
   orbOdds: () => request<{ gainPercent: number; losePercent: number }>('GET', '/api/game-info/orb-odds'),
@@ -134,12 +136,20 @@ export const api = {
   writeComment: (id: number, body: string) => request<CommentItem>('POST', `/api/keywords/${id}/comments`, { body }),
   editComment: (commentId: number, body: string) => request<CommentItem>('PATCH', `/api/comments/${commentId}`, { body }),
   deleteComment: (commentId: number) => request<void>('DELETE', `/api/comments/${commentId}`),
-  report: (target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER', targetId: number, reason: string) =>
+  report: (target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER' | 'PLAYER_ID', targetId: number, reason: string) =>
     request<void>('POST', '/api/reports', { target, targetId, reason }),
   vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
   scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
   // 같은 원의 정보는 5초 동안 다시 묻지 않는다(2.x 정보 팝업 5초 캐시). 더블탭을 거듭하거나 개발 모드(StrictMode)에서 같은 요청이 겹쳐 나가 429가 나지 않게 한다. 실패한 요청은 기억하지 않는다
   roomPlayer: (entityNo: number) => cached(`card:${entityNo}`, () => request<PlayerCard>('GET', `/api/room/players/${entityNo}`)),
+  playerCard: (playerId: number) => cached(`pcard:${playerId}`, () => request<PlayerCard>('GET', `/api/players/${playerId}`)),
+  searchPlayers: (q: string) => request<PlayerHit[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
+  /** 인기도 올리기(1)·내리기(-1). 하루에 대상마다 한 번 */
+  votePopularity: async (playerId: number, value: 1 | -1) => {
+    const r = await request<PopularityResult>('POST', `/api/players/${playerId}/popularity`, { value });
+    for (const k of [...infoCacheKeys()]) infoCache.delete(k); // 정보 카드 캐시를 비워 새 인기도가 바로 보이게
+    return r;
+  },
   rankings: () => request<RankingEntry[]>('GET', `/api/rankings?country=${getCountry()}`),
   notices: () => request<Notice[]>('GET', '/api/notices'),
   /** 지금 보여 줄 긴급 안내(4.29). 없으면 notice가 null */

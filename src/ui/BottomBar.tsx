@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SkillInfo } from '../api/types';
 import type { SkillId } from '../game/protocol';
 import { EMOTES, type OrbLook } from '../game/skin';
 import { fmtNumber, t } from '../i18n';
 import { PlayerOrb } from './PlayerOrb';
+import { useLayer } from './layers';
 import { SkillBar, type DashState, type SkillCooldowns } from './SkillBar';
 
 export interface MeSummary { nickname: string; level: number; currentScore: number | string; exp: number; nextLevelExp: number; holdCount: number }
@@ -37,10 +38,23 @@ export function BottomBar({ me, skills, readLook, cooldowns, dash, lockedUntil, 
     }, 1000);
     return () => window.clearInterval(id);
   }, [readLook]);
+  // 명령 줄의 실제 높이를 --bar-h로 알려 준다(세로 모드에서 채팅이 그 위에 일정한 간격으로 뜨게)
+  const layer = useLayer('bar');
+  useEffect(() => { if (emoteOpen) layer.front(); }, [emoteOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current, host = el?.closest('.arena-wrap') as HTMLElement | null;
+    if (!el || !host || typeof ResizeObserver === 'undefined') return;
+    const set = () => host.style.setProperty('--bar-h', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => { ro.disconnect(); host.style.removeProperty('--bar-h'); };
+  }, []);
   const pct = me.nextLevelExp > 0 ? Math.min(100, Math.round((me.exp / me.nextLevelExp) * 100)) : 100;
   const fallback: OrbLook = { bg: '#3fb68b', borderColor: null, borderWidth: null, art: null, borderEffect: null, bot: false };
   return (
-    <div className="bottom-bar">
+    <div className="bottom-bar" ref={barRef} {...layer.props}>
       <button className="bb-me" onClick={onProfile} title={t('gamescreen.myInfo')} aria-label={t('gamescreen.myInfo')}>
         <PlayerOrb look={look ?? fallback} level={me.level} size={52} />
         <span className="bb-lv">{me.level}</span>

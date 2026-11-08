@@ -1,4 +1,10 @@
 export default {
+  reportPlayer: '플레이어 신고',
+  reasonCheat: '부정행위(핵·매크로·프로그램)',
+  reasonExploit: '버그·허점 악용',
+  reasonNickname: '부적절한 닉네임',
+  reportMemo: '상황 설명(선택)',
+  reportMemoHint: '언제 어떤 행동을 했는지 적어 주세요',
   close: '닫기',
   cancel: '취소',
   restoreFailed: '복구하지 못했어요. 다시 시도해 주세요',
@@ -31,6 +37,6 @@ export default {
   reportComment: '댓글 신고',
   reportChat: '채팅 신고',
   reportReason: '신고 사유',
-  reportOnce: '같은 글은 한 번만 신고할 수 있어요. 관리자가 확인한 뒤 처리해요.',
+  reportOnce: '같은 글은 한 번만, 같은 플레이어는 하루에 한 번 신고할 수 있어요. 관리자가 확인한 뒤 처리해요.',
   reportSubmit: '신고하기',
 };

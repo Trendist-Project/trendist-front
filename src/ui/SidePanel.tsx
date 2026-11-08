@@ -4,8 +4,10 @@ import type { KeywordCard, MyKeyword, PlayerSummary } from '../api/types';
 import { remaining, STATE_BADGE } from './keywordFormat';
 import { fmtNumber, t } from '../i18n';
 import { getLang } from '../country';
+import { PlayerSearch } from './PlayerSearch';
+import { useLayer } from './layers';
 
-type Tab = 'search' | 'mine';
+type Tab = 'search' | 'mine' | 'players';
 
 interface Props {
   onPlused(gained: number, player: PlayerSummary): void;
@@ -13,6 +15,8 @@ interface Props {
   refreshKey: number;
   /** 키워드 이름을 누르면 상세 창(4.12)을 연다. */
   onOpenKeyword(keywordId: number): void;
+  /** 플레이어 상세의 [공유]: 채팅에 그 플레이어를 보낸다 */
+  onSharePlayer?(playerId: number, nickname: string): void;
   /** 채팅의 #키워드를 누르면 검색창에 넣고 검색한다(4.13). */
   searchRequest: { text: string; key: number } | null;
   /** 모바일 메뉴에서 [검색]·[보관함]을 눌렀다: 그 탭으로 시트를 연다(모바일은 시트가 평소에는 숨어 있다) */
@@ -55,7 +59,8 @@ function sortMine(list: MyKeyword[], key: SortKey, dir: SortDir) {
 }
 
 
-export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, searchRequest, openRequest }: Props) {
+export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, onSharePlayer, searchRequest, openRequest }: Props) {
+  const layer = useLayer('side');
   const [tab, setTab] = useState<Tab>('search');
   const [q, setQ] = useState('');
   const [card, setCard] = useState<KeywordCard | null>(null);
@@ -78,7 +83,8 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
     if (!openRequest) return;
     setTab(openRequest.tab);
     setExpanded(true);
-  }, [openRequest]);
+    layer.front();
+  }, [openRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 모바일·가로 모드 폰의 시트: 열려 있을 때 시트 밖을 누르면(아레나·조이스틱 포함) 저절로 닫는다. 위쪽의 [🔍][📦] 버튼은 탭만 바꾸므로 제외한다
   useEffect(() => {
@@ -146,9 +152,9 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   }
 
   return (
-    <aside ref={sideRef} className={expanded ? 'side expanded' : 'side'}>
+    <aside ref={sideRef} className={expanded ? 'side expanded' : 'side'} {...layer.props}>
       <nav className="tabs" role="tablist">
-        {([['search', t('side.tabSearch')], ['mine', `${t('side.tabMine')} (${mine.length})`]] as const).map(([k, label]) => (
+        {([['search', t('side.tabSearch')], ['mine', `${t('side.tabMine')} (${mine.length})`], ['players', t('player.searchTab')]] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''}
                   onClick={() => { if (tab === k && expanded) setExpanded(false); else { setTab(k); setExpanded(true); } }}>{label}</button>
         ))}
@@ -184,6 +190,8 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
           )}
         </div>
       )}
+
+      {tab === 'players' && <PlayerSearch onOpenKeyword={onOpenKeyword} onShare={onSharePlayer} />}
 
       {tab === 'mine' && (
         <div className="tab-body">

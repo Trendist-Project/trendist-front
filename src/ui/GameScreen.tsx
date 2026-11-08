@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Notice, PlayerSummary } from '../api/types';
 import { Arena } from '../game/Arena';
 import { GameConnection } from '../game/connection';
-import type { ChatMessage, OrbResult, ServerMessage } from '../game/protocol';
+import type { ChatMessage, ServerMessage } from '../game/protocol';
 import { ChatPanel, type ChatLine } from './ChatPanel';
 import { GuideModal } from './GuideModal';
 import { KeywordModal } from './KeywordModal';
@@ -12,7 +12,7 @@ import { PlayerInfoModal } from './PlayerInfoModal';
 import { Leaderboard } from './Leaderboard';
 import { hasUnread, markNoticesRead, NoticeModal, NoticePopup, popupNotices } from './NoticeModal';
 import { ProfileModal } from './ProfileModal';
-import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
+import { ORB_REVEAL_MS, OrbReveal, type RevealResult } from './OrbReveal';
 import { SidePanel } from './SidePanel';
 import { ComboTimer } from './ComboTimer';
 import { TargetCard } from './TargetCard';
@@ -24,6 +24,7 @@ import { effectiveKey, keyAliases, keyLabel, loadKeyOverrides } from '../game/sk
 import { BottomBar } from './BottomBar';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
+import { LayersProvider, useLayer } from './layers';
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
 
@@ -92,7 +93,12 @@ function saveHelpPref(open: boolean) {
   try { localStorage.setItem(HELP_KEY, open ? '1' : '0'); } catch { /* 무시 */ }
 }
 
-export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Props) {
+/** 겹치는 덩어리는 마지막에 손댄 것이 맨 위에 보인다(layers.tsx) */
+export function GameScreen(props: Props) {
+  return <LayersProvider><GameScreenInner {...props} /></LayersProvider>;
+}
+
+function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const arenaRef = useRef<Arena | null>(null);
   const connRef = useRef<GameConnection | null>(null);
@@ -127,9 +133,16 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
-  const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
+  const [orbReveal, setOrbReveal] = useState<{ result: RevealResult; key: number } | null>(null);
+  // 키워드를 얻거나 잃은 결과 카드(구슬·빼앗기·빼앗김·봇)는 모두 이 한 곳으로 띄운다
+  const showReveal = useCallback((result: RevealResult) => {
+    const key = performance.now();
+    setOrbReveal({ result, key });
+    window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), ORB_REVEAL_MS);
+  }, []);
   const [openKeyword, setOpenKeyword] = useState<number | null>(null);
   const [infoEntity, setInfoEntity] = useState<number | null>(null);
+  const [infoPlayerId, setInfoPlayerId] = useState<number | null>(null); // 채팅의 닉네임·검색으로 연 플레이어 상세
   const [infoLook, setInfoLook] = useState<OrbLook | null>(null); // 정보 창에 보여 줄 그 원의 모양
   const [targetCard, setTargetCard] = useState<number | null>(null); // 클릭한 플레이어의 작은 정보 카드(왼쪽 위)
   const [followUi, setFollowUi] = useState<number | null>(null); // 지금 따라가는 원(카드에 "따라가는 중"을 보이고 10초 닫힘을 멈춘다)
@@ -138,6 +151,9 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   // 정보 보기 모드(모바일): 켜져 있으면 다음 탭은 이동이 아니라 그 원의 정보를 연다
   const [sideRequest, setSideRequest] = useState<{ tab: 'search' | 'mine'; key: number } | null>(null); // 모바일 메뉴에서 시트를 여는 요청
   const [menuOpen, setMenuOpen] = useState(false); // 모바일 ☰ 메뉴
+  const toolsLayer = useLayer('tools');
+  // 메뉴·리더보드·조작 설명을 열면 도구 덩어리를 맨 위로(채팅·이모트보다 앞)
+  useEffect(() => { if (menuOpen || showHelp || showLeaderboard) toolsLayer.front(); }, [menuOpen, showHelp, showLeaderboard]); // eslint-disable-line react-hooks/exhaustive-deps
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
   const [chatLines, setChatLines] = useState<ChatLine[]>([]);
   const [chatView, setChatView] = useState<ChatView>(loadChatView);
@@ -245,7 +261,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           case 'orbResult': {
             // 구슬이 원 안으로 빨려 들어간 뒤에 결과 카드를 띄운다
             const key = performance.now();
-            window.setTimeout(() => setOrbReveal({ result: m, key }), 250);
+            const kind = m.status === 'GAINED' || m.status === 'RENEWED' ? 'GAIN' : m.status === 'LOST' ? 'LOSE' : undefined;
+            window.setTimeout(() => setOrbReveal({ result: { ...m, kind }, key }), 250);
             window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), 250 + ORB_REVEAL_MS);
             if (m.status === 'GAINED') arena.floatText(`+${m.gained ?? 0}`);
             if (m.status === 'LOST' && m.gained) arena.floatText(`-${m.gained}`);
@@ -284,9 +301,8 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           }
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
-            showToast(m.wiped ? t('gamescreen.lostWiped', { n: m.wiped })
-              : m.stolen ? t('gamescreen.lostStolen', { by: m.by ?? '', kw: m.keyword ?? '', score: m.score })
-              : t('gamescreen.lostHit', { by: m.by ?? '', kw: m.keyword ?? '', score: m.score }));
+            if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
+            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: 'STOLEN', who: m.by || undefined });
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
@@ -296,18 +312,24 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             // 봇을 이기면 봇의 키워드 대신 무작위 🔥 키워드를 얻는다. 이미 가진 키워드면 남은 시간 갱신(4.21)
             const key = performance.now();
             const hp = { target: m.target ?? '', kw: m.keyword ?? '', score: m.score ?? 0, n: m.wiped ?? 0 };
+            const gainedBy = m.stolen && !m.wiped; // 키워드를 얻었다(빼앗음·봇을 이겨 획득): 구슬과 같은 결과 카드로 보여 준다
+            if (gainedBy) {
+              showReveal({ type: 'orbResult', status: m.stolen === 'ADDED' || m.stolen === 'BOT' ? 'GAINED' : 'RENEWED', text: m.keyword ?? '', gained: m.gained,
+                           kind: 'STEAL', who: m.target || undefined });
+            }
             const text = m.wiped ? t('gamescreen.hitWiped', hp)
               : m.stolen === 'BOT' ? t('gamescreen.hitBot', hp)
               : m.stolen === 'BOT_RENEWED' ? t('gamescreen.hitBotRenewed', hp)
               : m.stolen === 'ADDED' ? t('gamescreen.hitAdded', hp)
               : m.stolen === 'RENEWED' ? t('gamescreen.hitRenewed', hp)
               : m.keyword ? t('gamescreen.hitDropped', hp) : t('gamescreen.hitWon', hp);
-            setHit({ text, key });
+            if (m.wiped) showReveal({ type: 'orbResult', status: 'GAINED', wipe: m.wiped, who: m.target || undefined });
+            else if (!gainedBy) setHit({ text, key });
             if (m.stolen) {
               if (m.gained) arena.floatText(`+${m.gained}`);
               setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
             }
-            window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3000);
+            if (!gainedBy && !m.wiped) window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3000);
             break;
           }
           case 'died':
@@ -316,9 +338,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             setDead({ by: m.by, waiting: false }); arena.setDead(true);
             break;
           case 'kill': { // 내가 죽였다(4.31)
-            const key = performance.now();
-            setHit({ text: t('gamescreen.killed', { target: m.target }), key });
-            window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3500);
+            showReveal({ type: 'orbResult', status: 'GAINED', kill: m.target });
             break;
           }
           case 'shield': arena.showShield(m.e, m.ms); break;
@@ -460,17 +480,30 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     const stopFollow = () => {
       if (followE === null) return;
       followE = null;
+      followPrev = null;
       setFollowUi(null);
       arena.setFollowTarget(null);
       // 마지막 이동 목표와 이미 예약된 이동 전송을 지운다. 안 지우면 방향키·WASD를 눌렀는데도 늦게 나가는 이동 명령이 서버에서 방향 입력을 덮어써서 조작이 안 먹힌다
       moveTarget = null;
       if (movePending !== null) { clearTimeout(movePending); movePending = null; }
     };
+    // 서버는 목표에 가까워질수록(120 안) 속도를 줄여서, 움직이는 원을 쫓으면 그 원의 속도에 비례한 거리가 벌어진다.
+    // 따라가는 원이 움직이는 만큼 그 진행 방향으로 목표를 앞에 두어(최대 120) 감속 구간을 채운다. 가만히 있으면 0이라 정확히 겹친다.
+    let followPrev: { x: number; y: number; at: number } | null = null;
+    const FOLLOW_SLOW_ZONE = 120, FOLLOW_REF_SPEED = 240;
     const followTick = () => {
       if (followE === null) return;
       const p = ready ? arena.followPosition(followE) : null;
       if (!p) { stopFollow(); return; }
-      moveTarget = p;
+      const now = performance.now();
+      let lead = { x: 0, y: 0 };
+      if (followPrev && now - followPrev.at > 0) {
+        const dt = (now - followPrev.at) / 1000;
+        const vx = (p.x - followPrev.x) / dt, vy = (p.y - followPrev.y) / dt, v = Math.hypot(vx, vy);
+        if (v > 20 && v < 4000) { const k = FOLLOW_SLOW_ZONE * Math.min(1, v / FOLLOW_REF_SPEED) / v; lead = { x: vx * k, y: vy * k }; }
+      }
+      followPrev = { x: p.x, y: p.y, at: now };
+      moveTarget = { x: p.x + lead.x, y: p.y + lead.y };
       sendMove();
     };
     const followTimer = window.setInterval(followTick, CLICK_INTERVAL_MS);
@@ -721,6 +754,11 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     if (!connRef.current?.send({ type: 'chat', text: tag })) { showToast(t('gamescreen.shareAfterConnect')); return; }
     setChatView((v) => (v === 'off' ? 'open' : v));
   }, [showToast]);
+  // 플레이어 상세의 [공유]: 채팅에 @[닉네임](p번호)로 바로 보낸다. 채팅의 닉네임을 누르면 그 플레이어 상세가 열린다
+  const sharePlayer = useCallback((playerId: number, nickname: string) => {
+    if (!connRef.current?.send({ type: 'chat', text: `@[${nickname}](p${playerId})` })) { showToast(t('gamescreen.shareAfterConnect')); return; }
+    setChatView((v) => (v === 'off' ? 'open' : v));
+  }, [showToast]);
   const searchKeyword = useCallback((text: string) => setSearchRequest({ text, key: performance.now() }), []);
   const closeKeyword = useCallback(() => setOpenKeyword(null), []);
 
@@ -770,7 +808,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                    onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
                    emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
                    onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />
-        <div className="arena-tools">
+        <div className="arena-tools" {...toolsLayer.props}>
           <div className="tool-row">
             {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
             {guest ? (
@@ -868,7 +906,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           )}
         </div>
         {chatView !== 'off' && (
-          <ChatPanel ref={chatInputRef} lines={chatLines} disabled={status !== 'open'} onSend={sendChat} onKeyword={searchKeyword}
+          <ChatPanel ref={chatInputRef} lines={chatLines} disabled={status !== 'open'} onSend={sendChat} onKeyword={searchKeyword} onPlayer={setInfoPlayerId}
                      onNotice={showToast} collapsed={chatView === 'collapsed'}
                      onToggleCollapsed={() => setChatView((v) => (v === 'collapsed' ? 'open' : 'collapsed'))} />
         )}
@@ -913,10 +951,14 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         </div>
       </div>
       <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast}
-                 onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} openRequest={sideRequest} />
+                 onOpenKeyword={setOpenKeyword} onSharePlayer={sharePlayer} searchRequest={searchRequest} openRequest={sideRequest} />
       {infoEntity !== null && (
         <PlayerInfoModal entityNo={infoEntity} bot={infoBot} look={infoLook} onClose={() => setInfoEntity(null)}
-                         onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} onNotice={showToast} />
+                         onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} onNotice={showToast} onShare={sharePlayer} />
+      )}
+      {infoPlayerId !== null && (
+        <PlayerInfoModal entityNo={-1} playerId={infoPlayerId} onClose={() => setInfoPlayerId(null)}
+                         onOpenKeyword={(id) => { setInfoPlayerId(null); setOpenKeyword(id); }} onNotice={showToast} onShare={sharePlayer} />
       )}
       {openKeyword !== null && (
         <KeywordModal keywordId={openKeyword} onClose={closeKeyword} onPlused={onPlusedInModal} onError={showToast} onShare={shareKeyword} />

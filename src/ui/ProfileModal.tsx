@@ -12,7 +12,7 @@ import { successToast } from './toast';
 import { LevelText } from './LevelText';
 import { intlLocale } from './keywordFormat';
 import { getLang } from '../country';
-import { fmtNumber, t } from '../i18n';
+import { fmtDate, fmtNumber, t } from '../i18n';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', t('chart.range24h')], ['7d', t('chart.range7d')], ['30d', t('chart.range30d')], ['all', t('chart.rangeAll')]];
 
@@ -101,6 +101,8 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         <div><dt>{t('profile.botHunts')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.botWinCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.kills')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.killCount ?? 0) })}</dd></div>
         <div><dt>{t('profile.defeats')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.defeatCount ?? 0) })}</dd></div>
+        <div><dt>{t('player.popularity')}</dt><dd>{fmtNumber(player.popularity ?? 0)}</dd></div>
+        <div><dt>{t('player.createdLabel')}</dt><dd>{player.createdAt ? fmtDate(player.createdAt) : '-'}</dd></div>
         <div><dt>{t('profile.activeDays')}</dt><dd>{t('profile.countDays', { n: fmtNumber(player.activeDays ?? 0) })}</dd></div>
       </dl>
 

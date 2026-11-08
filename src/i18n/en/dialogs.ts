@@ -1,4 +1,10 @@
 export default {
+  reportPlayer: 'Report player',
+  reasonCheat: 'Cheating (hacks, macros, tools)',
+  reasonExploit: 'Bug or exploit abuse',
+  reasonNickname: 'Inappropriate nickname',
+  reportMemo: 'Details (optional)',
+  reportMemoHint: 'Describe what they did and when',
   close: 'Close',
   cancel: 'Cancel',
   restoreFailed: "Couldn't restore the account. Please try again",
@@ -31,6 +37,6 @@ export default {
   reportComment: 'Report comment',
   reportChat: 'Report chat message',
   reportReason: 'Reason',
-  reportOnce: 'You can report the same post only once. An admin will review it.',
+  reportOnce: 'You can report the same post only once, and the same player once a day. An admin will review it.',
   reportSubmit: 'Report',
 };

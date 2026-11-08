@@ -21,6 +21,8 @@ export interface PlayerSummary {
   activeDays: number;
   killCount: number; // 죽인 횟수(4.31)
   defeatCount: number; // 패배한 횟수(4.31)
+  popularity: number; // 인기도(4.34)
+  createdAt: string; // 플레이어 생성일
 }
 
 export interface Me { userId: number; guest: boolean; player: PlayerSummary | null }
@@ -87,9 +89,15 @@ export interface ScoreHistory { range: ScoreRange; timezone: string; points: Sco
 /** 같은 방 다른 플레이어 정보(4.11). entityNo는 방 안에서만 쓰는 번호, 키워드는 이름과 상태만. */
 export interface KeywordTag { keywordId: number; text: string; state: KeywordState }
 export interface PlayerCard {
-  entityNo: number; nickname: string; admin: boolean; title: string | null;
+  entityNo: number; nickname: string; title: string | null;
   level: number; score: number; commentScore: number; topKeywords: KeywordTag[];
+  playerId: number; popularity: number; myVote: number; createdAt: string;
+  /** 내 카드(자기 자신은 신고·인기도를 줄 수 없다) */
+  me: boolean;
 }
+/** 플레이어 검색 결과(4.34). myVote: 오늘 내가 준 표(+1, -1, 없으면 0) */
+export interface PlayerHit { playerId: number; nickname: string; level: number; score: number; popularity: number; me: boolean; myVote: number }
+export interface PopularityResult { playerId: number; popularity: number; myVote: number }
 
 export interface RankingEntry { rank: number; playerId: number; nickname: string; level: number; score: number }
 

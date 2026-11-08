@@ -160,7 +160,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .profile-stats dd { margin: 2px 0 0; font-weight: 700; word-break: break-all; }
 .profile-form { display: grid; gap: 8px; }
 .profile-form p { margin: 0; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: 16px; z-index: 15; /* 모바일 검색·보관함 시트(12)보다 앞: 시트에서 연 키워드 상세 창이 시트 뒤로 가지 않게 */ }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: 16px; z-index: 40; /* 모바일 검색·보관함 시트(12)보다 앞: 시트에서 연 키워드 상세 창이 시트 뒤로 가지 않게 */ }
 .modal { width: min(640px, 100%); max-height: min(80vh, 760px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .modal-head h2 { margin: 0; font-size: 1.15rem; }
@@ -355,6 +355,7 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 @media (hover: none) { .chat-report { opacity: 0.7; } }
 .chat-log li.mine strong { color: var(--accent); }
 .chat-tag { border: 0; background: transparent; padding: 0; color: #7cc4ff; font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.chat-resize { display: none; }
 .chat-input { border-top: 1px solid var(--line); display: flex; align-items: center; }
 /* 접기 버튼: 입력 줄 오른쪽 끝(메시지 목록·스크롤 막대와 겹치지 않게) */
 .chat-fold { flex: none; width: 28px; height: 24px; margin-right: 6px; padding: 0; border-radius: 6px;
@@ -373,7 +374,7 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 }
 
 /* 신고 창(13.5): 키워드 창 위에 겹쳐 뜬다 */
-.report-backdrop { z-index: 20; }
+.report-backdrop { z-index: 45; }
 .report-dialog { width: min(400px, 100%); }
 .report-preview { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line); background: #0f151f; border-radius: 0 8px 8px 0;
   color: var(--muted); font-size: 0.88rem; overflow-wrap: anywhere; max-height: 90px; overflow: auto; white-space: pre-wrap; }
@@ -406,7 +407,7 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
     padding-bottom: env(safe-area-inset-bottom); }
   .side:not(.expanded) { display: none; }
   .side.expanded { height: clamp(220px, 34dvh, 340px); } /* 화면의 3분의 1쯤. 아레나를 덜 가린다 */
-  .tabs button { padding: 10px 6px; }
+  .tabs button { padding: 10px 4px; white-space: nowrap; font-size: 0.85rem; } /* 보관함 글자와 개수는 한 줄로 */
   .tabs .sheet-toggle { display: block; flex: none; width: 52px; color: #c9d4e3; font-size: 1.05rem; }
   .tabs .sheet-toggle:hover, .tabs .sheet-toggle:active { color: #fff; background: rgba(255,107,107,0.18); }
 
@@ -491,7 +492,8 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .arena-tools .tool-row > :not(.menu-toggle):not(.side-toggle) { display: none; }
   .arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
   .arena-tools .tool-row { gap: 6px; }
-  .mobile-menu { position: relative; z-index: 8; /* 채팅 위로 */ display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
+  /* 메뉴는 아래 요소(리더보드 등)를 밀어내지 않고 도구 줄 아래에 겹쳐 뜬다. 화면보다 길면 스크롤 */
+  .mobile-menu { position: absolute; top: 50px; right: 0; max-height: calc(100dvh - 62px); overflow-y: auto; z-index: 9; display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
     border-radius: 14px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
   .mobile-menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; border: 0; border-radius: 10px;
     background: transparent; padding: 0 12px; font-size: 0.95rem; text-align: left; }
@@ -865,6 +867,21 @@ button.link-back:hover { color: var(--text); }
   .pixel-actions button { flex: 1; min-width: 0; }
   .customize-modal { max-height: 92dvh; }
 }
+/* 가로 모드 폰: 세로로 쌓으면 프로필 칸·미리 보기가 높이를 다 써서 꾸밀 수 있는 영역이 한두 줄만 남는다.
+   왼쪽에 프로필 칸·미리 보기를 고정하고, 오른쪽 전체 높이를 꾸밈 항목(스크롤)과 저장 버튼에 준다 */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .customize-modal { width: calc(100vw - 20px); max-height: 97dvh; }
+  .customize-modal .modal-head { padding-top: 6px; padding-bottom: 6px; }
+  .customize-modal .modal-body { padding: 8px 12px 10px; }
+  .profile-editor { display: grid; grid-template-columns: minmax(190px, 36%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 6px; }
+  .profile-top { grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 8px; padding: 0 12px 0 0; border-bottom: 0; border-right: 1px solid var(--line); overflow-y: auto; }
+  .profile-sections { grid-column: 2; grid-row: 1; }
+  .profile-actions { grid-column: 2; grid-row: 2; padding-top: 6px; }
+  .profile-preview canvas { width: 100% !important; height: auto !important; max-height: 36dvh; aspect-ratio: 16 / 9; }
+  .profile-tab canvas { width: 32px !important; height: 32px !important; }
+  .profile-tab { padding: 4px 2px; }
+  .preview-mode { margin-top: 4px; }
+}
 .level-text { display: flex; align-items: center; gap: 6px; } /* 아이콘과 글자를 위아래 가운데로 맞춘다(inline이면 글줄 기준선 때문에 아이콘이 위로 뜬다) */
 .profile-stats dd .level-text, .kw-stats dd .level-text { margin: -3px 0; } /* 아이콘이 커도 칸 높이는 다른 칸과 같게(남는 부분은 칸 여백으로) */
 
@@ -973,25 +990,33 @@ button.link-back:hover { color: var(--text); }
 .side-toggle { display: none; }
 @media (max-width: 760px) and (orientation: portrait) {
   .hud-me { display: none; } /* 유행도는 아래 명령 줄의 경험치 밑으로 옮겼다 */
-  .arena-wrap { --tools-bottom: 96px; }
-  .bottom-bar { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-inset-bottom)); transform: none; max-width: none; gap: 6px; padding: 5px 6px 6px; border-radius: 14px; justify-content: space-between; }
-  .bb-me { width: 38px; height: 38px; }
-  .bb-me canvas { width: 38px !important; height: 38px !important; }
-  .bb-lv { min-width: 18px; height: 18px; font-size: 0.62rem; right: -5px; bottom: -5px; border-width: 1.5px; }
-  .bb-info { min-width: 0; flex: 1 1 auto; max-width: none; gap: 3px; padding-left: 10px; }
-  .bb-name { font-size: 0.78rem; }
-  .bb-exp { height: 15px; }
-  .bb-exp span { font-size: 0.58rem; }
-  .bb-stats { display: flex; gap: 10px; font-size: 0.62rem; line-height: 1; overflow: hidden; } /* 경험치 막대 밑: 유행도 · 키워드 수 (초상화와 간격을 두려고 왼쪽 여백을 늘렸다) */
-  .bb-skills { gap: 4px; padding-left: 6px; border-left: 1px solid rgba(255,255,255,0.12); flex: none; }
-  .bottom-bar .skill-row { gap: 4px; }
-  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 34px; height: 34px; font-size: 1.05rem; border-radius: 9px; }
-  .bottom-bar .skill-btn .skill-cd { border-radius: 9px; font-size: 0.8rem; }
+  .arena-wrap { --tools-bottom: 206px; }
+  .bottom-bar { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-inset-bottom)); transform: none; max-width: none; gap: 8px; padding: 8px 10px 10px; border-radius: 16px; justify-content: space-between; flex-wrap: wrap; row-gap: 6px; }
+  .bb-me { width: 56px; height: 56px; }
+  .bb-me canvas { width: 56px !important; height: 56px !important; }
+  .bb-lv { min-width: 24px; height: 24px; font-size: 0.8rem; right: -5px; bottom: -5px; border-width: 1.5px; }
+  .bb-info { min-width: 0; flex: 1 1 auto; max-width: none; gap: 5px; padding-left: 14px; }
+  .bb-name { font-size: 1rem; }
+  .bb-exp { height: 20px; }
+  .bb-exp span { font-size: 0.75rem; }
+  .bb-stats { display: flex; gap: 12px; font-size: 0.8rem; line-height: 1; overflow: hidden; } /* 경험치 막대 밑: 유행도 · 키워드 수 (초상화와 간격을 두려고 왼쪽 여백을 늘렸다) */
+  /* 세로 모드: 이모트는 윗줄 오른쪽으로, 스킬 5개는 아래 줄 폭 전체에 크게 펼쳐 엄지로 누르기 쉽게 한다 */
+  .bb-skills { display: contents; }
+  .bb-emote { order: 2; flex: none; }
+  .bottom-bar .skill-row { order: 3; flex: 1 0 100%; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.12); }
+  .bottom-bar .skill-row .skill-slot { flex: 1 1 0; min-width: 0; }
+  .bottom-bar .skill-row .skill-btn { width: 100%; height: auto; aspect-ratio: 1; font-size: 1.9rem; border-radius: 15px; }
+  .bottom-bar .emote-toggle { width: 50px; height: 50px; font-size: 1.5rem; border-radius: 13px; }
+  .bottom-bar .skill-btn .skill-cd { border-radius: 15px; font-size: 1.3rem; }
   .bottom-bar .skill-btn kbd, .bottom-bar .emote-toggle kbd { display: none; }
   .bb-emote .emote-palette { right: 0; bottom: calc(100% + 10px); }
   /* 채팅: 접힌 💬 버튼은 명령 줄 위 왼쪽에 */
-  .chat { bottom: calc(74px + env(safe-area-inset-bottom)); }
-  .arena-wrap.with-minimap .chat { bottom: calc(74px + env(safe-area-inset-bottom)); }
+  /* 채팅: 명령 줄(실제 높이 --bar-h) 위에 간격을 두고 뜬다. 펼치면 2줄 높이, 위쪽 끝을 끌어 조절 */
+  .chat, .arena-wrap.with-minimap .chat { bottom: calc(var(--bar-h, 160px) + 22px + env(safe-area-inset-bottom)); }
+  .chat:not(.collapsed), .arena-wrap.with-minimap .chat:not(.collapsed) { height: var(--chat-h, 112px); }
+  .chat-resize { display: grid; place-items: center; position: absolute; left: 0; right: 0; top: 0; height: 18px; z-index: 2; cursor: ns-resize; touch-action: none; }
+  .chat-resize i { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.35); }
+  .chat:not(.collapsed) .chat-log { padding-top: 16px; }
   /* 미니맵이 왼쪽 위에 있으니 정보 카드는 그 아래로 */
   .target-card { left: 8px; top: 50px; }
   .arena-wrap.with-minimap .target-card { top: calc(var(--minimap-size, 96px) + 52px); }
@@ -1005,32 +1030,32 @@ button.link-back:hover { color: var(--text); }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .arena-wrap { --tools-bottom: calc(var(--dock-bottom) + 12px); }
   .hud-me { display: none; }
-  .bottom-bar { bottom: 6px; gap: 8px; padding: 6px 10px 6px 8px; border-radius: 14px; }
-  .bb-me { width: 42px; height: 42px; }
-  .bb-me canvas { width: 42px !important; height: 42px !important; }
-  .bb-lv { min-width: 19px; height: 19px; font-size: 0.66rem; right: -4px; bottom: -4px; }
-  .bb-info { min-width: 0; max-width: 118px; gap: 3px; }
-  .bb-name { font-size: 0.82rem; }
-  .bb-exp { height: 16px; }
-  .bb-exp span { font-size: 0.6rem; }
-  .bb-stats { display: flex; gap: 10px; font-size: 0.64rem; line-height: 1; } /* 가로 모드도 경험치 밑에 유행도 · 키워드 수 */
-  .bb-skills { gap: 8px; padding-left: 8px; }
-  .bottom-bar .skill-row { gap: 5px; }
-  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 40px; height: 40px; font-size: 1.2rem; border-radius: 10px; }
+  .bottom-bar { bottom: 6px; gap: 10px; padding: 8px 12px 8px 10px; border-radius: 16px; }
+  .bb-me { width: 52px; height: 52px; }
+  .bb-me canvas { width: 52px !important; height: 52px !important; }
+  .bb-lv { min-width: 22px; height: 22px; font-size: 0.74rem; right: -4px; bottom: -4px; }
+  .bb-info { min-width: 0; max-width: 140px; gap: 4px; }
+  .bb-name { font-size: 0.95rem; }
+  .bb-exp { height: 19px; }
+  .bb-exp span { font-size: 0.7rem; }
+  .bb-stats { display: flex; gap: 10px; font-size: 0.76rem; line-height: 1; } /* 가로 모드도 경험치 밑에 유행도 · 키워드 수 */
+  .bb-skills { gap: 10px; padding-left: 10px; }
+  .bottom-bar .skill-row { gap: 6px; }
+  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 48px; height: 48px; font-size: 1.45rem; border-radius: 12px; }
   .bottom-bar .skill-btn kbd, .bottom-bar .emote-toggle kbd { display: none; }
-  .bottom-bar .skill-btn .skill-cd { border-radius: 10px; font-size: 0.95rem; }
+  .bottom-bar .skill-btn .skill-cd { border-radius: 12px; font-size: 1.1rem; }
   .bb-emote .emote-palette { bottom: calc(100% + 10px); }
   /* 채팅: 접힌 💬 버튼은 내 정보·스킬 틀 바깥 왼쪽 옆, 펼치면 명령 줄 가운데 바로 위로 올라와서 가운데 정보·스킬과 안 겹친다 */
   /* 명령 줄(내 정보·스킬 틀) 폭을 정해 두어서(--bar-w) 채팅 아이콘을 그 틀 **바깥 왼쪽**에 딱 붙일 수 있다 */
-  .arena-wrap { --bar-w: min(480px, calc(100% - 214px)); }
+  .arena-wrap { --bar-w: min(580px, calc(100% - 214px)); }
   .bottom-bar { width: var(--bar-w); justify-content: space-between; }
-  .chat, .arena-wrap.with-minimap .chat { left: max(8px, calc(50% - var(--bar-w) / 2 - 54px)); transform: none; bottom: 76px; width: min(300px, calc(50% - 16px)); min-width: 0; height: 96px; z-index: 7; }
-  .chat.collapsed, .arena-wrap.with-minimap .chat.collapsed { bottom: 8px; width: 44px; height: 44px; }
+  .chat, .arena-wrap.with-minimap .chat { left: max(8px, calc(50% - var(--bar-w) / 2 - 54px)); transform: none; bottom: 92px; width: min(300px, calc(50% - 16px)); min-width: 0; height: 96px; z-index: 7; }
+  .chat.collapsed, .arena-wrap.with-minimap .chat.collapsed { bottom: 12px; width: 44px; height: 44px; }
   /* 펼친 채팅창은 아이콘 자리가 아니라 내 정보·스킬 줄(명령 줄)의 **가운데 바로 위**에 뜬다 */
   .chat:not(.collapsed), .arena-wrap.with-minimap .chat:not(.collapsed) { left: 50%; transform: translateX(-50%); width: min(340px, calc(100% - 200px)); }
   .target-card, .arena-wrap.with-minimap .target-card { left: 8px; top: 50px; }
   /* 오른쪽에서 나오는 서랍 */
-  .side { top: 0; left: auto; right: 0; bottom: 0; width: min(360px, 55vw); border-top: 0; border-left: 1px solid var(--line); border-radius: 14px 0 0 14px; box-shadow: -6px 0 20px rgba(0,0,0,0.35); padding-bottom: 0; }
+  .side { top: 0; left: auto; right: 0; bottom: 0; width: max(260px, 33.4vw); border-top: 0; border-left: 1px solid var(--line); border-radius: 14px 0 0 14px; box-shadow: -6px 0 20px rgba(0,0,0,0.35); padding-bottom: 0; }
   .side.expanded { height: auto; }
 }
 
@@ -1088,6 +1113,22 @@ button.link-back:hover { color: var(--text); }
 .notify-stack > .orb-reveal { padding: 10px 16px 13px; border-width: 1.5px; border-radius: 14px; box-shadow: 0 0 16px rgba(255,200,74,0.32); animation-name: orb-pop-stack; }
 .notify-stack > .orb-reveal .orb-keyword strong { font-size: 1.25rem; }
 .notify-stack > .orb-reveal .orb-title { font-size: 0.85rem; }
+/* 구슬 결과 카드는 조금 작게: 내용만큼만 가운데에(최대 260px) */
+.notify-stack > .orb-reveal { align-self: center; width: fit-content; min-width: 170px; max-width: min(260px, 100%); padding: 7px 14px 10px; border-radius: 12px; }
+.notify-stack > .orb-reveal .orb-keyword { margin: 3px 0 2px; }
+.notify-stack > .orb-reveal .orb-keyword strong { font-size: 1.05rem; }
+.notify-stack > .orb-reveal .orb-title { font-size: 0.78rem; }
+.notify-stack > .orb-reveal .orb-gain { margin-top: 3px; font-size: 0.9rem; }
+.notify-stack > .orb-reveal .orb-miss { font-size: 1.2rem; }
+.notify-stack > .orb-reveal .small { font-size: 0.72rem; }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .notify-stack > .orb-reveal { min-width: 140px; max-width: min(220px, 100%); padding: 6px 12px 8px; }
+  .notify-stack > .orb-reveal .orb-keyword strong { font-size: 0.95rem; }
+  .notify-stack > .orb-reveal .orb-title { font-size: 0.72rem; }
+  .notify-stack > .orb-reveal .orb-gain { font-size: 0.8rem; }
+  .notify-stack > .orb-reveal .orb-miss { font-size: 1.05rem; }
+  .notify-stack > .orb-reveal .small { font-size: 0.66rem; }
+}
 @keyframes ntf-in { from { opacity: 0; transform: translateY(-10px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes orb-pop-stack {
   0% { opacity: 0; transform: translateY(-12px) scale(0.7); }
@@ -1107,18 +1148,49 @@ button.link-back:hover { color: var(--text); }
 .arena-tools .minimap-toggle[aria-pressed="true"], .arena-tools .leaderboard-toggle[aria-pressed="true"], .arena-tools .chat-toggle[aria-pressed="true"] { border-color: var(--accent); color: #d8fff0; background: rgba(63,182,139,0.16); }
 .arena-tools .minimap-toggle[aria-pressed="false"], .arena-tools .leaderboard-toggle[aria-pressed="false"], .arena-tools .chat-toggle[aria-pressed="false"] { opacity: 0.55; }
 
-/* 폭이 좁은 가로 모드 폰(예: 568~700px): 명령 줄을 줄여서 왼쪽 💬 버튼·오른쪽 아래 미니맵과 겹치지 않게 한다 */
+/* 가로 모드 오른쪽 위: 검색(🔍)·보관함(📦) 버튼을 메뉴(☰) 버튼과 같은 크기로 */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .arena-tools .tool-row > .side-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; font-size: 1.15rem; }
+}
+
+/* 가로 모드 아래 영역(반응형): [💬 아이콘] [명령 줄] [미니맵]이 한 줄로 놓인다. 명령 줄은 아이콘 오른쪽에서 시작해 미니맵 앞까지 남는 폭을 채우고,
+   안의 초상화·정보·스킬·이모트는 줄 폭에 맞춰 함께 줄고 늘어난다(스킬·이모트는 항상 정사각형, 최대 60px). 화면이 넓어지면 820px에서 멈춘다. */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .bottom-bar { left: 12px; right: 78px; width: auto; max-width: 820px; transform: none; gap: 10px; padding: 8px 12px 8px 10px; border-radius: 16px; justify-content: flex-start; box-sizing: border-box; }
+  .arena-wrap.with-minimap { --dock-bottom: 12px; } /* 미니맵은 왼쪽 위라 아래 도구 줄을 피할 필요가 없다 */
+  .bb-me, .bb-me canvas { width: 54px !important; height: 54px !important; }
+  .bb-me { flex: none; }
+  .bb-info { flex: 0 1 160px; min-width: 70px; max-width: 160px; gap: 4px; padding-left: 4px; }
+  .bb-name { font-size: 0.95rem; }
+  .bb-exp { height: 20px; }
+  .bb-exp span { font-size: 0.72rem; }
+  .bb-stats { font-size: 0.78rem; }
+  .bb-skills { flex: 1 1 0; min-width: 0; gap: 10px; padding-left: 10px; }
+  .bb-skills .skill-row { flex: 1 1 0; min-width: 0; gap: 8px; justify-content: space-between; }
+  .bb-skills .skill-slot { flex: 1 1 0; min-width: 0; max-width: 60px; }
+  .bottom-bar .skill-btn { width: 100%; height: auto; aspect-ratio: 1; font-size: clamp(1.1rem, 4.2vh, 1.8rem); border-radius: 14px; display: block; }
+  .bb-emote { flex: 1 1 0; min-width: 0; max-width: 60px; }
+  .bottom-bar .emote-toggle { width: 100%; height: auto; aspect-ratio: 1; font-size: clamp(1.1rem, 4.2vh, 1.8rem); border-radius: 14px; }
+  .bottom-bar .skill-btn .skill-cd { border-radius: 14px; font-size: 1.1rem; }
+  /* 💬: 오른쪽 아래 끝, 명령 줄과 같은 높이 */
+  .chat.collapsed, .arena-wrap.with-minimap .chat.collapsed { left: auto; right: 10px; bottom: 10px; width: 58px; height: 58px; }
+  .chat.collapsed .chat-fold { width: 58px; height: 58px; }
+  .chat.collapsed .chat-fold::before { font-size: 1.7rem; }
+  /* 펼친 채팅창: 오른쪽 아래, 명령 줄의 실제 높이(--bar-h) 위 */
+  .chat:not(.collapsed), .arena-wrap.with-minimap .chat:not(.collapsed) { left: auto; right: 10px; transform: none; bottom: calc(var(--bar-h, 76px) + 22px); width: min(340px, calc(100% - 24px)); }
+  /* 미니맵이 왼쪽 위로 와서 정보 카드는 그 아래로 */
+  .arena-wrap.with-minimap .target-card { top: calc(var(--minimap-size, 96px) + 52px); }
+}
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) and (max-width: 740px) {
-  .arena-wrap { --bar-w: min(398px, calc(100% - 200px)); }
-  .bottom-bar { gap: 6px; padding: 5px 8px 5px 6px; }
-  .bb-me, .bb-me canvas { width: 36px !important; height: 36px !important; }
-  .bb-info { max-width: 92px; padding-left: 6px; }
-  .bb-name { font-size: 0.74rem; }
-  .bb-exp { height: 14px; }
-  .bb-stats { font-size: 0.58rem; }
+  .bottom-bar { gap: 6px; padding: 6px 8px 6px 6px; }
+  .bb-me, .bb-me canvas { width: 42px !important; height: 42px !important; }
+  .bb-info { flex-basis: 96px; max-width: 96px; min-width: 56px; }
+  .bb-name { font-size: 0.78rem; }
+  .bb-exp { height: 16px; }
+  .bb-exp span { font-size: 0.6rem; }
+  .bb-stats { font-size: 0.62rem; gap: 6px; }
   .bb-skills { gap: 6px; padding-left: 6px; }
-  .bottom-bar .skill-row { gap: 4px; }
-  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 34px; height: 34px; font-size: 1.05rem; }
+  .bb-skills .skill-row { gap: 4px; }
 }
 
 /* ---------------------------------------------------------------- 시작 화면(메인)
@@ -1200,3 +1272,50 @@ button.link-back:hover { color: var(--text); }
 .level-exp-grid th { color: var(--muted); font-weight: 600; }
 .level-exp-grid td { text-align: right; font-variant-numeric: tabular-nums; }
 .level-exp-grid .lv-unlock { margin-left: 2px; }
+
+/* 인기도(4.34) */
+.pop-vote { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.pop-label { color: var(--muted); font-weight: 500; font-size: 0.8em; margin-right: 2px; }
+.pop-value { text-align: left; white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pop-btn { min-width: 30px; padding: 2px 9px; border-radius: 999px; font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
+.pop-btn.up.on { background: rgba(63,182,139,0.22); border-color: #3fb68b; color: #3fb68b; }
+.pop-btn.down.on { background: rgba(255,122,122,0.2); border-color: #ff7a7a; color: #ff9a9a; }
+.pop-btn:disabled:not(.on) { opacity: 0.4; }
+.pop-row { display: flex; justify-content: center; margin: 4px 0 10px; }
+.player-hits { display: grid; gap: 8px; }
+.player-hit { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border, rgba(255,255,255,0.12)); border-radius: 10px; }
+.player-hit-main { display: grid; gap: 2px; min-width: 0; flex: 1; text-align: left; background: transparent; border: 0; padding: 4px 0; cursor: pointer; color: inherit; }
+.player-hit-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pop-stat .pop-vote { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; flex-wrap: wrap; }
+.pop-btns { display: inline-flex; gap: 3px; }
+/* 인기도 칸은 다른 칸(유행도·레벨)과 같은 크기: 버튼만 작게 */
+.pop-stat .pop-btn { min-width: 0; width: 22px; height: 22px; padding: 0; display: inline-grid; place-items: center; font-size: 0.9rem; line-height: 1; border-radius: 6px; }
+.player-modal .kw-stats { grid-template-columns: repeat(2, 1fr); } /* 유행도·레벨 / 인기도·생성일 */
+
+/* 플레이어 공유(채팅의 @닉네임)·상세 보기 버튼 */
+.chat-player { border: 0; background: rgba(124,196,255,0.14); padding: 0 5px; border-radius: 6px; color: #7cc4ff; font-size: inherit; font-weight: 700; cursor: pointer; }
+.pi-actions { display: inline-flex; gap: 6px; flex: none; }
+.pi-share { flex: none; font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; }
+
+.report-memo { display: grid; gap: 4px; }
+.report-memo textarea { width: 100%; resize: vertical; min-height: 64px; font: inherit; font-size: 0.88rem; }
+
+/* 구슬 결과: 제목 / 키워드 / 상태(+ 얻은 점수) 세 줄 */
+.orb-reveal .orb-meta { margin: 0; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.orb-reveal .orb-meta .orb-gain { margin: 0; }
+
+/* 구슬 결과: 키워드는 한 줄(길면 …), 상태·보유자 수·점수도 한 줄. 카드는 내용만큼 늘어나되 화면을 넘지 않는다 */
+.notify-stack > .orb-reveal { max-width: min(400px, 100%); }
+.orb-reveal .orb-keyword { flex-wrap: nowrap; display: block; max-width: 100%; }
+.orb-reveal .orb-keyword strong { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: normal; }
+.orb-reveal .orb-meta { flex-wrap: nowrap; white-space: nowrap; gap: 8px; }
+.orb-reveal .orb-meta .orb-gain, .orb-reveal .orb-meta .orb-lostscore, .orb-reveal .orb-meta .orb-holders { font-size: 0.82rem; font-weight: 700; margin: 0; }
+.orb-reveal .orb-meta .orb-holders { color: var(--muted); font-weight: 600; }
+.orb-reveal .orb-meta .orb-lostscore { color: #ff9a9a; }
+
+/* 결과 카드 위의 작은 구분 표시: 획득 / 잃음 / 뺏음 / 뺏김 */
+.orb-reveal .orb-tag { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; line-height: 1.5; vertical-align: 1px; border: 1px solid currentColor; }
+.orb-tag.gain, .orb-tag.steal { color: #7be0b0; background: rgba(63,182,139,0.16); }
+.orb-tag.lose, .orb-tag.stolen { color: #ff9a9a; background: rgba(255,122,122,0.14); }
+.orb-reveal .orb-meta .orb-who { font-size: 0.8rem; color: var(--muted); font-weight: 600; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }

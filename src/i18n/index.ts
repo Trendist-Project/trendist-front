@@ -51,3 +51,6 @@ export function errorText(code: string, fallback: string): string {
 
 /** 숫자·날짜는 언어에 맞는 형식으로 */
 export const fmtNumber = (n: number) => n.toLocaleString(getLang() === 'ko' ? 'ko-KR' : 'en-US');
+/** 날짜(연·월·일). 한국어 형식 끝의 마침표는 뺀다: 2026. 11. 09 */
+export const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(getLang() === 'ko' ? 'ko-KR' : 'en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\.\s*$/, '');

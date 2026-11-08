@@ -1,3 +1,4 @@
+import { useLayer } from './layers';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { KeywordTag } from '../api/types';
@@ -32,6 +33,8 @@ export function TargetCard({ entityNo, following, touchKey, read, onClose, onDet
   const [info, setInfo] = useState<Info | null>(() => read(entityNo));
   const [keywords, setKeywords] = useState<KeywordTag[] | null>(null);
   const ref = useRef<HTMLElement>(null);
+  const layer = useLayer('target');
+  useEffect(() => { layer.front(); }, [entityNo, touchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setKeywords(null);
@@ -106,7 +109,7 @@ export function TargetCard({ entityNo, following, touchKey, read, onClose, onDet
 
   if (!info) return null;
   return (
-    <aside ref={ref} className={`target-card${following ? ' following' : ''}`} aria-label={t('player.title')}
+    <aside ref={ref} className={`target-card${following ? ' following' : ''}`} aria-label={t('player.title')} {...layer.props}
            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}
            onClickCapture={(e) => { if (suppressClick.current) { e.preventDefault(); e.stopPropagation(); } }}>
       <div className="tc-top">

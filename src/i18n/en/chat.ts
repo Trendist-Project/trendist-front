@@ -1,4 +1,6 @@
 export default {
+  playerDetail: 'View {name}',
+  resize: 'Drag to resize chat',
   label: 'Chat',
   emptyCollapsed: 'No chat yet',
   emptyOpen: 'Leave the first message. Write #keyword and anyone who taps it can search it right away',

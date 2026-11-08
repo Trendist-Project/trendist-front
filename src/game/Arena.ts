@@ -753,9 +753,9 @@ export class Arena {
       this.minimapSize = small;
       this.canvas.parentElement?.style.setProperty('--minimap-size', `${small}px`);
     }
-    // 크게 보기: 화면 짧은 쪽의 82%(최대 760px)를 가운데에. 평소 미니맵은 PC는 오른쪽 아래, 모바일 세로는 왼쪽 위(접속 인원 줄 아래)
+    // 크게 보기: 화면 짧은 쪽의 82%(최대 760px)를 가운데에. 평소 미니맵은 PC는 오른쪽 아래, 모바일(세로·가로)은 왼쪽 위(접속 인원 줄 아래)
     const size = big ? Math.round(Math.min(760, Math.min(w, h) * 0.82)) : small;
-    const phone = window.matchMedia?.('(max-width: 760px) and (orientation: portrait)').matches ?? false; // 가로 모드 폰은 PC처럼 오른쪽 아래
+    const phone = window.matchMedia?.('(max-width: 760px) and (orientation: portrait), (orientation: landscape) and (max-height: 520px) and (pointer: coarse)').matches ?? false; // 모바일(세로·가로)은 왼쪽 위
     const x0 = big ? Math.round((w - size) / 2) : phone ? 8 : w - size - MINIMAP_MARGIN;
     const y0 = big ? Math.round((h - size) / 2) : phone ? MINIMAP_TOP_PHONE : h - size - MINIMAP_MARGIN;
     if (!big) this.minimapRect = { x0, y0, size };
