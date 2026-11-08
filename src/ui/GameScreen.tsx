@@ -26,6 +26,7 @@ import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 import { LayersProvider, useLayer } from './layers';
 import { useMultiTouchClicks } from './touchPress';
+import { FullscreenIcon } from './FullscreenIcon';
 import { canFullscreen as canFullscreenSupported, enterFullscreen, setAutoFullscreenPref } from '../fullscreen';
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
@@ -879,7 +880,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
  {/* 모바일: 메뉴 왼쪽에 검색·보관함 버튼(PC는 오른쪽 패널이 있어서 숨김) */}
             {canFullscreen && (
               <button className="fs-toggle" onClick={toggleFullscreen} aria-pressed={isFullscreen}
-                      aria-label={isFullscreen ? t('gamescreen.fullscreenExit') : t('gamescreen.fullscreen')} title={isFullscreen ? t('gamescreen.fullscreenExit') : t('gamescreen.fullscreen')}>{isFullscreen ? '🗗' : '⛶'}</button>
+                      aria-label={isFullscreen ? t('gamescreen.fullscreenExit') : t('gamescreen.fullscreen')} title={isFullscreen ? t('gamescreen.fullscreenExit') : t('gamescreen.fullscreen')}><FullscreenIcon exit={isFullscreen} /></button>
             )}
             <button className="side-toggle" onClick={() => setSideRequest({ tab: 'search', key: Date.now() })} aria-label={t('side.tabSearch')} title={t('side.tabSearch')}>🔍</button>
             <button className="side-toggle" onClick={() => setSideRequest({ tab: 'mine', key: Date.now() })} aria-label={t('side.tabMine')} title={t('side.tabMine')}>📦</button>
@@ -903,7 +904,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                 ['🏆', t('gamescreen.leaderboard'), showLeaderboard, () => setShowLeaderboard((v) => !v)],
                 ['💬', t('gamescreen.chat'), chatView !== 'off', () => setChatView((v) => (v === 'off' ? 'open' : 'off'))],
                 ['❔', t('gamescreen.help'), showHelp, () => setShowHelp((v) => !v)],
-                ...(canFullscreen ? [['⛶', t('gamescreen.fullscreen'), isFullscreen, toggleFullscreen] as const] : []),
+                ...(canFullscreen ? [[<FullscreenIcon size={18} />, t('gamescreen.fullscreen'), isFullscreen, toggleFullscreen] as const] : []),
               ] as const).map(([icon, label, on, act]) => (
                 <button key={label} role="menuitemcheckbox" aria-checked={on} onClick={() => { setMenuOpen(false); act(); }}>
                   <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? t('gamescreen.on') : t('gamescreen.off')}</span>
