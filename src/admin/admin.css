@@ -614,7 +614,51 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .admin button.primary.danger:not(:disabled):hover { background: #ee7070; border-color: #ee7070; color: #fff; }
 .admin button:not(:disabled):not(.th-sort):not(.link-btn):active { transform: translateY(1px); }
 
-/* 스킬 설정 탭(13.3): 쿨타임·해금 레벨 입력을 한 줄에 */
-.skill-field { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted, #94a3b8); }
-.skill-field input { width: 84px; }
-.skill-enabled { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+/* 스킬 설정 탭(13.3): 스킬마다 카드 한 장 — 머리(아이콘·이름·키·사용 스위치), 입력(쿨타임·해금 레벨), 발(수정 시각·저장) */
+.sk-toolbar { justify-content: space-between; }
+.sk-toolbar-actions, .sk-foot-actions { display: inline-flex; gap: 8px; }
+.sk-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.sk-card { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); transition: border-color 0.12s, background 0.12s; }
+.sk-card:hover { border-color: #34435a; }
+.sk-card.dirty, .sk-card.dirty:hover { border-color: rgba(255,209,102,0.55); background: rgba(255,209,102,0.05); }
+.sk-card.off { opacity: 0.72; }
+.sk-card.off .sk-icon { filter: grayscale(1); }
+.sk-head { display: flex; align-items: center; gap: 12px; }
+.sk-icon { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: #1d2635; border: 1px solid var(--line); font-size: 1.5rem; }
+.sk-title { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.sk-title strong { font-size: 1.05rem; }
+.sk-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; color: var(--muted); }
+.sk-sub code { color: #9fe0c3; }
+.sk-sub kbd { padding: 0 6px; border-radius: 5px; border: 1px solid #3a4a63; background: #0b0f17; color: #dbe5f3; font-size: 0.72rem; font-family: inherit; font-weight: 700; }
+.sk-cat { padding: 0 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; background: #232d3d; color: #cbd5e1; }
+.sk-cat.cat-attack { background: rgba(255,107,107,0.16); color: #ff9a9a; }
+.sk-cat.cat-defense { background: rgba(63,182,200,0.16); color: #7fd8e6; }
+.sk-cat.cat-move { background: rgba(242,208,75,0.16); color: #f2d04b; }
+.sk-cat.cat-stealth { background: rgba(167,139,250,0.18); color: #c4b5fd; }
+.sk-switch { flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--muted); }
+.sk-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sk-track { position: relative; width: 38px; height: 22px; border-radius: 999px; background: #2b3546; border: 1px solid #3a4659; transition: background 0.12s; }
+.sk-track i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #cbd5e1; transition: transform 0.12s, background 0.12s; }
+.sk-switch input:checked + .sk-track { background: rgba(63,182,139,0.35); border-color: var(--accent); }
+.sk-switch input:checked + .sk-track i { transform: translateX(16px); background: var(--accent); }
+.sk-switch input:focus-visible + .sk-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sk-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sk-field { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.sk-field > label { font-size: 0.78rem; color: var(--muted); }
+.sk-stepper { display: flex; align-items: center; }
+/* 입력칸 오른쪽에 ＋·−가 이어 붙고, 단위는 그 오른쪽에 둔다 */
+.sk-stepper button { flex: none; width: 34px; height: 36px; padding: 0; font-size: 1.05rem; line-height: 1; border-radius: 0; margin: 0 0 0 -1px; }
+.sk-stepper button:nth-of-type(2) { border-radius: 0 8px 8px 0; }
+.sk-stepper input { flex: 1; min-width: 0; width: 100%; height: 36px; text-align: right; border-radius: 8px 0 0 8px; margin: 0; font-variant-numeric: tabular-nums; position: relative; z-index: 1; }
+.sk-stepper input:focus { z-index: 2; }
+.sk-unit { flex: none; margin-left: 8px; min-width: 2.2em; font-size: 0.8rem; color: var(--muted); }
+.sk-field.bad input { border-color: #ff7a7a; }
+.sk-hint { display: flex; gap: 10px; flex-wrap: wrap; min-height: 1.1em; font-size: 0.76rem; }
+.sk-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--line); }
+.sk-foot .muted { margin-right: auto; }
+@media (max-width: 760px) {
+  .sk-list { grid-template-columns: 1fr; }
+  .sk-toolbar { gap: 8px; }
+  .sk-toolbar-actions { width: 100%; }
+  .sk-toolbar-actions button { flex: 1; }
+}

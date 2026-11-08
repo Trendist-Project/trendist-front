@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
-  adminApi, resumeSession,
+  adminApi, api, resumeSession,
   type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminSkill, type AdminShareStats, type AdminStatus,
 } from '../api/client';
 import { ADMIN_COUNTRIES, getAdminCountry, setAdminCountry, type AdminCountry } from '../api/adminCountry';
@@ -16,7 +16,7 @@ import { SpectateTab } from './SpectateTab';
 import { AiCommentsTab } from './AiCommentsTab';
 import { UsersTab } from './UsersTab';
 import { MarkupEditor } from './MarkupEditor';
-import { successToast } from '../ui/toast';
+import { confirmToast, successToast } from '../ui/toast';
 import { adminConfirm, errMsg, fmt } from './format';
 
 /**
@@ -317,80 +317,172 @@ function ShareTab() {
 
 // ---------------------------------------------------------------- 설정(13.3)
 
-/** 스킬 설정(13.3, 4.33): 스킬마다 쿨타임·해금 레벨·사용 여부를 따로 고친다. 저장하면 바로 DB에 들어가고 게임 방에는 1초 안에 반영된다 */
-const SKILL_NAMES: Record<string, string> = { shield: '🛡 방패', hook: '🪝 갈고리', shockwave: '💥 충격파', stealth: '👻 은신', dash: '⚡ 대시' };
+/**
+ * 스킬 설정(13.3, 4.33): 스킬마다 쿨타임·해금 레벨·사용 여부를 따로 고친다. 저장하면 바로 DB에 들어가고 게임 방에는 1초 안에 반영된다.
+ * 카드마다 −/＋로 조금씩 바꾸거나 직접 입력하고(범위를 벗어나면 그 자리에서 알려 저장을 막는다), 바꾼 카드는 노랗게 표시한다.
+ * [모두 저장]으로 바뀐 것을 한꺼번에 저장하고, 사용 여부는 스위치로 바로 바뀐다(끌 때는 한 번 묻는다).
+ */
+const SKILL_NAMES: Record<string, string> = { shield: '방패', hook: '갈고리', shockwave: '충격파', stealth: '은신', dash: '대시' };
+const SKILL_CATEGORY: Record<string, string> = { MOVE: '이동', ATTACK: '공격', DEFENSE: '방어', STEALTH: '은신' };
+const COOLDOWN_MAX = 3600, LEVEL_MAX = 100;
+const keyLabel = (code: string) => code.replace(/^Digit/, '').replace(/^Key/, '');
+type SkillDraft = { cd?: string; lv?: string };
+
+function checkCooldown(v: string): string | null {
+  if (v.trim() === '') return '쿨타임을 입력해 주세요';
+  const n = Number(v);
+  if (Number.isNaN(n)) return '숫자로 입력해 주세요';
+  if (n < 0 || n > COOLDOWN_MAX) return `0~${COOLDOWN_MAX}초로 정해 주세요`;
+  return null;
+}
+function checkLevel(v: string): string | null {
+  if (v.trim() === '') return '해금 레벨을 입력해 주세요';
+  const n = Number(v);
+  if (!Number.isInteger(n)) return '정수로 입력해 주세요';
+  if (n < 1 || n > LEVEL_MAX) return `1~${LEVEL_MAX}레벨로 정해 주세요`;
+  return null;
+}
+
 function SkillsTab() {
   const [items, setItems] = useState<AdminSkill[] | null>(null);
-  const [draft, setDraft] = useState<Record<string, { cd?: string; lv?: string }>>({});
+  const [draft, setDraft] = useState<Record<string, SkillDraft>>({});
   const [msg, setMsg] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [needExp, setNeedExp] = useState<Record<number, number>>({}); // 레벨 → 필요 누적 EXP(읽기 전용 안내)
   useEffect(() => { adminApi.skills().then(setItems).catch(() => setItems([])); }, []);
+  useEffect(() => { api.allLevels().then((l) => setNeedExp(Object.fromEntries(l.map((x) => [x.level, x.requiredExp])))).catch(() => { /* 안내만 빠진다 */ }); }, []);
 
-  const patch = async (s: AdminSkill, body: { cooldownSeconds?: number; requiredLevel?: number; enabled?: boolean }, done: string) => {
+  const valueOf = (s: AdminSkill) => { const d = draft[s.code] ?? {}; return { cd: d.cd ?? String(s.cooldownSeconds), lv: d.lv ?? String(s.requiredLevel) }; };
+  const errorsOf = (s: AdminSkill) => { const v = valueOf(s); return { cd: checkCooldown(v.cd), lv: checkLevel(v.lv) }; };
+  const changedOf = (s: AdminSkill) => { const v = valueOf(s); return Number(v.cd) !== s.cooldownSeconds || Number(v.lv) !== s.requiredLevel; };
+  const dirty = (items ?? []).filter(changedOf);
+  const blocked = dirty.filter((s) => { const e = errorsOf(s); return e.cd || e.lv; });
+
+  const set = (code: string, patch: SkillDraft) => setDraft((d) => ({ ...d, [code]: { ...d[code], ...patch } }));
+  const step = (s: AdminSkill, field: 'cd' | 'lv', delta: number) => {
+    const cur = Number(valueOf(s)[field]);
+    const base = Number.isNaN(cur) ? 0 : cur;
+    const next = field === 'cd' ? Math.min(COOLDOWN_MAX, Math.max(0, Math.round((base + delta) * 100) / 100)) : Math.min(LEVEL_MAX, Math.max(1, Math.round(base + delta)));
+    set(s.code, { [field]: String(next) });
+  };
+  const revert = (code: string) => { setDraft((d) => { const n = { ...d }; delete n[code]; return n; }); setMsg((m) => { const { [code]: _, ...rest } = m; return rest; }); };
+
+  const patch = async (s: AdminSkill, body: { cooldownSeconds?: number; requiredLevel?: number; enabled?: boolean }): Promise<boolean> => {
     try {
       const updated = await adminApi.updateSkill(s.code, body);
       setItems((l) => l?.map((x) => (x.code === s.code ? updated : x)) ?? null);
-      setDraft((d) => { const n = { ...d }; delete n[s.code]; return n; });
-      setMsg((m) => { const { [s.code]: _, ...rest } = m; return rest; });
-      successToast(`${SKILL_NAMES[s.code] ?? s.code} ${done}(1초 안에 게임에 반영)`);
+      revert(s.code);
+      return true;
     } catch (e) {
       setMsg((m) => ({ ...m, [s.code]: errMsg(e) }));
+      return false;
     }
   };
-  const save = (s: AdminSkill) => {
-    const d = draft[s.code] ?? {};
+  const saveOne = async (s: AdminSkill) => {
+    const v = valueOf(s), e = errorsOf(s);
+    if (e.cd || e.lv) return;
     const body: { cooldownSeconds?: number; requiredLevel?: number } = {};
-    if (d.cd !== undefined && d.cd.trim() !== '' && Number(d.cd) !== s.cooldownSeconds) body.cooldownSeconds = Number(d.cd);
-    if (d.lv !== undefined && d.lv.trim() !== '' && Number(d.lv) !== s.requiredLevel) body.requiredLevel = Number(d.lv);
-    if (Object.keys(body).length === 0) return;
-    if ((body.cooldownSeconds !== undefined && Number.isNaN(body.cooldownSeconds)) || (body.requiredLevel !== undefined && Number.isNaN(body.requiredLevel))) {
-      setMsg((m) => ({ ...m, [s.code]: '숫자로 입력해 주세요' })); return;
-    }
-    void patch(s, body, '설정을 저장했어요');
+    if (Number(v.cd) !== s.cooldownSeconds) body.cooldownSeconds = Number(v.cd);
+    if (Number(v.lv) !== s.requiredLevel) body.requiredLevel = Number(v.lv);
+    if (await patch(s, body)) successToast(`${SKILL_NAMES[s.code] ?? s.code} 설정을 저장했어요(1초 안에 게임에 반영)`);
   };
+  const saveAll = async () => {
+    if (busy || blocked.length > 0) return;
+    setBusy(true);
+    let ok = 0;
+    for (const s of dirty) {
+      const v = valueOf(s), body: { cooldownSeconds?: number; requiredLevel?: number } = {};
+      if (Number(v.cd) !== s.cooldownSeconds) body.cooldownSeconds = Number(v.cd);
+      if (Number(v.lv) !== s.requiredLevel) body.requiredLevel = Number(v.lv);
+      if (await patch(s, body)) ok++;
+    }
+    setBusy(false);
+    if (ok > 0) successToast(`스킬 ${ok}개를 저장했어요(1초 안에 게임에 반영)`);
+  };
+  const toggle = async (s: AdminSkill, on: boolean) => {
+    if (!on && !(await confirmToast(`${SKILL_NAMES[s.code] ?? s.code} 스킬을 끌까요? 게임의 스킬 목록에서 빠지고 서버도 이 스킬을 받지 않아요.`))) return;
+    if (await patch(s, { enabled: on })) successToast(`${SKILL_NAMES[s.code] ?? s.code} 스킬을 ${on ? '켰어요' : '껐어요'}`);
+  };
+
+  const sorted = [...(items ?? [])].sort((a, b) => a.requiredLevel - b.requiredLevel);
   return (
     <section className="admin-panel">
       <header className="ap-head">
         <div>
           <h2>스킬 설정</h2>
-          <p>스킬마다 쿨타임과 해금 레벨을 따로 고쳐요. 쿨타임은 0~3600초(0이면 쿨타임 없음), 해금 레벨은 1~100이에요. 사용 여부를 끄면 목록에서 빠지고 서버도 그 스킬을 받지 않아요. 저장하면 게임 방에는 1초 안에 반영돼요.</p>
+          <p>스킬마다 쿨타임과 해금 레벨을 따로 고쳐요. 저장하면 게임 방에는 1초 안에 반영돼요. 사용을 끄면 스킬 목록에서 빠지고 서버도 그 스킬을 받지 않아요. 키·아이콘·효과 범위는 코드·설정 탭에서 바꿔요.</p>
         </div>
         {items && <span className="ap-total" role="status"><strong>{items.length}</strong>개</span>}
       </header>
+      <div className="set-toolbar sk-toolbar">
+        {dirty.length > 0
+          ? <span className="set-dirty-note" role="status">저장하지 않은 변경 {dirty.length}개{blocked.length > 0 ? ` · 입력을 고쳐야 저장돼요(${blocked.length}개)` : ''}</span>
+          : <span className="muted small">바꾸면 여기에 표시돼요</span>}
+        <span className="sk-toolbar-actions">
+          <button type="button" disabled={dirty.length === 0 || busy} onClick={() => dirty.forEach((s) => revert(s.code))}>모두 되돌리기</button>
+          <button type="button" className={dirty.length > 0 ? 'primary' : undefined} disabled={dirty.length === 0 || blocked.length > 0 || busy} onClick={saveAll}>
+            {busy ? '저장 중…' : `모두 저장${dirty.length > 0 ? ` (${dirty.length})` : ''}`}
+          </button>
+        </span>
+      </div>
       {items === null ? <p className="muted">불러오는 중…</p> : (
-        <ul className="set-list">
-          {items.map((s) => {
-            const d = draft[s.code] ?? {};
-            const cd = d.cd ?? String(s.cooldownSeconds), lv = d.lv ?? String(s.requiredLevel);
-            const dirty = (d.cd !== undefined && Number(d.cd) !== s.cooldownSeconds) || (d.lv !== undefined && Number(d.lv) !== s.requiredLevel);
+        <ul className="sk-list">
+          {sorted.map((s) => {
+            const v = valueOf(s), e = errorsOf(s), changed = changedOf(s);
+            const lv = Number(v.lv), exp = Number.isInteger(lv) ? needExp[lv] : undefined;
+            const name = SKILL_NAMES[s.code] ?? s.code;
             return (
-              <li key={s.code} className={`set-row${dirty ? ' dirty' : ''}`}>
-                <div className="set-info">
-                  <code>{s.code}</code> <strong>{SKILL_NAMES[s.code] ?? s.icon ?? s.code}</strong>
-                  <div className="set-meta">
-                    <span>종류 <b>{s.category}</b></span>
-                    <span>기본 키 <b>{s.defaultKey}</b></span>
-                    <span>기본 쿨타임 <b>{s.defaultCooldown}초</b></span>
-                    <span>수정 {fmt(s.updatedAt)}</span>
+              <li key={s.code} className={`sk-card${changed ? ' dirty' : ''}${s.enabled ? '' : ' off'}`}>
+                <div className="sk-head">
+                  <span className="sk-icon" aria-hidden="true">{s.icon}</span>
+                  <div className="sk-title">
+                    <strong>{name}</strong>
+                    <span className="sk-sub"><code>{s.code}</code><span className={`sk-cat cat-${s.category.toLowerCase()}`}>{SKILL_CATEGORY[s.category] ?? s.category}</span><kbd>{keyLabel(s.defaultKey)}</kbd></span>
+                  </div>
+                  <label className="sk-switch" title={s.enabled ? '사용 중 — 끄면 게임에서 빠져요' : '꺼짐 — 켜면 게임에 나와요'}>
+                    <input type="checkbox" role="switch" checked={s.enabled} onChange={(ev) => void toggle(s, ev.target.checked)} aria-label={`${name} 사용`} />
+                    <span className="sk-track" aria-hidden="true"><i /></span>
+                    <span className="sk-switch-text">{s.enabled ? '사용' : '꺼짐'}</span>
+                  </label>
+                </div>
+                <div className="sk-fields">
+                  <div className={`sk-field${e.cd ? ' bad' : ''}`}>
+                    <label htmlFor={`cd-${s.code}`}>쿨타임</label>
+                    <div className="sk-stepper">
+                      <input id={`cd-${s.code}`} value={v.cd} inputMode="decimal" onChange={(ev) => set(s.code, { cd: ev.target.value })}
+                             onKeyDown={(ev) => { if (ev.key === 'Enter') void saveOne(s); }} aria-invalid={!!e.cd} />
+                      <button type="button" onClick={() => step(s, 'cd', 1)} aria-label={`${name} 쿨타임 1초 늘리기`}>＋</button>
+                      <button type="button" onClick={() => step(s, 'cd', -1)} aria-label={`${name} 쿨타임 1초 줄이기`}>−</button>
+                      <span className="sk-unit">초</span>
+                    </div>
+                    <div className="sk-hint">
+                      {e.cd ? <span className="error small">{e.cd}</span> : (
+                        <>
+                          <button type="button" className="set-reset" onClick={() => set(s.code, { cd: '0' })}>없음(0)</button>
+                          {s.cooldownSeconds !== s.defaultCooldown && <button type="button" className="set-reset" onClick={() => set(s.code, { cd: String(s.defaultCooldown) })}>기본 {s.defaultCooldown}초로</button>}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`sk-field${e.lv ? ' bad' : ''}`}>
+                    <label htmlFor={`lv-${s.code}`}>해금 레벨</label>
+                    <div className="sk-stepper">
+                      <input id={`lv-${s.code}`} value={v.lv} inputMode="numeric" onChange={(ev) => set(s.code, { lv: ev.target.value })}
+                             onKeyDown={(ev) => { if (ev.key === 'Enter') void saveOne(s); }} aria-invalid={!!e.lv} />
+                      <button type="button" onClick={() => step(s, 'lv', 1)} aria-label={`${name} 해금 레벨 올리기`}>＋</button>
+                      <button type="button" onClick={() => step(s, 'lv', -1)} aria-label={`${name} 해금 레벨 내리기`}>−</button>
+                      <span className="sk-unit">레벨</span>
+                    </div>
+                    <div className="sk-hint">{e.lv ? <span className="error small">{e.lv}</span> : <span className="muted small">{s.requiredLevel <= 1 && Number(v.lv) <= 1 ? '처음부터 쓸 수 있어요' : exp !== undefined ? `필요 누적 EXP ${exp.toLocaleString()}` : ''}</span>}</div>
                   </div>
                 </div>
-                <div className="set-edit-col">
-                  <form className="set-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
-                    <label className="skill-field">쿨타임
-                      <input value={cd} inputMode="decimal" onChange={(e) => setDraft((x) => ({ ...x, [s.code]: { ...x[s.code], cd: e.target.value } }))} aria-label={`${s.code} 쿨타임(초)`} />
-                      <span className="set-unit" aria-hidden="true">초</span>
-                    </label>
-                    <label className="skill-field">해금 레벨
-                      <input value={lv} inputMode="numeric" onChange={(e) => setDraft((x) => ({ ...x, [s.code]: { ...x[s.code], lv: e.target.value } }))} aria-label={`${s.code} 해금 레벨`} />
-                    </label>
-                    <button type="submit" className={dirty ? 'primary' : undefined} disabled={!dirty}>저장</button>
-                  </form>
-                  <label className="skill-enabled">
-                    <input type="checkbox" checked={s.enabled} onChange={(e) => void patch(s, { enabled: e.target.checked }, e.target.checked ? '사용을 켰어요' : '사용을 껐어요')} /> 사용
-                  </label>
-                  {(s.cooldownSeconds !== s.defaultCooldown) && !dirty && (
-                    <button type="button" className="set-reset" onClick={() => void patch(s, { cooldownSeconds: s.defaultCooldown }, '쿨타임을 기본값으로 되돌렸어요')}>쿨타임 기본값({s.defaultCooldown}초)으로</button>
-                  )}
-                  {msg[s.code] && <div className="error small">{msg[s.code]}</div>}
+                <div className="sk-foot">
+                  <span className="muted small">수정 {fmt(s.updatedAt)}</span>
+                  {msg[s.code] && <span className="error small" role="alert">{msg[s.code]}</span>}
+                  <span className="sk-foot-actions">
+                    <button type="button" disabled={!changed || busy} onClick={() => revert(s.code)}>되돌리기</button>
+                    <button type="button" className={changed ? 'primary' : undefined} disabled={!changed || !!e.cd || !!e.lv || busy} onClick={() => void saveOne(s)}>저장</button>
+                  </span>
                 </div>
               </li>
             );
