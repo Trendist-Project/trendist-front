@@ -25,6 +25,7 @@ import { BottomBar } from './BottomBar';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 import { LayersProvider, useLayer } from './layers';
+import { useMultiTouchClicks } from './touchPress';
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
 
@@ -173,6 +174,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     else void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   }, []);
   const toolsLayer = useLayer('tools');
+  useMultiTouchClicks(); // 조이스틱을 쥔 채 다른 손가락으로 누르는 모든 화면 버튼이 눌리게
   // 메뉴·리더보드·조작 설명을 열면 도구 덩어리를 맨 위로(채팅·이모트보다 앞)
   useEffect(() => { if (menuOpen || showHelp || showLeaderboard) toolsLayer.front(); }, [menuOpen, showHelp, showLeaderboard]); // eslint-disable-line react-hooks/exhaustive-deps
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t, tOr } from '../i18n';
 import type { SkillId } from '../game/protocol';
 import type { SkillInfo } from '../api/types';
@@ -21,7 +21,6 @@ export function SkillBar({ skills, level, cooldowns, dash, lockedUntil, onUse, o
 }) {
   // 지금 시각은 그리는 순간마다 새로 잰다. 상태로 들고 있으면 쿨타임이 없던 동안 낡은 값이 남아서, 쓴 직후에 30초가 31초로 보였다
   const [, setTick] = useState(0);
-  const touchFired = useRef(false); // 터치로 이미 썼으면 뒤따르는 click은 무시
   const now = performance.now();
   const hooked = lockedUntil !== null && now < lockedUntil; // 갈고리에 잡혀 끌려오는 동안은 모든 스킬이 잠깐 못 쓴다(4.33)
   const busy = hooked || (dash !== null && dash.readyAt > now) || Object.values(cooldowns).some((r) => r !== undefined && r > now);
@@ -48,9 +47,7 @@ export function SkillBar({ skills, level, cooldowns, dash, lockedUntil, onUse, o
             <button type="button" className={`skill-btn cat-${cat}${isDash ? ' dash-btn' : ''}${locked ? ' locked' : hooked ? ' hooked' : active ? ' active' : left > 0 ? ' cooling' : ''}`}
                     aria-disabled={hooked || undefined}
                     aria-label={`${name}${key ? ` (${key})` : ''}. ${locked ? t('gamescreen.skillLockedAria', { n: s.requiredLevel }) + ' ' : ''}${desc}`}
-                    // 조이스틱을 쥔 채 다른 손가락으로 누르면 브라우저가 click을 만들지 않는다(멀티터치). 터치는 누르는 즉시 쓰고, 뒤따르는 click은 건너뛴다
-                    onPointerDown={(e) => { if (e.pointerType !== 'touch') return; touchFired.current = true; if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}
-                    onClick={(e) => { e.currentTarget.blur(); if (touchFired.current) { touchFired.current = false; return; } if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}>
+                    onClick={(e) => { e.currentTarget.blur(); if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}>
               <span className="skill-icon">{s.icon}</span>
               {key && <kbd>{key}</kbd>}
               {hooked && !locked ? <span className="skill-hooked" aria-hidden="true">🪝</span>
