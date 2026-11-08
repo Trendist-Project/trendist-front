@@ -4,6 +4,7 @@ export default {
   ping_slow: "A bit slow ({ms}ms): skills and collisions may lag",
   ping_bad: "Unstable ({ms}ms): check your network",
   fullscreen: 'Full screen',
+  fullscreenExit: 'Exit full screen',
   barFold: 'Hide my info',
   barUnfold: 'Show my info',
   killTitle: '💀 You took them down!',

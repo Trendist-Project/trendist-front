@@ -4,6 +4,7 @@ export default {
   ping_slow: "조금 느려요 ({ms}ms): 스킬·충돌 반응이 늦을 수 있어요",
   ping_bad: "불안정해요 ({ms}ms): 네트워크를 확인해 주세요",
   fullscreen: '전체 화면',
+  fullscreenExit: '전체 화면 끄기',
   barFold: '내 정보 접기',
   barUnfold: '내 정보 펼치기',
   killTitle: '💀 쓰러뜨렸어요!',

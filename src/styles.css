@@ -489,7 +489,7 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .hud { flex-direction: row; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 10px; }
   /* 오른쪽 위에는 ☰(메뉴)만. 나머지는 메뉴 안에 이름과 함께 */
   .arena-tools { max-width: none; }
-  .arena-tools .tool-row > :not(.menu-toggle):not(.side-toggle) { display: none; }
+  .arena-tools .tool-row > :not(.menu-toggle):not(.side-toggle):not(.fs-toggle) { display: none; }
   .arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
   .arena-tools .tool-row { gap: 6px; }
   /* 메뉴는 아래 요소(리더보드 등)를 밀어내지 않고 도구 줄 아래에 겹쳐 뜬다. 화면보다 길면 스크롤 */
@@ -987,7 +987,7 @@ button.link-back:hover { color: var(--text); }
 
 /* 모바일: PC와 같은 구성(초상화·레벨·경험치 | 스킬 | 이모트)을 한 줄로 줄여 아래에 둔다. 미니맵은 왼쪽 위로 옮겨 아래·가운데를 조이스틱 자리로 비운다 */
 .hud-me { display: none; }
-.side-toggle { display: none; }
+.side-toggle, .fs-toggle { display: none; }
 @media (max-width: 760px) and (orientation: portrait) {
   .hud-me { display: none; } /* 유행도는 아래 명령 줄의 경험치 밑으로 옮겼다 */
   .arena-wrap { --tools-bottom: 206px; }
@@ -1021,7 +1021,7 @@ button.link-back:hover { color: var(--text); }
   .target-card { left: 8px; top: 50px; }
   .arena-wrap.with-minimap .target-card { top: calc(var(--minimap-size, 96px) + 52px); }
   /* 오른쪽 위: 검색·보관함·메뉴 */
-  .arena-tools .tool-row > .side-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.05rem; }
+  .arena-tools .tool-row > .side-toggle, .arena-tools .tool-row > .fs-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.05rem; }
 }
 
 /* ---------------------------------------------------------------- 가로 모드 폰
@@ -1150,7 +1150,7 @@ button.link-back:hover { color: var(--text); }
 
 /* 가로 모드 오른쪽 위: 검색(🔍)·보관함(📦) 버튼을 메뉴(☰) 버튼과 같은 크기로 */
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
-  .arena-tools .tool-row > .side-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; font-size: 1.15rem; }
+  .arena-tools .tool-row > .side-toggle, .arena-tools .tool-row > .fs-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; font-size: 1.15rem; }
 }
 
 /* 가로 모드 아래 영역(반응형): [💬 아이콘] [명령 줄] [미니맵]이 한 줄로 놓인다. 명령 줄은 아이콘 오른쪽에서 시작해 미니맵 앞까지 남는 폭을 채우고,
@@ -1347,3 +1347,6 @@ button.link-back:hover { color: var(--text); }
 .lb-resize { display: grid; place-items: center; height: 14px; margin: 2px -4px -4px; cursor: ns-resize; touch-action: none; border-radius: 0 0 10px 10px; }
 .lb-resize i { width: 34px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.35); }
 .lb-resize:hover i, .lb-resize:focus-visible i { background: rgba(255,255,255,0.7); }
+
+/* 전체 화면 버튼(모바일 위쪽, 🔍 왼쪽): 켜져 있으면 초록 윤곽 */
+.fs-toggle[aria-pressed="true"] { border-color: var(--accent); color: #d8fff0; background: rgba(63, 182, 139, 0.18); }

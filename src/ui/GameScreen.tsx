@@ -26,6 +26,7 @@ import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 import { LayersProvider, useLayer } from './layers';
 import { useMultiTouchClicks } from './touchPress';
+import { canFullscreen as canFullscreenSupported, enterFullscreen, setAutoFullscreenPref } from '../fullscreen';
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
 
@@ -162,7 +163,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [pingMs, setPingMs] = useState<number | null>(null); // 서버와의 왕복 시간(ms, 부드럽게). 연결이 없으면 null
   useEffect(() => { if (status !== 'open') setPingMs(null); }, [status]); // 끊기면 옛 값을 버린다
   // 전체 화면(안드로이드 크롬 등): 주소창을 가리고 화면을 넓힌다. 아이폰 사파리는 지원하지 않아 메뉴에 안 보인다(홈 화면에 추가하면 주소창 없이 열린다)
-  const canFullscreen = typeof document !== 'undefined' && !!document.fullscreenEnabled && !!document.documentElement.requestFullscreen;
+  const canFullscreen = canFullscreenSupported();
   const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement);
   useEffect(() => {
     const on = () => setIsFullscreen(!!document.fullscreenElement);
@@ -170,8 +171,8 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     return () => document.removeEventListener('fullscreenchange', on);
   }, []);
   const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+    if (document.fullscreenElement) { setAutoFullscreenPref(false); void document.exitFullscreen().catch(() => {}); } // 직접 끄면 다음부터 자동으로 켜지 않는다
+    else { setAutoFullscreenPref(true); enterFullscreen(); }
   }, []);
   const toolsLayer = useLayer('tools');
   useMultiTouchClicks(); // 조이스틱을 쥔 채 다른 손가락으로 누르는 모든 화면 버튼이 눌리게
@@ -876,6 +877,10 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                     aria-label={showHelp ? t('gamescreen.helpClose') : t('gamescreen.helpOpen')}>?</button>
             {/* 모바일: 위 버튼들은 숨기고(🔍만 남김) 이 메뉴에 이름과 함께 모은다 */}
  {/* 모바일: 메뉴 왼쪽에 검색·보관함 버튼(PC는 오른쪽 패널이 있어서 숨김) */}
+            {canFullscreen && (
+              <button className="fs-toggle" onClick={toggleFullscreen} aria-pressed={isFullscreen}
+                      aria-label={isFullscreen ? t('gamescreen.fullscreenExit') : t('gamescreen.fullscreen')} title={isFullscreen ? t('gamescreen.fullscreenExit') : t('gamescreen.fullscreen')}>{isFullscreen ? '🗗' : '⛶'}</button>
+            )}
             <button className="side-toggle" onClick={() => setSideRequest({ tab: 'search', key: Date.now() })} aria-label={t('side.tabSearch')} title={t('side.tabSearch')}>🔍</button>
             <button className="side-toggle" onClick={() => setSideRequest({ tab: 'mine', key: Date.now() })} aria-label={t('side.tabMine')} title={t('side.tabMine')}>📦</button>
             <button className="menu-toggle" aria-label={noticeDot ? t('gamescreen.menuAriaNew') : t('gamescreen.menu')} aria-expanded={menuOpen} aria-controls="mobile-menu"

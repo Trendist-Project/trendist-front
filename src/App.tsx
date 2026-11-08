@@ -1,3 +1,4 @@
+import { enterFullscreenOnStart } from './fullscreen';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiFailure, resumeSession } from './api/client';
 import { takeGoogleResult } from './googleAuth';
@@ -44,6 +45,7 @@ export function App() {
   }
 
   async function start() {
+    enterFullscreenOnStart(); // 누르는 순간(제스처)에 켜야 허락된다. 모바일만, 컴퓨터는 켜지 않는다
     setError(null);
     try {
       // 로그인한 계정(갱신 토큰)이나 재방문 게스트(방문자 ID)면 그대로 이어 가고, 처음이면 새 게스트로 시작한다
