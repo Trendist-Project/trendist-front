@@ -37,6 +37,6 @@ export default {
   reportComment: '댓글 신고',
   reportChat: '채팅 신고',
   reportReason: '신고 사유',
-  reportOnce: '같은 글은 한 번만, 같은 플레이어는 하루에 한 번 신고할 수 있어요. 관리자가 확인한 뒤 처리해요.',
+  reportOnce: '같은 대상은 하루에 한 번만 신고할 수 있어요. 관리자가 확인한 뒤 처리해요.',
   reportSubmit: '신고하기',
 };

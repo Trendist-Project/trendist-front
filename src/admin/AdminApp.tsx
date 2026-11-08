@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   adminApi, resumeSession,
-  type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminShareStats, type AdminStatus,
+  type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminSkill, type AdminShareStats, type AdminStatus,
 } from '../api/client';
 import { ADMIN_COUNTRIES, getAdminCountry, setAdminCountry, type AdminCountry } from '../api/adminCountry';
 import { RichText } from '../ui/RichText';
@@ -23,8 +23,8 @@ import { adminConfirm, errMsg, fmt } from './format';
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
  * 서버가 /api/admin/**를 ROLE_ADMIN(users.role = ADMIN)만 받는다. 권한이 없으면 접근할 수 없다는 문구만 보여 준다.
  */
-type Tab = 'dashboard' | 'stats' | 'spectate' | 'users' | 'keywords' | 'ai' | 'add' | 'reports' | 'notices' | 'emergency' | 'guides' | 'share' | 'integrations' | 'settings';
-const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['spectate', '관전'], ['users', '사용자'], ['keywords', '키워드'], ['ai', 'AI 설명'], ['add', '일괄 추가·금지'], ['reports', '신고'], ['notices', '공지'], ['emergency', '긴급 안내'], ['guides', '가이드'], ['share', '공유'], ['integrations', '연동'], ['settings', '설정']];
+type Tab = 'dashboard' | 'stats' | 'spectate' | 'users' | 'keywords' | 'ai' | 'add' | 'reports' | 'notices' | 'emergency' | 'guides' | 'share' | 'integrations' | 'skills' | 'settings';
+const TABS: [Tab, string][] = [['dashboard', '대시보드'], ['stats', '통계'], ['spectate', '관전'], ['users', '사용자'], ['keywords', '키워드'], ['ai', 'AI 설명'], ['add', '일괄 추가·금지'], ['reports', '신고'], ['notices', '공지'], ['emergency', '긴급 안내'], ['guides', '가이드'], ['share', '공유'], ['integrations', '연동'], ['skills', '스킬'], ['settings', '설정']];
 
 
 export function AdminApp() {
@@ -86,6 +86,7 @@ export function AdminApp() {
       {tab === 'guides' && <GuidesTab />}
       {tab === 'share' && <ShareTab />}
       {tab === 'integrations' && <IntegrationsTab />}
+      {tab === 'skills' && <SkillsTab />}
       {tab === 'settings' && <SettingsTab />}
     </main>
   );
@@ -315,6 +316,90 @@ function ShareTab() {
 }
 
 // ---------------------------------------------------------------- 설정(13.3)
+
+/** 스킬 설정(13.3, 4.33): 스킬마다 쿨타임·해금 레벨·사용 여부를 따로 고친다. 저장하면 바로 DB에 들어가고 게임 방에는 1초 안에 반영된다 */
+const SKILL_NAMES: Record<string, string> = { shield: '🛡 방패', hook: '🪝 갈고리', shockwave: '💥 충격파', stealth: '👻 은신', dash: '⚡ 대시' };
+function SkillsTab() {
+  const [items, setItems] = useState<AdminSkill[] | null>(null);
+  const [draft, setDraft] = useState<Record<string, { cd?: string; lv?: string }>>({});
+  const [msg, setMsg] = useState<Record<string, string>>({});
+  useEffect(() => { adminApi.skills().then(setItems).catch(() => setItems([])); }, []);
+
+  const patch = async (s: AdminSkill, body: { cooldownSeconds?: number; requiredLevel?: number; enabled?: boolean }, done: string) => {
+    try {
+      const updated = await adminApi.updateSkill(s.code, body);
+      setItems((l) => l?.map((x) => (x.code === s.code ? updated : x)) ?? null);
+      setDraft((d) => { const n = { ...d }; delete n[s.code]; return n; });
+      setMsg((m) => { const { [s.code]: _, ...rest } = m; return rest; });
+      successToast(`${SKILL_NAMES[s.code] ?? s.code} ${done}(1초 안에 게임에 반영)`);
+    } catch (e) {
+      setMsg((m) => ({ ...m, [s.code]: errMsg(e) }));
+    }
+  };
+  const save = (s: AdminSkill) => {
+    const d = draft[s.code] ?? {};
+    const body: { cooldownSeconds?: number; requiredLevel?: number } = {};
+    if (d.cd !== undefined && d.cd.trim() !== '' && Number(d.cd) !== s.cooldownSeconds) body.cooldownSeconds = Number(d.cd);
+    if (d.lv !== undefined && d.lv.trim() !== '' && Number(d.lv) !== s.requiredLevel) body.requiredLevel = Number(d.lv);
+    if (Object.keys(body).length === 0) return;
+    if ((body.cooldownSeconds !== undefined && Number.isNaN(body.cooldownSeconds)) || (body.requiredLevel !== undefined && Number.isNaN(body.requiredLevel))) {
+      setMsg((m) => ({ ...m, [s.code]: '숫자로 입력해 주세요' })); return;
+    }
+    void patch(s, body, '설정을 저장했어요');
+  };
+  return (
+    <section className="admin-panel">
+      <header className="ap-head">
+        <div>
+          <h2>스킬 설정</h2>
+          <p>스킬마다 쿨타임과 해금 레벨을 따로 고쳐요. 쿨타임은 0~3600초(0이면 쿨타임 없음), 해금 레벨은 1~100이에요. 사용 여부를 끄면 목록에서 빠지고 서버도 그 스킬을 받지 않아요. 저장하면 게임 방에는 1초 안에 반영돼요.</p>
+        </div>
+        {items && <span className="ap-total" role="status"><strong>{items.length}</strong>개</span>}
+      </header>
+      {items === null ? <p className="muted">불러오는 중…</p> : (
+        <ul className="set-list">
+          {items.map((s) => {
+            const d = draft[s.code] ?? {};
+            const cd = d.cd ?? String(s.cooldownSeconds), lv = d.lv ?? String(s.requiredLevel);
+            const dirty = (d.cd !== undefined && Number(d.cd) !== s.cooldownSeconds) || (d.lv !== undefined && Number(d.lv) !== s.requiredLevel);
+            return (
+              <li key={s.code} className={`set-row${dirty ? ' dirty' : ''}`}>
+                <div className="set-info">
+                  <code>{s.code}</code> <strong>{SKILL_NAMES[s.code] ?? s.icon ?? s.code}</strong>
+                  <div className="set-meta">
+                    <span>종류 <b>{s.category}</b></span>
+                    <span>기본 키 <b>{s.defaultKey}</b></span>
+                    <span>기본 쿨타임 <b>{s.defaultCooldown}초</b></span>
+                    <span>수정 {fmt(s.updatedAt)}</span>
+                  </div>
+                </div>
+                <div className="set-edit-col">
+                  <form className="set-edit" onSubmit={(e: FormEvent) => { e.preventDefault(); save(s); }}>
+                    <label className="skill-field">쿨타임
+                      <input value={cd} inputMode="decimal" onChange={(e) => setDraft((x) => ({ ...x, [s.code]: { ...x[s.code], cd: e.target.value } }))} aria-label={`${s.code} 쿨타임(초)`} />
+                      <span className="set-unit" aria-hidden="true">초</span>
+                    </label>
+                    <label className="skill-field">해금 레벨
+                      <input value={lv} inputMode="numeric" onChange={(e) => setDraft((x) => ({ ...x, [s.code]: { ...x[s.code], lv: e.target.value } }))} aria-label={`${s.code} 해금 레벨`} />
+                    </label>
+                    <button type="submit" className={dirty ? 'primary' : undefined} disabled={!dirty}>저장</button>
+                  </form>
+                  <label className="skill-enabled">
+                    <input type="checkbox" checked={s.enabled} onChange={(e) => void patch(s, { enabled: e.target.checked }, e.target.checked ? '사용을 켰어요' : '사용을 껐어요')} /> 사용
+                  </label>
+                  {(s.cooldownSeconds !== s.defaultCooldown) && !dirty && (
+                    <button type="button" className="set-reset" onClick={() => void patch(s, { cooldownSeconds: s.defaultCooldown }, '쿨타임을 기본값으로 되돌렸어요')}>쿨타임 기본값({s.defaultCooldown}초)으로</button>
+                  )}
+                  {msg[s.code] && <div className="error small">{msg[s.code]}</div>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function SettingsTab() {
   const [items, setItems] = useState<AdminSetting[] | null>(null);

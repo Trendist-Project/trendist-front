@@ -1,4 +1,8 @@
 export default {
+  ping_good: "Smooth ({ms}ms)",
+  ping_ok: "OK ({ms}ms)",
+  ping_slow: "A bit slow ({ms}ms): skills and collisions may lag",
+  ping_bad: "Unstable ({ms}ms): check your network",
   fullscreen: 'Full screen',
   barFold: 'Hide my info',
   barUnfold: 'Show my info',

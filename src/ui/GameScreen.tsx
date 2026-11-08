@@ -93,6 +93,13 @@ function saveHelpPref(open: boolean) {
   try { localStorage.setItem(HELP_KEY, open ? '1' : '0'); } catch { /* 무시 */ }
 }
 
+/**
+ * 서버와의 왕복 시간(ms)을 네 단계로 나눈다. 서버가 초당 20번(50ms) 상태를 보내고 클라이언트가 내 움직임을 미리 그리며 보정하는 구조라
+ * 80ms 안쪽은 차이를 못 느끼고, 150ms까지는 보정으로 자연스럽고, 250ms부터는 스킬·충돌 반응이 눈에 띄게 늦는다.
+ */
+export type PingQuality = 'good' | 'ok' | 'slow' | 'bad';
+export const pingQuality = (ms: number): PingQuality => (ms <= 80 ? 'good' : ms <= 150 ? 'ok' : ms <= 250 ? 'slow' : 'bad');
+
 /** 겹치는 덩어리는 마지막에 손댄 것이 맨 위에 보인다(layers.tsx) */
 export function GameScreen(props: Props) {
   return <LayersProvider><GameScreenInner {...props} /></LayersProvider>;
@@ -151,6 +158,8 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   // 정보 보기 모드(모바일): 켜져 있으면 다음 탭은 이동이 아니라 그 원의 정보를 연다
   const [sideRequest, setSideRequest] = useState<{ tab: 'search' | 'mine'; key: number } | null>(null); // 모바일 메뉴에서 시트를 여는 요청
   const [menuOpen, setMenuOpen] = useState(false); // 모바일 ☰ 메뉴
+  const [pingMs, setPingMs] = useState<number | null>(null); // 서버와의 왕복 시간(ms, 부드럽게). 연결이 없으면 null
+  useEffect(() => { if (status !== 'open') setPingMs(null); }, [status]); // 끊기면 옛 값을 버린다
   // 전체 화면(안드로이드 크롬 등): 주소창을 가리고 화면을 넓힌다. 아이폰 사파리는 지원하지 않아 메뉴에 안 보인다(홈 화면에 추가하면 주소창 없이 열린다)
   const canFullscreen = typeof document !== 'undefined' && !!document.fullscreenEnabled && !!document.documentElement.requestFullscreen;
   const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement);
@@ -265,7 +274,12 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           case 'score':
             setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));
             break;
-          case 'pong': arena.updateRtt(performance.now() - m.t); break;
+          case 'pong': {
+            const ms = performance.now() - m.t;
+            arena.updateRtt(ms);
+            if (Number.isFinite(ms) && ms >= 0 && ms < 5000) setPingMs((p) => (p === null ? Math.round(ms) : Math.round(p * 0.6 + ms * 0.4))); // 튀는 값에 깜빡이지 않게 조금씩 따라간다
+            break;
+          }
           case 'orbs': arena.setOrbs(m.orbs); break;
           case 'orbSpawn': arena.addOrb(m.id, m.x, m.y, m.prize); break;
           case 'orbEaten': arena.eatOrb(m.id, m.e); break;
@@ -489,9 +503,12 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     // PC 좌클릭으로 고른 원(플레이어·봇)을 자동으로 따라간다. 그 원의 지금 위치를 이동 목표로 계속 보낸다(초당 10회).
     // 방향키·우클릭 이동·터치·원이 사라짐·죽음이면 멈춘다
     let followE: number | null = null;
+    // 조이스틱을 쥔 채 다른 손가락으로 고른 원: 조이스틱이 우선이라 쥐고 있는 동안은 따라가지 않고(표시만), 떼면 그 원을 따라간다
+    let followKeep = false;
     const stopFollow = () => {
       if (followE === null) return;
       followE = null;
+      followKeep = false;
       followPrev = null;
       setFollowUi(null);
       arena.setFollowTarget(null);
@@ -505,6 +522,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     const FOLLOW_SLOW_ZONE = 120, FOLLOW_REF_SPEED = 240;
     const followTick = () => {
       if (followE === null) return;
+      if (joy && joy.armed && (joy.dx || joy.dy)) return; // 조이스틱으로 움직이는 중에는 따라가기 명령이 방향 입력을 덮어쓰지 않게 건너뛴다
       const p = ready ? arena.followPosition(followE) : null;
       if (!p) { stopFollow(); return; }
       const now = performance.now();
@@ -535,6 +553,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
       setTargetTouch((n) => n + 1);
       if (hit === followE) { stopFollow(); return; }
       followE = hit;
+      followKeep = !!(joy && joy.armed); // 조이스틱을 쥔 채 골랐다면 조이스틱을 움직여도 취소하지 않는다
       setFollowUi(hit);
       arena.setFollowTarget(hit);
       followTick();
@@ -554,7 +573,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         selectTarget(e.clientX, e.clientY, MOUSE_TOL); // 클릭: 따라가기 + 왼쪽 위 정보 카드
         return;
       }
-      stopFollow(); // 직접 움직이면(우클릭·터치) 자동 따라가기는 멈춘다
+      if (e.pointerType !== 'touch') stopFollow(); // 직접 움직이면(우클릭) 자동 따라가기는 멈춘다. 터치는 탭일 수도 있어서 조이스틱이 켜질 때(끌기) 멈춘다
       try { canvas.setPointerCapture(e.pointerId); } catch { /* 이미 뗐다 */ }
       if (e.pointerType === 'touch') {
         // 짧게 톡 누르고 떼면 원 고르기(따라가기)다. 조이스틱을 쥔 채 다른 손가락으로 찍어도 된다. 대시는 ⚡ 버튼으로 쓴다
@@ -590,7 +609,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         const dx = Math.round(vx * k * 100) / 100, dy = Math.round(vy * k * 100) / 100;
         if (dx === joy.dx && dy === joy.dy) return;
         joy.dx = dx; joy.dy = dy;
-        if (dx || dy) stopFollow(); // 조이스틱으로 직접 움직이면 자동 따라가기는 멈춘다
+        if ((dx || dy) && !followKeep) stopFollow(); // 조이스틱으로 직접 움직이면 자동 따라가기는 멈춘다(조이스틱을 쥔 채 고른 원은 예외)
         drawJoy();
         sendDir();
         return;
@@ -603,7 +622,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
       if (tp && e.type === 'pointerup' && performance.now() - tp.t < TAP_MS && Math.hypot(e.clientX - tp.x, e.clientY - tp.y) < TAP_SLOP) {
         selectTarget(tp.x, tp.y, TOUCH_TOL); // 짧은 탭: 원 고르기(따라가기 + 왼쪽 위 정보 카드)
       }
-      if (joy && e.pointerId === joy.pointerId) { endJoy(); sendDir(); return; } // 떼면 그 자리에서 감속해 멈춘다
+      if (joy && e.pointerId === joy.pointerId) { endJoy(); followKeep = false; sendDir(); if (followE !== null) followTick(); return; } // 떼면 그 자리에서 감속해 멈추고, 고른 원이 있으면 그 원을 따라가기 시작한다
       if (hold && e.pointerId === hold.pointerId) hold = null;
     };
     // 우클릭: 브라우저 메뉴 대신 그 자리 원의 정보. 모바일의 길게 누르기 메뉴도 막는다
@@ -808,6 +827,10 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             <span className="hud-long">{t('gamescreen.onlineLong', { online })}</span><span className="hud-short">👥 {online}</span>
             {bots > 0 && <span className="muted"><span className="hud-long">{t('gamescreen.botsLong', { bots })}</span><span className="hud-short"> · 🤖 {bots}</span></span>}
           </span>
+          {pingMs !== null && status === 'open' && (() => {
+            const q = pingQuality(pingMs);
+            return <span className={`hud-ping ping-${q}`} title={t(`gamescreen.ping_${q}`, { ms: pingMs })} aria-label={t(`gamescreen.ping_${q}`, { ms: pingMs })}><i aria-hidden="true" />{pingMs}ms</span>;
+          })()}
           <span className="hud-me">{t('gamescreen.score', { n: fmtNumber(Number(player.currentScore)) })}</span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? t('gamescreen.connecting') : t('gamescreen.reconnecting')}</span>}
         </div>

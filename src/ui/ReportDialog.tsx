@@ -19,7 +19,7 @@ const PLAYER_REASONS = [
 const MEMO_MAX = 200;
 
 interface Props {
-  target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER' | 'PLAYER_ID';
+  target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER'; // PLAYER의 targetId는 플레이어 번호, CHAT은 채팅 메시지 번호
   targetId: number;
   /** 신고하는 글 미리보기(누가 뭐라고 썼는지) */
   preview: string;
@@ -33,7 +33,7 @@ interface Props {
  * 키워드 창 위에 겹쳐 뜨므로 Esc는 이 창만 닫는다(캡처 단계에서 받아 아래 창으로 넘기지 않는다).
  */
 export function ReportDialog({ target, targetId, preview, onDone, onClose }: Props) {
-  const isPlayer = target === 'PLAYER' || target === 'PLAYER_ID';
+  const isPlayer = target === 'PLAYER';
   const reasons = isPlayer ? PLAYER_REASONS : REASONS;
   const [reason, setReason] = useState(reasons[0].value);
   const [memo, setMemo] = useState('');

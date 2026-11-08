@@ -69,7 +69,7 @@ export function PlayerInfoModal({ entityNo, playerId, bot, look, onClose, onOpen
   return (
     <Modal title={card?.nickname ?? t('player.title')} onClose={onClose} className="player-modal"
            titleExtra={card && (
-             // 플레이어 신고(13.5): 닉네임·행동 등. 방에서 연 카드는 세션 번호로(서버가 같은 방의 그 플레이어로 바꿔 저장), 검색에서 연 카드는 플레이어 번호로 보낸다
+             // 플레이어 신고(13.5): 닉네임·행동 등. 방에서 연 카드든 검색에서 연 카드든 플레이어 번호(card.playerId)로 보낸다
              <span className="pi-actions">
                {onShare && (
                  <button className="pi-share" disabled={shared} aria-label={t('player.shareAria', { name: card.nickname })} title={t('player.shareTitle')}
@@ -120,7 +120,7 @@ export function PlayerInfoModal({ entityNo, playerId, bot, look, onClose, onOpen
         </section>
       </>)}
       {reporting && card && (
-        <ReportDialog target={playerId !== undefined ? 'PLAYER_ID' : 'PLAYER'} targetId={playerId !== undefined ? playerId : entityNo} preview={t('player.reportPreview', { name: card.nickname })}
+        <ReportDialog target="PLAYER" targetId={card.playerId} preview={t('player.reportPreview', { name: card.nickname })}
                       onDone={(err) => { setReporting(false); if (err) onNotice(err); }} onClose={() => setReporting(false)} />
       )}
     </Modal>

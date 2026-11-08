@@ -37,6 +37,6 @@ export default {
   reportComment: 'Report comment',
   reportChat: 'Report chat message',
   reportReason: 'Reason',
-  reportOnce: 'You can report the same post only once, and the same player once a day. An admin will review it.',
+  reportOnce: 'You can report the same target only once a day. An admin will review it.',
   reportSubmit: 'Report',
 };

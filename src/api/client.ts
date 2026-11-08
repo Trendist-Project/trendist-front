@@ -5,6 +5,9 @@ import type {
   Activity, ActivityRange, PlayerCard, PlayerHit, PopularityResult, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
   AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo } from './types';
 
+/** 관리자 스킬 설정(13.3) */
+export interface AdminSkill { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; enabled: boolean; defaultCooldown: number; updatedAt: string }
+
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string) {
     super(message);
@@ -136,7 +139,7 @@ export const api = {
   writeComment: (id: number, body: string) => request<CommentItem>('POST', `/api/keywords/${id}/comments`, { body }),
   editComment: (commentId: number, body: string) => request<CommentItem>('PATCH', `/api/comments/${commentId}`, { body }),
   deleteComment: (commentId: number) => request<void>('DELETE', `/api/comments/${commentId}`),
-  report: (target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER' | 'PLAYER_ID', targetId: number, reason: string) =>
+  report: (target: 'KEYWORD' | 'COMMENT' | 'CHAT' | 'PLAYER', targetId: number, reason: string) =>
     request<void>('POST', '/api/reports', { target, targetId, reason }),
   vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
   scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
@@ -150,6 +153,8 @@ export const api = {
     for (const k of [...infoCacheKeys()]) infoCache.delete(k); // 정보 카드 캐시를 비워 새 인기도가 바로 보이게
     return r;
   },
+  /** 내 순위. 지금 방에 접속 중이 아니면 null(204) */
+  myRank: () => request<RankingEntry | null>('GET', '/api/rankings/me'),
   rankings: () => request<RankingEntry[]>('GET', `/api/rankings?country=${getCountry()}`),
   notices: () => request<Notice[]>('GET', '/api/notices'),
   /** 지금 보여 줄 긴급 안내(4.29). 없으면 notice가 null */
@@ -304,5 +309,8 @@ export const adminApi = {
   updateGuideArticle: (id: number, a: AdminGuideArticleInput) => request<AdminGuideArticle>('PUT', `/api/admin/guide/articles/${id}`, a),
   moveGuideArticle: (id: number, direction: -1 | 1) => request<AdminGuideArticle[]>('POST', `/api/admin/guide/articles/${id}/move`, { direction }),
   deleteGuideArticle: (id: number) => request<void>('DELETE', `/api/admin/guide/articles/${id}`),
+  skills: () => request<AdminSkill[]>('GET', '/api/admin/skills'),
+  updateSkill: (code: string, patch: { cooldownSeconds?: number; requiredLevel?: number; enabled?: boolean }) =>
+    request<AdminSkill>('PATCH', `/api/admin/skills/${code}`, patch),
   updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),
 };

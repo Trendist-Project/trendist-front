@@ -90,6 +90,24 @@ export function App() {
     return () => { alive = false; };
   }, [phase.kind]);
 
+  // 브라우저 뒤로가기: 메인에서 [시작]으로 닉네임·게임 화면에 들어가면 히스토리를 한 칸 쌓아서, 뒤로가기를 누르면 사이트를 떠나지(예: 이전에 보던 구글 로그인 화면) 않고
+  // 시작 화면으로 돌아온다. 새로고침하면 항상 메인부터라 남아 있던 기록은 먼저 지운다.
+  useEffect(() => { if (history.state?.trendist) history.replaceState(null, ''); }, []);
+  useEffect(() => {
+    if (phase.kind === 'main') {
+      if (history.state?.trendist) history.back(); // 로그아웃·탈퇴처럼 코드로 메인에 돌아왔으면 쌓아 둔 칸을 걷어 낸다
+    } else if (history.state?.trendist) {
+      history.replaceState({ trendist: phase.kind }, ''); // 닉네임 → 게임은 같은 칸을 쓴다
+    } else {
+      history.pushState({ trendist: phase.kind }, '');
+    }
+  }, [phase.kind]);
+  useEffect(() => {
+    const onPop = () => setPhase((p) => (p.kind === 'main' ? p : { kind: 'main' }));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   async function logout() {
     await api.logout().catch(() => { /* 서버에 못 닿아도 화면은 나간다 */ });
     setPhase({ kind: 'main' });

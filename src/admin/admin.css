@@ -613,3 +613,8 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .admin button.primary:not(:disabled):hover { background: #52cfa3; border-color: #52cfa3; color: #062014; }
 .admin button.primary.danger:not(:disabled):hover { background: #ee7070; border-color: #ee7070; color: #fff; }
 .admin button:not(:disabled):not(.th-sort):not(.link-btn):active { transform: translateY(1px); }
+
+/* 스킬 설정 탭(13.3): 쿨타임·해금 레벨 입력을 한 줄에 */
+.skill-field { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted, #94a3b8); }
+.skill-field input { width: 84px; }
+.skill-enabled { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }

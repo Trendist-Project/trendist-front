@@ -1012,7 +1012,7 @@ button.link-back:hover { color: var(--text); }
   .bb-emote .emote-palette { right: 0; bottom: calc(100% + 10px); }
   /* 채팅: 접힌 💬 버튼은 명령 줄 위 왼쪽에 */
   /* 채팅: 명령 줄(실제 높이 --bar-h) 위에 간격을 두고 뜬다. 펼치면 2줄 높이, 위쪽 끝을 끌어 조절 */
-  .chat, .arena-wrap.with-minimap .chat { bottom: calc(var(--bar-h, 160px) + 22px + env(safe-area-inset-bottom)); }
+  .chat, .arena-wrap.with-minimap .chat { bottom: calc(var(--bar-h, 160px) + 22px + 22px + env(safe-area-inset-bottom)); } /* 22px 간격 + 접기 탭 22px */
   .chat:not(.collapsed), .arena-wrap.with-minimap .chat:not(.collapsed) { height: var(--chat-h, 112px); }
   .chat-resize { display: grid; place-items: center; position: absolute; left: 0; right: 0; top: 0; height: 18px; z-index: 2; cursor: ns-resize; touch-action: none; }
   .chat-resize i { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.35); }
@@ -1323,11 +1323,27 @@ button.link-back:hover { color: var(--text); }
 /* 접기 손잡이: 모바일 세로 모드에서만 보인다 */
 .bb-fold { display: none; }
 @media (max-width: 760px) and (orientation: portrait) {
-  .bb-fold { display: grid; place-items: center; position: absolute; left: 50%; top: -12px; transform: translateX(-50%); width: 52px; height: 22px; padding: 0; border-radius: 11px 11px 0 0;
-    font-size: 0.8rem; line-height: 1; color: #c9d4e3; background: rgba(20, 27, 38, 0.92); border: 1px solid var(--line); border-bottom: 0; z-index: 1; }
+  /* 막대 윗면에 딱 붙는 탭: 막대와 같은 바탕·테두리라 한 덩어리로 보이고, 막대 안 요소와 겹치지 않는다 */
+  .bb-fold { display: grid; place-items: center; position: absolute; left: 50%; bottom: 100%; margin-bottom: -1px; transform: translateX(-50%); width: 72px; height: 22px; padding: 0; border-radius: 12px 12px 0 0;
+    font-size: 0.85rem; line-height: 1; color: #c9d4e3; background: linear-gradient(180deg, rgba(27,36,52,0.95), rgba(24,32,46,0.97)); border: 1px solid rgba(255,255,255,0.16); border-bottom: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.3); }
+  .bb-fold:active { color: #fff; }
   /* 접으면 내 정보(초상화·정보)를 숨기고 스킬 5개와 이모트를 한 줄에 */
   .bottom-bar.folded { flex-wrap: nowrap; padding-top: 8px; }
   .bottom-bar.folded .bb-me, .bottom-bar.folded .bb-info { display: none; }
   .bottom-bar.folded .skill-row { order: 1; flex: 1 1 0; min-width: 0; padding-top: 0; border-top: 0; }
   .bottom-bar.folded .bb-emote { order: 2; }
 }
+
+/* 서버 응답 시간(ms)과 상태 점: 초록(≤80) · 노랑(≤150) · 주황(≤250) · 빨강(251~) */
+.hud-ping { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted, #94a3b8); }
+.hud-ping i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.hud-ping.ping-good i { color: #3fd08a; } .hud-ping.ping-ok i { color: #f2d04b; } .hud-ping.ping-slow i { color: #ff9f43; } .hud-ping.ping-bad i { color: #ff6b6b; }
+.hud-ping.ping-slow, .hud-ping.ping-bad { color: var(--text, #e6edf5); }
+
+/* 내 순위: 리더보드 목록 아래에 이어서(점선으로 구분). 내가 TOP N 안이면 보이지 않는다 */
+.leaderboard .ranking li.my-rank { margin-top: 4px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.25); }
+
+/* 리더보드 크기 손잡이: 아래로 끌면 줄이 늘고 위로 끌면 줄어든다. 내 순위 줄은 항상 맨 아래에 고정 */
+.lb-resize { display: grid; place-items: center; height: 14px; margin: 2px -4px -4px; cursor: ns-resize; touch-action: none; border-radius: 0 0 10px 10px; }
+.lb-resize i { width: 34px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.35); }
+.lb-resize:hover i, .lb-resize:focus-visible i { background: rgba(255,255,255,0.7); }
