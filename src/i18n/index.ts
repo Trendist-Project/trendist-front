@@ -39,6 +39,11 @@ export function useLang(): Lang {
   return getLang();
 }
 
+/** 번역이 있으면 그것을(현재 언어 → 한국어), 없으면 fallback을 돌려준다. 경고 없이 쓴다(아직 번역을 안 넣은 새 스킬 같은 데이터가 코드로 들어올 때) */
+export function tOr(key: string, fallback: string): string {
+  return dicts[getLang()][key] ?? dicts.ko[key] ?? fallback;
+}
+
 /** 서버 오류: 코드에 맞는 번역(errors.<CODE>)이 있으면 그것을, 없으면 서버가 준 메시지를 쓴다 */
 export function errorText(code: string, fallback: string): string {
   return dicts[getLang()][`errors.${code}`] ?? fallback;

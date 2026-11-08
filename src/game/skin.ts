@@ -4,6 +4,9 @@
  */
 import { t } from '../i18n';
 
+/** 한 플레이어·봇의 원 모양(정보 카드·정보 창에 같은 모습으로 보여 주려고): 바탕색·테두리·그림·테두리 효과. 봇이면 빨간 바탕 */
+export interface OrbLook { bg: string; borderColor: string | null; borderWidth: number | null; art: string | null; borderEffect: string | null; bot: boolean }
+
 export const BORDER_EFFECTS = ['glow', 'dash', 'gradient', 'pulse', 'rainbow'] as const;
 
 /** 이모트 코드 → 이모지. 서버 Room.EMOTES와 같은 순서(숫자 키 1~8) */

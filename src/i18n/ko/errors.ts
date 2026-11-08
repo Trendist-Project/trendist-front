@@ -80,7 +80,6 @@ export default {
   GUIDE_DISPLAY_TYPE: '형식은 FAQ 또는 ARTICLE이에요',
   NOTICE_NOT_FOUND: '없는 공지예요',
   TITLE_NOT_OWNED: '아직 받지 않은 칭호예요',
-  TITLE_TOO_FAST: '칭호는 5초에 한 번 바꿀 수 있어요',
   COMMENT_EDIT_EXPIRED: '댓글은 쓴 뒤 5분 안에만 고칠 수 있어요',
   COMMENT_NOT_FOUND: '댓글을 찾을 수 없어요',
   COMMENT_DELETED: '이미 삭제된 댓글이에요',

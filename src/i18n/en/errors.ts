@@ -94,7 +94,6 @@ export default {
   NOTICE_BODY: 'The body length is invalid',
   NOTICE_POPUP_DAYS: 'The popup period is invalid',
   TITLE_NOT_OWNED: 'You haven\'t earned this title yet',
-  TITLE_TOO_FAST: 'You can change your title once every 5 seconds',
   COMMENT_EDIT_EXPIRED: 'Comments can only be edited within 5 minutes',
   COMMENT_NOT_FOUND: 'Comment not found',
   COMMENT_DELETED: 'This comment has already been deleted',

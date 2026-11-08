@@ -145,3 +145,6 @@ export interface ShareCardCreated { code: string; url: string; imageUrl: string;
 
 /** 긴급 안내(4.29): 모든 사용자의 게임 화면 맨 위에 흘러간다. remainingSeconds는 서버 시계 기준 남은 시간 */
 export interface EmergencyNotice { id: number; message: string; messageEn: string | null; endsAt: string; remainingSeconds: number }
+
+/** 스킬 한 개(4.33): DB(skills)에서 온다. defaultKey는 KeyboardEvent.code(Space, Digit1 …), cooldownSeconds는 DB의 쿨타임. 이름·설명은 번역 파일(skills.<코드>_name·_desc)에서 코드로 찾는다 */
+export interface SkillInfo { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number }

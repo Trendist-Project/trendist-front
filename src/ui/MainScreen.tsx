@@ -32,15 +32,19 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
         ))}
       </div>
       <section className="main-card">
-        <img className="main-logo" src="/logo.png" alt="" width={96} height={96} />
-        <h1>Trendist</h1>
-        <p className="tagline">{t('main.tagline')}</p>
-        <p className="muted">{t('main.intro')}</p>
-        <ol className="steps">
-          <li>{t('main.step1')}</li>
-          <li>{t('main.step2')}</li>
-          <li>{t('main.step3')}</li>
-        </ol>
+        {/* 가로 모드 폰에서는 왼쪽(소개)·오른쪽(방법·시작)의 두 칸이 된다. 그 밖에서는 두 묶음이 레이아웃에 영향을 주지 않는다(CSS display: contents) */}
+        <div className="main-hero">
+          <img className="main-logo" src="/logo.png" alt="" width={96} height={96} />
+          <h1>Trendist</h1>
+          <p className="tagline">{t('main.tagline')}</p>
+          <p className="muted">{t('main.intro')}</p>
+          <ol className="steps">
+            <li>{t('main.step1')}</li>
+            <li>{t('main.step2')}</li>
+            <li>{t('main.step3')}</li>
+          </ol>
+        </div>
+        <div className="main-actions">
         <ul className="main-howto" aria-label={t('main.howtoLabel')}>
           <li>{t('main.howto1')}</li>
           <li>{t('main.howto2')}</li>
@@ -63,6 +67,7 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
             {COUNTRIES.map((c) => (<option key={c} value={c}>{t(`main.country${c}`)}</option>))}
           </select>
         </label>
+        </div>
       </section>
     </main>
   );

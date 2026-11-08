@@ -88,18 +88,16 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .arena-wrap { position: relative; min-width: 0; }
 .arena { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; } /* 길게 누를 때 선택·메뉴가 뜨지 않게 */
-.hud, .hud-bottom { position: absolute; left: 12px; display: flex; gap: 14px; align-items: center; background: rgba(11, 15, 23, 0.7); padding: 6px 12px; border-radius: 10px; pointer-events: none; flex-wrap: wrap; }
+/* 왼쪽 위 접속 인원 줄 */
+.hud { position: absolute; left: 12px; display: flex; gap: 14px; align-items: center; background: rgba(11, 15, 23, 0.7); padding: 6px 12px; border-radius: 10px; pointer-events: none; flex-wrap: wrap; }
 .hud { top: 12px; }
-.hud-bottom .hud-name { pointer-events: auto; background: transparent; border: 0; padding: 0; font-weight: 700; text-decoration: underline dotted; text-underline-offset: 3px; }
-.hud-bottom { bottom: 12px; }
-.arena-wrap.with-minimap .hud-bottom { max-width: calc(100% - 220px); } /* 오른쪽 아래 미니맵과 겹치지 않게 */
 /* 아레나 오른쪽 위 도구: 공지사항, 가이드·FAQ, 미니맵, 조작 설명(?) */
-.arena-tools { position: absolute; top: 12px; right: 12px; bottom: var(--tools-bottom); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: calc(100% - 180px);
+.arena-tools { position: absolute; z-index: 6; /* 스킬·이모트 줄(5)보다 앞: 조작 설명 카드를 켜면 그 위로 올라온다 */ top: 12px; right: 12px; bottom: var(--tools-bottom); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: calc(100% - 180px);
   pointer-events: none; } /* 빈 자리는 아레나 클릭을 막지 않는다 */
 .arena-tools > * { pointer-events: auto; flex: none; }
 .arena-tools > .combo-hud { pointer-events: none; transform-origin: right center; }
 /* 오른쪽 아래는 미니맵, 그 위에 이모트 버튼(44px). 도구 창(조작 설명)은 그 위까지만 내려온다 */
-.arena-wrap { --dock-bottom: 12px; --tools-bottom: calc(var(--dock-bottom) + 44px + 12px); }
+.arena-wrap { --dock-bottom: 12px; --tools-bottom: calc(var(--dock-bottom) + 12px); }
 .arena-wrap.with-minimap { --dock-bottom: calc(var(--minimap-size, 180px) + 24px); }
 .tool-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .arena-tools button { background: rgba(11, 15, 23, 0.7); padding: 6px 10px; font-size: 0.85rem; }
@@ -143,7 +141,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 }
 @keyframes orb-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 /* 모바일: 화면을 덜 가리도록 작고 낮게 */
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .orb-reveal { top: 52px; min-width: 0; max-width: min(300px, calc(100% - 32px)); padding: 7px 14px 9px; border-width: 1.5px; border-radius: 12px; box-shadow: 0 0 16px rgba(255,200,74,0.4); }
   .orb-reveal .orb-title { font-size: 0.78rem; }
   .orb-reveal .orb-keyword { margin: 2px 0; gap: 6px; }
@@ -162,7 +160,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .profile-stats dd { margin: 2px 0 0; font-weight: 700; word-break: break-all; }
 .profile-form { display: grid; gap: 8px; }
 .profile-form p { margin: 0; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: 16px; z-index: 15; /* 모바일 검색·보관함 시트(12)보다 앞: 시트에서 연 키워드 상세 창이 시트 뒤로 가지 않게 */ }
 .modal { width: min(640px, 100%); max-height: min(80vh, 760px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .modal-head h2 { margin: 0; font-size: 1.15rem; }
@@ -345,7 +343,7 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .mine-chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1.2rem; }
 
 /* ---------------------------------------------------------------- 채팅(4.13): 아레나 왼쪽 아래, 내 정보 줄 위 */
-.chat { position: absolute; left: 12px; bottom: 68px; /* 아래 내 정보 줄(높이 약 44px, 레벨 아이콘 때문) 위로 12px 띄운다 */ width: min(360px, calc(100% - 24px)); display: grid; grid-template-rows: 1fr auto;
+.chat { position: absolute; left: 12px; bottom: 12px; /* 왼쪽 아래 끝(리그 오브 레전드처럼). 가운데 아래는 명령 줄 */ width: min(360px, calc(50% - 315px)); min-width: 220px; display: grid; grid-template-rows: 1fr auto;
   height: 220px; background: rgba(11,15,23,0.72); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .chat-log { list-style: none; margin: 0; padding: 6px 10px; overflow-y: auto; display: grid; gap: 3px; align-content: start; font-size: 0.85rem; }
 .chat-log li { overflow-wrap: anywhere; line-height: 1.4; position: relative; padding-right: 34px; border-radius: 6px; }
@@ -369,7 +367,7 @@ button.mine-open:hover, button.mine-open:focus-visible { background: rgba(63,182
 .chat.collapsed .chat-report { display: none; }
 .chat-input input { flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 0.85rem; }
 .chat-input input:focus { outline: none; background: rgba(255,255,255,0.04); }
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .kw-stats { grid-template-columns: 1fr 1fr; }
   .kw-score strong { font-size: 2rem; }
 }
@@ -399,16 +397,18 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 .lg-row { text-align: right; padding-right: 4px; white-space: nowrap; }
 .lg-top { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 0.85rem; }
 /* ---------------------------------------------------------------- 모바일(작은 화면) 배치 */
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   /* 아레나가 화면 대부분을 쓰고, 검색·보관함은 접히는 하단 시트 */
   .game-shell { height: 100dvh; }
-  .game { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
-  .side { border-left: 0; border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -6px 20px rgba(0,0,0,0.35);
+  .game { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); }
+  /* 검색·보관함 시트는 평소에는 숨고(아래 줄이 화면을 차지하지 않게), 메뉴의 [검색]·[보관함]을 누르면 아래에서 올라온다. ▾로 접는다 */
+  .side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; border-left: 0; border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -6px 20px rgba(0,0,0,0.35);
     padding-bottom: env(safe-area-inset-bottom); }
-  .side:not(.expanded) .tab-body { display: none; }
-  .side.expanded { height: min(52dvh, 460px); }
+  .side:not(.expanded) { display: none; }
+  .side.expanded { height: clamp(220px, 34dvh, 340px); } /* 화면의 3분의 1쯤. 아레나를 덜 가린다 */
   .tabs button { padding: 10px 6px; }
-  .tabs .sheet-toggle { display: block; flex: none; width: 48px; color: var(--muted); font-size: 1rem; }
+  .tabs .sheet-toggle { display: block; flex: none; width: 52px; color: #c9d4e3; font-size: 1.05rem; }
+  .tabs .sheet-toggle:hover, .tabs .sheet-toggle:active { color: #fff; background: rgba(255,107,107,0.18); }
 
   /* 오른쪽 위 도구: 아이콘만, 손가락으로 누르기 좋은 크기 */
   .arena-tools { top: 8px; right: 8px; gap: 6px; max-width: calc(100% - 84px); }
@@ -422,13 +422,15 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .help-card { width: min(300px, calc(100vw - 24px)); font-size: 0.85rem; }
 
   /* 아래쪽 내 정보 줄: 한 줄로, 꼭 필요한 값만 */
-  .hud-bottom { left: 8px; bottom: 8px; gap: 10px; padding: 5px 9px; font-size: 0.8rem; flex-wrap: nowrap; white-space: nowrap; max-width: calc(100% - 140px); overflow: hidden; }
-  .arena-wrap.with-minimap .hud-bottom { max-width: calc(100% - 140px); }
-  .hud-extra { display: none; }
 
-  /* 채팅: 미니맵(오른쪽 아래)을 피해 왼쪽 아래 좁게 */
-  .chat { left: 8px; bottom: 58px; /* 내 정보 줄(약 42px) 위로 8px */ width: min(280px, calc(100% - 140px)); height: 130px; }
-  .chat.collapsed { height: auto; }
+  /* 채팅: 접힌 상태는 동그란 💬 버튼 하나(조이스틱 자리를 비우려고), 펼치면 왼쪽 아래 좁게. 미니맵(왼쪽 아래)이 있으면 그 위에 둔다 */
+  .chat { left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); width: min(280px, calc(100% - 16px)); min-width: 0; height: 130px; }
+  .arena-wrap.with-minimap .chat { bottom: calc(var(--minimap-size, 96px) + 20px); }
+  .chat.collapsed { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+  .chat.collapsed .chat-log, .chat.collapsed .chat-input input, .chat.collapsed .chat-input .chat-send { display: none; }
+  .chat.collapsed .chat-input { border-top: 0; }
+  .chat.collapsed .chat-fold { width: 44px; height: 44px; margin: 0; border-radius: 50%; font-size: 0; }
+  .chat.collapsed .chat-fold::before { content: '💬'; font-size: 1.2rem; }
   .chat-log { font-size: 0.8rem; }
 
   /* 창(공지·가이드·키워드 상세·신고)은 아래에서 올라오는 전체 폭 시트 */
@@ -456,21 +458,12 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 .player-keywords li { border: 1px solid var(--line); border-radius: 10px; background: #0f151f; }
 .player-keywords p { margin: 0; }
 
-/* 정보 보기 모드(4.11): 버튼은 터치 기기에서만(PC는 우클릭), 켜져 있으면 위쪽에 안내 */
-.inspect-toggle { display: none; }
-@media (pointer: coarse) { .arena-tools .tool-row .inspect-toggle { display: inline-grid; } }
-.control-toggle { display: none; }
-@media (pointer: coarse) { .arena-tools .tool-row .control-toggle { display: inline-flex; } }
-
 /* 터치 조이스틱(4.2): 누른 자리에 생기는 판과 손잡이. 위치는 GameScreen이 직접 옮긴다 */
 .joystick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
   background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.28); box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
   pointer-events: none; z-index: 5; --kx: 0px; --ky: 0px; }
 .joystick-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
   background: rgba(124,211,255,0.55); border: 2px solid rgba(255,255,255,0.7); transform: translate(var(--kx), var(--ky)); }
-.inspect-toggle[aria-pressed="true"] { border-color: #7cd3ff; color: #7cd3ff; box-shadow: 0 0 0 2px rgba(124,211,255,0.35); }
-.inspect-hint { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(20,40,55,0.95); border: 1px solid #7cd3ff;
-  color: #d8f1ff; padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; white-space: nowrap; pointer-events: none; }
 
 /* 구글 로그인(9.3) */
 .account-box { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #0f151f; display: grid; gap: 8px; justify-items: start; }
@@ -489,15 +482,14 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 /* ---------------------------------------------------------------- 상단 정리: 접속 인원 표기와 모바일 ☰ 메뉴 */
 .hud-short { display: none; }
 .menu-toggle, .mobile-menu { display: none; }
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .hud-long { display: none; }
   .hud-short { display: inline; }
   .hud { flex-direction: row; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 10px; }
-  /* 오른쪽 위에는 🔍(정보 보기)와 ☰(메뉴)만. 나머지는 메뉴 안에 이름과 함께 */
+  /* 오른쪽 위에는 ☰(메뉴)만. 나머지는 메뉴 안에 이름과 함께 */
   .arena-tools { max-width: none; }
-  .arena-tools .tool-row > :not(.inspect-toggle):not(.menu-toggle) { display: none; }
+  .arena-tools .tool-row > :not(.menu-toggle):not(.side-toggle) { display: none; }
   .arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
-  .arena-tools .tool-row .inspect-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.05rem; }
   .arena-tools .tool-row { gap: 6px; }
   .mobile-menu { position: relative; z-index: 8; /* 채팅 위로 */ display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
     border-radius: 14px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
@@ -563,7 +555,7 @@ button.link-back:hover { color: var(--text); }
 .hex-row input:not([type]) { max-width: 130px; font-family: ui-monospace, monospace; }
 .width-row { display: flex; gap: 10px; align-items: center; }
 .width-row input[type=range] { flex: 1; padding: 0; accent-color: var(--accent); }
-@media (max-width: 760px) { .customize { grid-template-columns: 1fr; } }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .customize { grid-template-columns: 1fr; } }
 
 /* 이동 효과(4.23) */
 .effect-preview { max-width: 100%; height: auto !important; }
@@ -621,7 +613,7 @@ button.link-back:hover { color: var(--text); }
 .legend-me { display: inline-grid; }
 .legend-bot { width: 26px; height: 26px; border-radius: 999px; background: #d9534f; border: 2px solid #11372a; }
 .legend-orb { width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: 0.8rem; color: #3b2a12; background: radial-gradient(circle at 35% 35%, #fff6c8, #ffc94a 60%, #e09a1a); }
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .guide-modal { height: 92dvh; }
   .guide-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
   .guide-nav { flex-direction: row; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
@@ -709,7 +701,7 @@ button.link-back:hover { color: var(--text); }
 @keyframes title-alert-in { from { opacity: 0; transform: translate(-50%, -16px) scale(0.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 @keyframes title-alert-pop { 0% { transform: scale(0.4) rotate(-20deg); } 70% { transform: scale(1.2) rotate(8deg); } 100% { transform: scale(1) rotate(0); } }
 @keyframes title-alert-timer { to { transform: scaleX(0); } }
-@media (max-width: 760px) { .title-alert { top: 56px; padding: 12px 10px 14px 12px; gap: 10px; } .title-alert-icon { font-size: 1.8rem; } }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .title-alert { top: 56px; padding: 12px 10px 14px 12px; gap: 10px; } .title-alert-icon { font-size: 1.8rem; } }
 @media (prefers-reduced-motion: reduce) { .title-alert, .title-alert-icon { animation: none; } }
 
 /* 게스트 잠금 안내(이동 효과 등) */
@@ -803,7 +795,7 @@ button.link-back:hover { color: var(--text); }
 .pixel-actions button { min-width: 120px; height: 44px; padding: 0 18px; } /* [취소]와 [저장]은 같은 크기 */
 .pixel-actions .pixel-cancel { background: #2b3546; border-color: #3a4659; color: var(--text); font-weight: 600; }
 .pixel-actions .pixel-cancel:hover:not(:disabled) { background: #354157; }
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .pixel-main { grid-template-columns: 1fr; }
   .pixel-canvas { width: min(352px, calc(100vw - 48px)) !important; height: auto !important; aspect-ratio: 1; }
   .pixel-tool-label { display: none; }
@@ -821,6 +813,8 @@ button.link-back:hover { color: var(--text); }
 .combo-hud strong { font-size: 1.05rem; color: #ffb366; }
 .combo-hud.on-fire { border-color: #ff6a2b; box-shadow: 0 0 0 2px rgba(255, 106, 43, 0.25), 0 0 18px rgba(255, 106, 43, 0.45); }
 .combo-hud.on-fire strong { color: #ffd166; }
+.combo-time { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #ffd8a8; }
+.combo-time.low { color: #ff6b6b; }
 .combo-dots { display: inline-flex; align-items: center; gap: 4px; }
 .combo-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
 .combo-dots i.on { background: #ff9f43; box-shadow: 0 0 6px #ff9f43; }
@@ -829,14 +823,12 @@ button.link-back:hover { color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .combo-hud { animation: none; } }
 
 /* 이모트(4.26) */
-.emote-dock { position: absolute; right: 12px; bottom: var(--dock-bottom); z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-.emote-row { display: flex; align-items: center; gap: 8px; } /* 대시 표시(⚡)는 이모트 버튼 왼쪽(4.27) */
 .emote-toggle { width: 44px; height: 44px; border-radius: 50%; padding: 0; font-size: 1.4rem; background: rgba(20, 27, 38, 0.85); }
 .emote-toggle[aria-expanded="true"] { border-color: var(--accent); }
 .emote-palette { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; padding: 8px; border-radius: 14px; background: rgba(20, 27, 38, 0.94); border: 1px solid var(--line); }
 .emote-palette button { position: relative; width: 44px; height: 44px; padding: 0; font-size: 1.45rem; background: #1d2635; }
 .emote-palette kbd { position: absolute; right: 2px; bottom: 1px; font-size: 0.6rem; color: var(--muted); background: none; border: none; padding: 0; }
-@media (max-width: 760px) { .emote-dock { right: 8px; } .emote-palette kbd { display: none; } }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .emote-palette kbd { display: none; } }
 
 /* 꾸미기 프로필(4.9) */
 .effect-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -863,7 +855,7 @@ button.link-back:hover { color: var(--text); }
 .profile-actions .error, .profile-actions .profile-hint { flex-basis: 100%; margin: 0; }
 .profile-actions .profile-reset { margin-right: auto; } /* [초기화]는 왼쪽에 떨어뜨려 저장 버튼과 헷갈리지 않게 */
 .customize-draw { display: grid; gap: 10px; align-content: start; }
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   /* 좁은 화면: 칸 탭은 세 개를 한 줄에 작게, 미리 보기는 화면 높이의 1/4 정도로 줄여 꾸밈 항목이 보일 자리를 남긴다 */
   .profile-tab { flex-direction: column; justify-content: center; gap: 4px; padding: 6px 4px; text-align: center; }
   .profile-tab canvas { width: 36px !important; height: 36px !important; }
@@ -876,13 +868,6 @@ button.link-back:hover { color: var(--text); }
 .level-text { display: flex; align-items: center; gap: 6px; } /* 아이콘과 글자를 위아래 가운데로 맞춘다(inline이면 글줄 기준선 때문에 아이콘이 위로 뜬다) */
 .profile-stats dd .level-text, .kw-stats dd .level-text { margin: -3px 0; } /* 아이콘이 커도 칸 높이는 다른 칸과 같게(남는 부분은 칸 여백으로) */
 
-/* 대시 표시(4.27): 아래 내 정보 줄. 준비되면 옅게 빛나고, 대시 중에는 노랗게, 쿨타임에는 남은 만큼 막대가 줄어든다 */
-.dash-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; border: 1px solid transparent; }
-.dash-chip.ready { color: #ffe08a; border-color: rgba(255,224,138,0.45); background: rgba(255,200,74,0.12); }
-.dash-chip.active { color: #1d1300; background: linear-gradient(90deg, #ffd166, #ffae42); animation: dash-glow 0.6s ease-in-out infinite alternate; }
-.dash-chip.cool { color: var(--muted); border-color: var(--line); background: linear-gradient(90deg, rgba(148,163,184,0.28) var(--p, 100%), transparent var(--p, 100%)); }
-@keyframes dash-glow { from { box-shadow: 0 0 0 rgba(255,200,74,0); } to { box-shadow: 0 0 10px rgba(255,200,74,0.8); } }
-@media (prefers-reduced-motion: reduce) { .dash-chip.active { animation: none; } }
 
 /* 메인 화면 서버(나라) 선택: 기본값이 알아서 정해지므로 눈에 덜 띄는 작은 목록 */
 .server-select { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 0.8rem; color: var(--muted); }
@@ -900,3 +885,318 @@ button.link-back:hover { color: var(--text); }
 .kw-title-actions { display: inline-flex; gap: 6px; flex: none; }
 .kw-report { color: var(--muted); }
 .kw-report:hover { color: #ff9a9a; border-color: #ff7a7a; }
+
+/* 스킬 버튼 줄(4.33): 이모트·대시 줄 위에 쌓인다. 쿨타임 중에는 어둡게 하고 남은 초를 보여 준다 */
+.skill-row { display: flex; gap: 6px; justify-content: flex-end; }
+.skill-btn { position: relative; width: 40px; height: 40px; padding: 0; border-radius: 10px; border: 1px solid var(--line); background: rgba(11,15,23,0.78); color: var(--text); font-size: 1.15rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.skill-btn:hover { border-color: #ff7a90; }
+.skill-btn kbd { position: absolute; left: 3px; bottom: 1px; font-size: 0.6rem; font-family: inherit; font-weight: 700; color: var(--muted); }
+.skill-btn.cooling { opacity: 0.55; filter: grayscale(0.6); }
+.skill-btn .skill-cd { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(0,0,0,0.5); font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .skill-btn { width: 44px; height: 44px; } .skill-btn kbd { display: none; } }
+
+/* 대시 버튼(4.27): 스킬 버튼 줄 맨 앞. 준비되면 노랗게 비치고, 대시 중에는 빛난다 */
+.skill-btn.dash-btn { border-color: rgba(255,224,138,0.5); background: rgba(255,200,74,0.14); }
+.skill-btn.dash-btn.active { background: linear-gradient(135deg, #ffd166, #ffae42); color: #1d1300; animation: dash-glow 0.6s ease-in-out infinite alternate; }
+@keyframes dash-glow { from { box-shadow: 0 0 0 rgba(255,200,74,0); } to { box-shadow: 0 0 10px rgba(255,200,74,0.8); } }
+@media (prefers-reduced-motion: reduce) { .skill-btn.dash-btn.active { animation: none; } }
+
+/* 클릭한 플레이어의 작은 정보 카드(왼쪽 위, 4.11): 이름 → 레벨·유행도 → #키워드 세 줄. 따라가기 고리와 같은 주황 띠로 "지금 고른 사람"임을 잇는다 */
+.target-card { touch-action: pan-y; user-select: none; overflow: hidden; position: absolute; left: 12px; top: 56px; z-index: 5; min-width: 170px; max-width: min(230px, calc(100vw - 24px)); padding: 7px 8px 8px 11px; border-radius: 10px; background: rgba(11, 15, 23, 0.84); border: 1px solid var(--line); border-left: 3px solid #ffb347; font-size: 0.78rem; line-height: 1.3; display: grid; gap: 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+.target-card .tc-top { display: flex; align-items: center; gap: 8px; }
+.target-card .tc-main { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.target-card .tc-head { display: flex; align-items: center; gap: 6px; }
+.target-card .tc-name { flex: 1; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--text); font-weight: 700; font-size: 0.9rem; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.target-card .tc-name:hover { color: #ffd29a; }
+.target-card .tc-close { position: relative; flex: none; width: 24px; height: 24px; margin: -2px -3px -2px 0; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: rgba(255,255,255,0.07); color: #c9d4e3; font-size: 0.7rem; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; }
+.target-card .tc-close::before { content: ''; position: absolute; inset: -6px; } /* 눌러야 하는 자리를 36px로 넓힌다(손가락) */
+.target-card .tc-close:hover, .target-card .tc-close:focus-visible { background: rgba(255,107,107,0.22); border-color: #ff6b6b; color: #fff; }
+.target-card .tc-close:active { transform: scale(0.92); }
+.target-card .tc-stats { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
+.target-card .tc-level { color: var(--text); font-weight: 700; }
+.target-card .tc-score strong { color: #ffd29a; font-variant-numeric: tabular-nums; }
+.target-card .tc-tags { display: flex; flex-wrap: wrap; gap: 3px 8px; margin-top: 1px; }
+.target-card .tc-tags button { padding: 0; border: 0; background: transparent; color: var(--text); font-size: 0.78rem; font-weight: 600; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.target-card .tc-tags button i { font-style: normal; color: var(--accent); font-weight: 800; margin-right: 1px; }
+.target-card .tc-tags button:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+/* 따라가는 중: 계속 보이는 카드라서 표시를 붙이고, 아닐 때는 아래 띠가 10초 동안 줄어들어 저절로 닫힌다는 것을 보여 준다 */
+/* 따라가는 중 표시는 이름·수치 줄 아래에 따로 한 줄 */
+.target-card .tc-follow { color: #ffb347; font-weight: 700; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; }
+.target-card .tc-follow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #ffb347; animation: tc-pulse 1.2s ease-in-out infinite; }
+.target-card.following { box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,179,71,0.45); }
+.target-card .tc-timer { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: linear-gradient(90deg, rgba(255,179,71,0.9), rgba(255,179,71,0.3)); transform-origin: left center; animation: tc-countdown 10s linear forwards; }
+@keyframes tc-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes tc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .target-card .tc-follow::before { animation: none; } }
+
+/* 게임 안내(키워드를 빼앗거나 얻고 잃음, 구슬 결과, 칭호 알림, 일반 알림)는 카드·버튼·메뉴·창보다 항상 앞에 보인다 */
+.toast, .toast.hit-toast, .orb-reveal, .title-alert { z-index: 60; }
+
+/* ---------------------------------------------------------------- 하단 명령 줄(리그 오브 레전드 HUD 배치)
+   PC: 가운데 아래에 초상화·경험치 | 스킬 | 이모트를 한 덩어리로. 채팅은 왼쪽 아래 끝, 미니맵은 오른쪽 아래. */
+.bottom-bar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px 14px 10px; border-radius: 18px; max-width: calc(100% - 24px);
+  background: linear-gradient(180deg, rgba(27,36,52,0.95), rgba(10,14,22,0.97)); border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.09); }
+.bb-me { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; background: transparent; cursor: pointer; display: block; }
+.bb-lv { position: absolute; right: -4px; bottom: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: #0b0f17; border: 2px solid #3fb68b; color: #d8fff0; font-size: 0.72rem; font-weight: 800; display: grid; place-items: center; line-height: 1; }
+.bb-info { display: grid; gap: 5px; min-width: 150px; max-width: 190px; align-content: center; }
+.bb-name { padding: 0; border: 0; background: transparent; color: var(--text); font-weight: 800; font-size: 0.95rem; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.bb-name:hover { color: #9be8c8; }
+.bb-exp { position: relative; height: 18px; border-radius: 9px; background: #070a10; border: 1px solid rgba(255,255,255,0.14); overflow: hidden; }
+.bb-exp i { display: block; height: 100%; background: linear-gradient(90deg, #2a9d73, #7ee0b4); box-shadow: 0 0 8px rgba(126,224,180,0.5); transition: width 0.4s ease; }
+.bb-exp span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; line-height: 1; padding-bottom: 1px; font-size: 0.66rem; font-weight: 700; color: #e9fff6; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
+.bb-stats { display: flex; gap: 12px; font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+.bb-stats span:first-child { color: #ffd29a; font-weight: 700; }
+.bb-skills { display: flex; align-items: center; gap: 10px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); }
+.bb-emote { position: relative; }
+.bb-emote .emote-palette { position: absolute; right: 0; bottom: calc(100% + 14px); }
+.bottom-bar .skill-row { display: flex; gap: 7px; justify-content: flex-start; }
+.bottom-bar .skill-btn { width: 52px; height: 52px; border-radius: 12px; font-size: 1.55rem; background: linear-gradient(180deg, #1b2434, #0d121b); border: 1px solid #34445d; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+.bottom-bar .skill-btn:hover { border-color: #7a93b8; }
+.bottom-bar .skill-btn kbd { left: 50%; bottom: -9px; transform: translateX(-50%); padding: 0 6px; border-radius: 5px; background: #0b0f17; border: 1px solid #3a4a63; color: #dbe5f3; font-size: 0.68rem; line-height: 1.35; }
+.bottom-bar .skill-btn.dash-btn { border-color: rgba(255,224,138,0.55); }
+.bottom-bar .skill-btn .skill-cd { border-radius: 12px; font-size: 1.15rem; }
+.bottom-bar .emote-toggle { position: relative; width: 44px; height: 44px; font-size: 1.35rem; background: linear-gradient(180deg, #1b2434, #0d121b); border: 1px solid #34445d; }
+/* 이모트 키(E): 스킬 키캡과 같은 모양으로 버튼 아래에 */
+.bottom-bar .emote-toggle kbd { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); padding: 0 6px; border-radius: 5px; background: #0b0f17; border: 1px solid #3a4a63; color: #dbe5f3; font-size: 0.68rem; line-height: 1.35; font-family: inherit; font-weight: 700; }
+
+/* PC 중간 폭: 초상화 옆 정보(경험치·수치)를 줄여 채팅·미니맵과 겹치지 않게 */
+@media (max-width: 1499px) and (min-width: 761px) {
+  .bb-info { min-width: 0; max-width: 120px; }
+  .bb-stats { display: none; }
+  .chat { width: min(360px, calc(50% - 300px)); min-width: 200px; }
+}
+
+/* 모바일: PC와 같은 구성(초상화·레벨·경험치 | 스킬 | 이모트)을 한 줄로 줄여 아래에 둔다. 미니맵은 왼쪽 위로 옮겨 아래·가운데를 조이스틱 자리로 비운다 */
+.hud-me { display: none; }
+.side-toggle { display: none; }
+@media (max-width: 760px) and (orientation: portrait) {
+  .hud-me { display: none; } /* 유행도는 아래 명령 줄의 경험치 밑으로 옮겼다 */
+  .arena-wrap { --tools-bottom: 96px; }
+  .bottom-bar { left: 8px; right: 8px; bottom: calc(6px + env(safe-area-inset-bottom)); transform: none; max-width: none; gap: 6px; padding: 5px 6px 6px; border-radius: 14px; justify-content: space-between; }
+  .bb-me { width: 38px; height: 38px; }
+  .bb-me canvas { width: 38px !important; height: 38px !important; }
+  .bb-lv { min-width: 18px; height: 18px; font-size: 0.62rem; right: -5px; bottom: -5px; border-width: 1.5px; }
+  .bb-info { min-width: 0; flex: 1 1 auto; max-width: none; gap: 3px; padding-left: 10px; }
+  .bb-name { font-size: 0.78rem; }
+  .bb-exp { height: 15px; }
+  .bb-exp span { font-size: 0.58rem; }
+  .bb-stats { display: flex; gap: 10px; font-size: 0.62rem; line-height: 1; overflow: hidden; } /* 경험치 막대 밑: 유행도 · 키워드 수 (초상화와 간격을 두려고 왼쪽 여백을 늘렸다) */
+  .bb-skills { gap: 4px; padding-left: 6px; border-left: 1px solid rgba(255,255,255,0.12); flex: none; }
+  .bottom-bar .skill-row { gap: 4px; }
+  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 34px; height: 34px; font-size: 1.05rem; border-radius: 9px; }
+  .bottom-bar .skill-btn .skill-cd { border-radius: 9px; font-size: 0.8rem; }
+  .bottom-bar .skill-btn kbd, .bottom-bar .emote-toggle kbd { display: none; }
+  .bb-emote .emote-palette { right: 0; bottom: calc(100% + 10px); }
+  /* 채팅: 접힌 💬 버튼은 명령 줄 위 왼쪽에 */
+  .chat { bottom: calc(74px + env(safe-area-inset-bottom)); }
+  .arena-wrap.with-minimap .chat { bottom: calc(74px + env(safe-area-inset-bottom)); }
+  /* 미니맵이 왼쪽 위에 있으니 정보 카드는 그 아래로 */
+  .target-card { left: 8px; top: 50px; }
+  .arena-wrap.with-minimap .target-card { top: calc(var(--minimap-size, 96px) + 52px); }
+  /* 오른쪽 위: 검색·보관함·메뉴 */
+  .arena-tools .tool-row > .side-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.05rem; }
+}
+
+/* ---------------------------------------------------------------- 가로 모드 폰
+   화면 비율이 모니터와 비슷하므로 PC와 같은 배치를 작게: 가운데 아래 명령 줄, 왼쪽 아래 채팅(접히면 💬 버튼), 오른쪽 아래 미니맵.
+   검색·보관함 패널은 오른쪽에서 밀려 나오는 서랍이다(평소에는 숨김). 터치라 키 표시는 숨긴다. */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .arena-wrap { --tools-bottom: calc(var(--dock-bottom) + 12px); }
+  .hud-me { display: none; }
+  .bottom-bar { bottom: 6px; gap: 8px; padding: 6px 10px 6px 8px; border-radius: 14px; }
+  .bb-me { width: 42px; height: 42px; }
+  .bb-me canvas { width: 42px !important; height: 42px !important; }
+  .bb-lv { min-width: 19px; height: 19px; font-size: 0.66rem; right: -4px; bottom: -4px; }
+  .bb-info { min-width: 0; max-width: 118px; gap: 3px; }
+  .bb-name { font-size: 0.82rem; }
+  .bb-exp { height: 16px; }
+  .bb-exp span { font-size: 0.6rem; }
+  .bb-stats { display: flex; gap: 10px; font-size: 0.64rem; line-height: 1; } /* 가로 모드도 경험치 밑에 유행도 · 키워드 수 */
+  .bb-skills { gap: 8px; padding-left: 8px; }
+  .bottom-bar .skill-row { gap: 5px; }
+  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 40px; height: 40px; font-size: 1.2rem; border-radius: 10px; }
+  .bottom-bar .skill-btn kbd, .bottom-bar .emote-toggle kbd { display: none; }
+  .bottom-bar .skill-btn .skill-cd { border-radius: 10px; font-size: 0.95rem; }
+  .bb-emote .emote-palette { bottom: calc(100% + 10px); }
+  /* 채팅: 접힌 💬 버튼은 내 정보·스킬 틀 바깥 왼쪽 옆, 펼치면 명령 줄 가운데 바로 위로 올라와서 가운데 정보·스킬과 안 겹친다 */
+  /* 명령 줄(내 정보·스킬 틀) 폭을 정해 두어서(--bar-w) 채팅 아이콘을 그 틀 **바깥 왼쪽**에 딱 붙일 수 있다 */
+  .arena-wrap { --bar-w: min(480px, calc(100% - 214px)); }
+  .bottom-bar { width: var(--bar-w); justify-content: space-between; }
+  .chat, .arena-wrap.with-minimap .chat { left: max(8px, calc(50% - var(--bar-w) / 2 - 54px)); transform: none; bottom: 76px; width: min(300px, calc(50% - 16px)); min-width: 0; height: 96px; z-index: 7; }
+  .chat.collapsed, .arena-wrap.with-minimap .chat.collapsed { bottom: 8px; width: 44px; height: 44px; }
+  /* 펼친 채팅창은 아이콘 자리가 아니라 내 정보·스킬 줄(명령 줄)의 **가운데 바로 위**에 뜬다 */
+  .chat:not(.collapsed), .arena-wrap.with-minimap .chat:not(.collapsed) { left: 50%; transform: translateX(-50%); width: min(340px, calc(100% - 200px)); }
+  .target-card, .arena-wrap.with-minimap .target-card { left: 8px; top: 50px; }
+  /* 오른쪽에서 나오는 서랍 */
+  .side { top: 0; left: auto; right: 0; bottom: 0; width: min(360px, 55vw); border-top: 0; border-left: 1px solid var(--line); border-radius: 14px 0 0 14px; box-shadow: -6px 0 20px rgba(0,0,0,0.35); padding-bottom: 0; }
+  .side.expanded { height: auto; }
+}
+
+/* 스킬 툴팁(4.33): 마우스를 올리거나 키보드로 포커스하면 버튼 위에 카드가 뜬다. 모바일(터치)에는 hover가 없어 숨긴다 */
+.skill-slot { position: relative; display: block; }
+.skill-slot .skill-tip { position: absolute; left: 50%; bottom: calc(100% + 16px); transform: translate(-50%, 6px); width: 232px; padding: 10px 12px 11px; border-radius: 12px; z-index: 30;
+  background: linear-gradient(180deg, rgba(27,36,52,0.98), rgba(11,15,23,0.99)); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 10px 28px rgba(0,0,0,0.6);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s; text-align: left; }
+.skill-slot .skill-tip::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: #0d121b; border-right: 1px solid rgba(255,255,255,0.18); border-bottom: 1px solid rgba(255,255,255,0.18); }
+.skill-slot:hover .skill-tip, .skill-slot:focus-within .skill-tip { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.skill-tip .st-head { display: flex; align-items: center; gap: 8px; }
+.skill-tip .st-icon { font-size: 1.35rem; line-height: 1; }
+.skill-tip .st-head strong { flex: 1; font-size: 1rem; }
+.skill-tip kbd { padding: 0 7px; border-radius: 5px; background: #0b0f17; border: 1px solid #3a4a63; color: #dbe5f3; font-size: 0.74rem; line-height: 1.5; font-family: inherit; font-weight: 700; }
+.skill-tip .st-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.74rem; color: var(--muted); }
+.skill-tip .st-cat { padding: 0 7px; border-radius: 999px; font-weight: 700; color: #0b0f17; background: #94a3b8; line-height: 1.5; }
+.skill-tip .st-cat.cat-attack { background: #ff7a90; }
+.skill-tip .st-cat.cat-defense { background: #5fd3c2; }
+.skill-tip .st-cat.cat-move { background: #ffd166; }
+.skill-tip .st-cat.cat-stealth { background: #b9a8ff; }
+.skill-tip .st-desc { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; line-height: 1.45; color: #d7e0ee; white-space: normal; }
+.skill-tip .st-state { margin-top: 8px; font-size: 0.76rem; font-weight: 700; }
+.skill-tip .st-state.ready { color: #7ee0b4; }
+.skill-tip .st-state.wait { color: #ffb347; }
+.skill-tip .st-state.on { color: #ffd166; }
+.skill-btn.cat-attack:hover { border-color: #ff7a90; }
+.skill-btn.cat-defense:hover { border-color: #5fd3c2; }
+.skill-btn.cat-stealth:hover { border-color: #b9a8ff; }
+@media (hover: none), (max-width: 760px) { .skill-slot .skill-tip { display: none; } }
+/* 스킬 줄을 감싸는 칸 안에서 버튼은 칸을 채운다 */
+.skill-slot > .skill-btn { display: inline-flex; }
+
+/* 칭호 획득 알림(4.10): 위쪽 가운데는 키워드·구슬 알림과 겹치므로 아래로. PC는 왼쪽 아래, 채팅 바로 위(채팅이 열려 있는지에 따라 높이를 바꿔 안 겹치게),
+   모바일(세로)은 스킬 줄 바로 위, 가로 모드 폰은 왼쪽 아래 채팅·명령 줄 위 */
+.arena-wrap { --alert-bottom: 250px; }
+.arena-wrap:has(.chat.collapsed), .arena-wrap:not(:has(.chat)) { --alert-bottom: 104px; }
+.title-alert { top: auto; left: 12px; bottom: var(--alert-bottom); transform: none; width: min(380px, calc(100% - 24px)); animation-name: title-alert-rise; }
+@keyframes title-alert-rise { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) and (orientation: portrait) {
+  .arena-wrap .title-alert { left: 62px; right: 8px; width: auto; bottom: calc(84px + env(safe-area-inset-bottom)); } /* 왼쪽 💬 버튼은 비켜서 */
+}
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .arena-wrap .title-alert { left: 8px; width: min(320px, calc(100% - 16px)); bottom: 124px; }
+}
+
+/* ---------------------------------------------------------------- 게임 알림 묶음(키워드를 빼앗거나 얻고 잃음, 구슬 결과, 일반 알림)
+   예전에는 구슬 결과(64px)·일반(60px)·공격 성공(108px)이 서로 다른 자리에 겹쳐 떴다. 한 줄 묶음에 위에서부터 차례로 쌓고, 모양을 같은 카드로 맞춘다:
+   왼쪽 색 띠 = 종류(초록 얻음·성공, 빨강 잃음·오류, 금색 구슬 결과). */
+.notify-stack { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); z-index: 60; width: min(380px, calc(100% - 24px));
+  display: flex; flex-direction: column; gap: 8px; align-items: stretch; pointer-events: none; }
+.notify-stack > .orb-reveal, .notify-stack > .toast { position: static; transform: none; width: auto; min-width: 0; max-width: none; margin: 0; }
+.notify-stack > .toast { text-align: left; padding: 9px 13px; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; overflow-wrap: anywhere;
+  background: rgba(20, 27, 38, 0.96); border: 1px solid var(--line); border-left: 4px solid #ff7a7a; box-shadow: 0 6px 18px rgba(0,0,0,0.4); animation: ntf-in 0.22s ease-out; }
+.notify-stack > .toast.hit-toast { background: rgba(16, 34, 27, 0.96); border-left-color: var(--accent); font-weight: 700; animation: ntf-in 0.22s ease-out; }
+.notify-stack > .orb-reveal { padding: 10px 16px 13px; border-width: 1.5px; border-radius: 14px; box-shadow: 0 0 16px rgba(255,200,74,0.32); animation-name: orb-pop-stack; }
+.notify-stack > .orb-reveal .orb-keyword strong { font-size: 1.25rem; }
+.notify-stack > .orb-reveal .orb-title { font-size: 0.85rem; }
+@keyframes ntf-in { from { opacity: 0; transform: translateY(-10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes orb-pop-stack {
+  0% { opacity: 0; transform: translateY(-12px) scale(0.7); }
+  8% { opacity: 1; transform: translateY(0) scale(1.05); }
+  14% { transform: none; }
+  88% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) { .notify-stack > .toast, .notify-stack > .orb-reveal { animation: none; } }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .notify-stack { top: 54px; width: min(340px, calc(100% - 16px)); gap: 6px; }
+  .notify-stack > .toast { font-size: 0.82rem; padding: 7px 11px; }
+}
+
+/* 위쪽 켜기/끄기 버튼(미니맵·리더보드·채팅)은 켜져 있으면(활성) 초록 윤곽과 밝은 글자, 꺼져 있으면(비활성) 흐리게 보여 상태가 바로 보인다 */
+.arena-tools .minimap-toggle, .arena-tools .leaderboard-toggle, .arena-tools .chat-toggle { transition: opacity 0.12s, border-color 0.12s, background 0.12s; }
+.arena-tools .minimap-toggle[aria-pressed="true"], .arena-tools .leaderboard-toggle[aria-pressed="true"], .arena-tools .chat-toggle[aria-pressed="true"] { border-color: var(--accent); color: #d8fff0; background: rgba(63,182,139,0.16); }
+.arena-tools .minimap-toggle[aria-pressed="false"], .arena-tools .leaderboard-toggle[aria-pressed="false"], .arena-tools .chat-toggle[aria-pressed="false"] { opacity: 0.55; }
+
+/* 폭이 좁은 가로 모드 폰(예: 568~700px): 명령 줄을 줄여서 왼쪽 💬 버튼·오른쪽 아래 미니맵과 겹치지 않게 한다 */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) and (max-width: 740px) {
+  .arena-wrap { --bar-w: min(398px, calc(100% - 200px)); }
+  .bottom-bar { gap: 6px; padding: 5px 8px 5px 6px; }
+  .bb-me, .bb-me canvas { width: 36px !important; height: 36px !important; }
+  .bb-info { max-width: 92px; padding-left: 6px; }
+  .bb-name { font-size: 0.74rem; }
+  .bb-exp { height: 14px; }
+  .bb-stats { font-size: 0.58rem; }
+  .bb-skills { gap: 6px; padding-left: 6px; }
+  .bottom-bar .skill-row { gap: 4px; }
+  .bottom-bar .skill-btn, .bottom-bar .emote-toggle { width: 34px; height: 34px; font-size: 1.05rem; }
+}
+
+/* ---------------------------------------------------------------- 시작 화면(메인)
+   소개(로고·이름·한 줄 설명·3단계)와 행동(방법·시작·로그인·서버 선택) 두 묶음. 세로·PC는 한 줄로 쌓고(묶음은 레이아웃에 영향이 없다), 가로 모드 폰은 두 칸으로 나눠서
+   낮은 화면에서도 한눈에 들어오고 [시작]이 잘리지 않게 한다. */
+.main-hero, .main-actions { display: contents; }
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .main-screen { padding: 6px 16px; overflow: hidden; } /* 스크롤 없이 한 화면에 들어가게 아래 크기들을 낮은 화면에 맞춰 줄인다 */
+  .main-card { width: min(900px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 0 26px; align-items: center; text-align: left; padding: 12px 22px; border-radius: 18px; }
+  .main-hero { display: block; text-align: center; padding-right: 22px; border-right: 1px solid var(--line); }
+  .main-actions { display: block; }
+  .main-logo { width: clamp(44px, 15vh, 62px); height: clamp(44px, 15vh, 62px); margin: 0 auto 4px; }
+  .main-card h1 { font-size: clamp(1.5rem, 8vh, 1.9rem); margin: 0 0 2px; }
+  .main-card .tagline { font-size: 0.98rem; margin: 0 0 4px; }
+  .main-hero .muted { margin: 0; font-size: 0.8rem; line-height: 1.4; }
+  .main-hero .steps { margin: 10px 0 0; gap: 6px; }
+  .main-hero .steps li { font-size: 0.76rem; padding: 4px 9px; }
+  .main-howto { margin: 0 0 10px; padding: 8px 12px; font-size: 0.74rem; line-height: 1.35; gap: 2px; }
+  .main-actions .primary.big { width: 100%; }
+  .main-actions .or-divider { margin: 8px 0; }
+  .main-actions .muted.small { margin: 4px 0 0; font-size: 0.68rem; text-align: center; }
+  .main-actions .server-select { margin-top: 8px; }
+}
+/* 방법 줄은 높이가 넉넉할 때(421px 이상)만 보인다. 그보다 낮으면 왼쪽의 3단계로 충분하고, 안 숨기면 한 화면에 안 들어가 스크롤이 생긴다 */
+@media (orientation: landscape) and (max-height: 420px) and (pointer: coarse) { .main-howto { display: none; } .main-actions .primary.big { padding: 9px 14px; font-size: 1rem; } .main-actions .or-divider { margin: 6px 0; } .main-actions .server-select { margin-top: 6px; } }
+/* 아주 낮은 화면(300px 이하)만 부득이하게 스크롤 */
+@media (orientation: landscape) and (max-height: 300px) and (pointer: coarse) { .main-screen { overflow-y: auto; } }
+
+/* 스킬 해금 레벨(4.33): 아직 레벨이 모자라면 흐리게 하고 🔒와 필요한 레벨을 보인다. 툴팁에는 필요 레벨과 지금 레벨이 나온다 */
+.skill-btn.locked { opacity: 0.5; filter: grayscale(0.85); cursor: not-allowed; }
+.skill-btn .skill-lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: inherit; background: rgba(0,0,0,0.55); font-size: 0.95rem; line-height: 1; gap: 1px; }
+.skill-btn .skill-lock b { font-size: 0.68rem; font-weight: 800; color: #ffd29a; }
+.skill-tip .st-lv { padding: 0 7px; border-radius: 999px; background: rgba(255,179,71,0.18); color: #ffd29a; font-weight: 700; line-height: 1.5; }
+.skill-tip .st-state.locked { color: #ff9a9a; }
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .skill-btn .skill-lock { font-size: 0.8rem; } .skill-btn .skill-lock b { font-size: 0.6rem; } }
+
+/* 칭호·스킬 해금 알림 묶음: 이전에는 칭호 알림(.title-alert)이 자리를 직접 잡았는데, 둘이 같이 뜰 수 있어 묶음이 자리를 잡고 카드는 그 안에 쌓는다 */
+.alert-stack { position: absolute; left: 12px; bottom: var(--alert-bottom); z-index: 60; width: min(380px, calc(100% - 24px)); display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; }
+.alert-stack > .title-alert { position: relative; width: auto; left: auto; bottom: auto; pointer-events: auto; } /* 안의 시간 띠(absolute)가 카드를 기준으로 하도록 relative */
+.unlock-alert { border-color: rgba(95,211,194,0.65); box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 24px rgba(95,211,194,0.2); }
+.unlock-alert .title-alert-kicker { color: #8ff0de; }
+.unlock-alert .title-alert-timer { background: #5fd3c2; }
+@media (max-width: 760px) and (orientation: portrait) { .arena-wrap .alert-stack { left: 62px; right: 8px; width: auto; bottom: calc(84px + env(safe-area-inset-bottom)); } }
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .arena-wrap .alert-stack { left: 8px; width: min(320px, calc(100% - 16px)); bottom: 124px; } }
+
+/* 가이드의 스킬 예시(내 화면 / 상대 화면)와 해금 표, 구슬 확률 */
+.skill-demo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 8px 0 12px; }
+.skill-demo figure { margin: 0; display: grid; gap: 6px; align-content: start; }
+.skill-demo-canvas { width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid var(--line); background: #1f2a37; }
+.skill-demo figcaption { display: grid; gap: 2px; font-size: 0.82rem; line-height: 1.4; }
+.skill-demo figcaption strong { font-size: 0.9rem; }
+@media (max-width: 640px) { .skill-demo { grid-template-columns: 1fr; } }
+.guide-table-wrap { overflow-x: auto; margin: 8px 0 12px; }
+.guide-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.guide-table th, .guide-table td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.guide-table th { color: var(--muted); font-weight: 700; font-size: 0.78rem; }
+.guide-table td kbd { padding: 0 7px; border-radius: 5px; background: #0b0f17; border: 1px solid #3a4a63; font-size: 0.78rem; }
+.orb-odds { margin: 8px 0 12px; display: grid; gap: 8px; }
+.orb-odds-bar { display: flex; height: 14px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.orb-odds-bar .gain { background: linear-gradient(90deg, #2a9d73, #7ee0b4); }
+.orb-odds-bar .lose { background: linear-gradient(90deg, #c4524e, #ff8a8a); }
+.orb-odds ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.88rem; }
+.orb-odds li strong { font-size: 1rem; margin-right: 4px; }
+.orb-odds li.gain strong { color: #7ee0b4; }
+.orb-odds li.lose strong { color: #ff8a8a; }
+.orb-odds li.bang strong { color: #ffd166; }
+
+/* 갈고리에 잡혀 끌려오는 동안(4.33): 모든 스킬 버튼이 잠깐 비활성처럼 보인다 */
+.skill-btn.hooked { opacity: 0.45; filter: grayscale(0.9); cursor: not-allowed; }
+.skill-btn .skill-hooked { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; background: rgba(0,0,0,0.55); font-size: 1.1rem; animation: hooked-shake 0.18s linear infinite; }
+@keyframes hooked-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1px); } 75% { transform: translateX(1px); } }
+@media (prefers-reduced-motion: reduce) { .skill-btn .skill-hooked { animation: none; } }
+
+/* 가이드의 레벨별 필요 경험치 표: 10레벨씩 묶은 작은 표를 화면 폭에 맞춰 늘어놓는다 */
+.level-exp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 12px; }
+.level-exp-grid .guide-table { font-size: 0.8rem; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0f151f; }
+.level-exp-grid caption { text-align: left; padding: 6px 10px; font-weight: 700; color: var(--accent); font-size: 0.78rem; background: #151d2a; caption-side: top; }
+.level-exp-grid th, .level-exp-grid td { padding: 3px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.level-exp-grid th { color: var(--muted); font-weight: 600; }
+.level-exp-grid td { text-align: right; font-variant-numeric: tabular-nums; }
+.level-exp-grid .lv-unlock { margin-left: 2px; }

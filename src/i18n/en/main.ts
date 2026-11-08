@@ -5,7 +5,7 @@ export default {
   step2: '➕ Add it first',
   step3: '⭕ Your orb grows',
   howtoLabel: 'Controls and rules',
-  howto1: '🕹  Move with the joystick on mobile, click or arrow keys on PC',
+  howto1: '🕹  Move with the joystick on mobile, right-click or arrow keys on PC',
   howto2: '⭕ Bigger orbs bounce smaller ones away',
   howto3: '💥 Lose a fight and you lose 1 keyword; win and you steal it',
   howto4: '🔥 Touch a 5-combo flame and you lose all your keywords',

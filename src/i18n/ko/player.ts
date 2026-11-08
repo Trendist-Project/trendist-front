@@ -15,4 +15,7 @@ export default {
   noKeywords: '지금 가진 키워드가 없어요',
   detailAria: '{text} 자세히 보기',
   reportPreview: '플레이어: {name}',
+  cardMore: '자세히 보기(신고 포함)',
+  following: '따라가는 중',
+  cardClose: '닫기(왼쪽으로 밀어도 돼요)',
 } as Record<string, string>;

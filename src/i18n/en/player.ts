@@ -15,4 +15,7 @@ export default {
   noKeywords: 'Not holding any keywords right now',
   detailAria: 'View details for {text}',
   reportPreview: 'Player: {name}',
+  cardMore: 'Details (with report)',
+  following: 'Following',
+  cardClose: 'Close (or swipe left)',
 } as Record<string, string>;

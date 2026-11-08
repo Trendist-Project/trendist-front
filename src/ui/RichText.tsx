@@ -1,7 +1,8 @@
 import { Fragment, type ReactNode } from 'react';
 import { GrowthIcons } from './GrowthIcons';
 import { LevelIconGallery } from './LevelText';
-import { ArenaLegend, Controls, KeywordStates, StartSteps } from './GuideArt';
+import { ArenaLegend, Controls, KeywordStates, LevelExpTable, OrbOdds, SkillUnlockTable, StartSteps } from './GuideArt';
+import { SkillDemo } from './SkillDemo';
 
 /** 본문에 넣을 수 있는 게임 그림. 이름이 틀리면 글자 그대로 보인다. */
 const EMBEDS: Record<string, () => ReactNode> = {
@@ -11,6 +12,14 @@ const EMBEDS: Record<string, () => ReactNode> = {
   '[[조작]]': () => <Controls />,
   '[[키워드 상태]]': () => <KeywordStates />,
   '[[아레나 표시]]': () => <ArenaLegend />,
+  '[[스킬 해금 표]]': () => <SkillUnlockTable />,
+  '[[구슬 확률]]': () => <OrbOdds />,
+  '[[레벨 필요 경험치]]': () => <LevelExpTable />,
+  '[[스킬 대시]]': () => <SkillDemo skill="dash" />,
+  '[[스킬 방패]]': () => <SkillDemo skill="shield" />,
+  '[[스킬 갈고리]]': () => <SkillDemo skill="hook" />,
+  '[[스킬 충격파]]': () => <SkillDemo skill="shockwave" />,
+  '[[스킬 은신]]': () => <SkillDemo skill="stealth" />,
 };
 
 /** 관리자 편집기의 [그림] 메뉴가 쓰는 이름들(한국어 이름이 기준) */
@@ -24,6 +33,14 @@ const EN_ALIASES: Record<string, string> = {
   '[[controls]]': '[[조작]]',
   '[[keyword states]]': '[[키워드 상태]]',
   '[[arena legend]]': '[[아레나 표시]]',
+  '[[skill unlock table]]': '[[스킬 해금 표]]',
+  '[[orb odds]]': '[[구슬 확률]]',
+  '[[level exp table]]': '[[레벨 필요 경험치]]',
+  '[[skill dash]]': '[[스킬 대시]]',
+  '[[skill shield]]': '[[스킬 방패]]',
+  '[[skill hook]]': '[[스킬 갈고리]]',
+  '[[skill shockwave]]': '[[스킬 충격파]]',
+  '[[skill stealth]]': '[[스킬 은신]]',
 };
 
 /**

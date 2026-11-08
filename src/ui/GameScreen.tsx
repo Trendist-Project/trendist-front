@@ -14,12 +14,18 @@ import { hasUnread, markNoticesRead, NoticeModal, NoticePopup, popupNotices } fr
 import { ProfileModal } from './ProfileModal';
 import { ORB_REVEAL_MS, OrbReveal } from './OrbReveal';
 import { SidePanel } from './SidePanel';
-import { LevelText } from './LevelText';
-import { DashChip, type DashState } from './DashChip';
+import { ComboTimer } from './ComboTimer';
+import { TargetCard } from './TargetCard';
+import type { OrbLook } from '../game/skin';
+import type { DashState, SkillCooldowns } from './SkillBar';
+import type { SkillInfo } from '../api/types';
+import { useSkills } from './useSkills';
+import { effectiveKey, keyAliases, keyLabel, loadKeyOverrides } from '../game/skillKeys';
+import { BottomBar } from './BottomBar';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
-import { fmtNumber, t } from '../i18n';
+import { fmtNumber, t, tOr } from '../i18n';
 
 interface Props {
   initialPlayer: PlayerSummary;
@@ -42,9 +48,9 @@ const JOY_RADIUS = 56;         // 조이스틱 판 반지름(px). 이만큼 끌�
 const JOY_DEAD = 8;            // 이보다 덜 끌면 멈춘 것으로 본다(손가락 떨림)
 const JOY_INTERVAL_MS = 50;    // 조이스틱 방향은 초당 20회까지 보낸다(끄는 동안 계속 바뀌므로 방향키보다 넉넉하게 묶는다)
 
-/** 작은 화면(모바일). 저장된 선택이 없을 때의 기본값을 화면을 덜 가리는 쪽으로 정하는 데 쓴다. */
+/** 작은 화면(모바일, 가로 모드 폰 포함). 저장된 선택이 없을 때의 기본값을 화면을 덜 가리는 쪽으로 정하는 데 쓴다. */
 function isSmallScreen() {
-  try { return window.matchMedia('(max-width: 760px)').matches; } catch { return false; }
+  try { return window.matchMedia('(max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse)').matches; } catch { return false; }
 }
 
 /** 미니맵 켜짐 여부는 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
@@ -65,29 +71,15 @@ function saveLeaderboardPref(visible: boolean) {
   try { localStorage.setItem(LEADERBOARD_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
 }
 
-/** 채팅 켜짐·접힘 여부도 이 브라우저에만 기억한다. 기본은 켜짐·펼침. */
+/** 채팅 켜짐·접힘 여부도 이 브라우저에만 기억한다. 처음 접속하면 PC·모바일 모두 접힌 채로 시작한다(한 줄 + 입력창). */
 const CHAT_KEY = 'trendist.chat';
 type ChatView = 'open' | 'collapsed' | 'off';
 function loadChatView(): ChatView {
-  const fallback: ChatView = isSmallScreen() ? 'collapsed' : 'open'; // 모바일은 처음에 접힌 채로(한 줄 + 입력창)
+  const fallback: ChatView = 'collapsed'; // 처음 접속은 접힌 채로. 한 번 바꾸면 그 선택을 기억한다
   try { const v = localStorage.getItem(CHAT_KEY); return v === 'open' || v === 'collapsed' || v === 'off' ? v : fallback; } catch { return fallback; }
 }
 function saveChatView(v: ChatView) {
   try { localStorage.setItem(CHAT_KEY, v); } catch { /* 무시 */ }
-}
-
-/**
- * 모바일(터치) 이동 방식(4.2). 조이스틱: 누른 자리에 조이스틱이 생기고 끄는 방향으로 움직인다(기본).
- * 터치 이동: 누른 지점으로 가고 누르고 있으면 계속 따라간다(마우스 클릭과 같다). 이 브라우저에 기억한다.
- */
-const TOUCH_CONTROL_KEY = 'trendist.touchControl';
-const DASH_HINT_KEY = 'trendist.dashHint'; // 대시 사용법 안내를 이미 보여 줬는지
-type TouchControl = 'joystick' | 'tap';
-function loadTouchControl(): TouchControl {
-  try { return localStorage.getItem(TOUCH_CONTROL_KEY) === 'tap' ? 'tap' : 'joystick'; } catch { return 'joystick'; }
-}
-function saveTouchControl(v: TouchControl) {
-  try { localStorage.setItem(TOUCH_CONTROL_KEY, v); } catch { /* 무시 */ }
 }
 
 /** 조작 설명은 처음 들어오면 펼쳐 두고, 접으면 이 브라우저에 기억해서 다음부터는 접힌 채로 시작한다. */
@@ -112,13 +104,24 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [toast, setToast] = useState<string | null>(null);
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
   const [dead, setDead] = useState<{ by: string; waiting: boolean } | null>(null); // 죽음(4.31): 흑백 화면에 머물며 리스폰을 기다린다
-  const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number }>({ combo: 0, flameAt: 5, key: 0 }); // 4.25
+  const myEntityRef = useRef(-1); // 내 원 번호(콤보 시간이 끝났을 때 불꽃을 지우는 데 쓴다)
+  const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number; until: number | null }>({ combo: 0, flameAt: 5, key: 0, until: null }); // 4.25. until: 콤보가 사라질 시각(performance.now 기준 ms, 제한 없으면 null)
   const [emoteOpen, setEmoteOpen] = useState(false); // 이모트 고르기(4.26)
   const emoteOpenRef = useRef(false); // 키 입력 처리(한 번만 등록)에서 최신 값을 본다
   emoteOpenRef.current = emoteOpen;
   const sendEmoteRef = useRef<(code: string) => void>(() => {});
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
   const [dash, setDash] = useState<DashState | null>(null); // 대시 남은 시간·쿨타임(4.27)
+  const [skillCd, setSkillCd] = useState<SkillCooldowns>({}); // 스킬마다 다시 쓸 수 있는 시각(4.33)
+  const skills = useSkills(); // 스킬 목록·기본 키·쿨타임(DB, 4.33)
+  const [hookedUntil, setHookedUntil] = useState<number | null>(null);
+  const hookedUntilRef = useRef(0);
+  const skillsRef = useRef(skills);
+  skillsRef.current = skills;
+  const levelRef = useRef(player.level);
+  levelRef.current = player.level;
+  const sendSkillRef = useRef<(id: string) => void>(() => {});
+  const sendDashRef = useRef<() => void>(() => {});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
@@ -127,21 +130,20 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
   const [orbReveal, setOrbReveal] = useState<{ result: OrbResult; key: number } | null>(null);
   const [openKeyword, setOpenKeyword] = useState<number | null>(null);
   const [infoEntity, setInfoEntity] = useState<number | null>(null);
+  const [infoLook, setInfoLook] = useState<OrbLook | null>(null); // 정보 창에 보여 줄 그 원의 모양
+  const [targetCard, setTargetCard] = useState<number | null>(null); // 클릭한 플레이어의 작은 정보 카드(왼쪽 위)
+  const [followUi, setFollowUi] = useState<number | null>(null); // 지금 따라가는 원(카드에 "따라가는 중"을 보이고 10초 닫힘을 멈춘다)
+  const [targetTouch, setTargetTouch] = useState(0); // 원을 누를 때마다 올라가서 카드의 10초를 다시 시작한다
   const [infoBot, setInfoBot] = useState<{ nickname: string; level: number; score: number } | null>(null);
   // 정보 보기 모드(모바일): 켜져 있으면 다음 탭은 이동이 아니라 그 원의 정보를 연다
-  const [inspect, setInspect] = useState(false);
+  const [sideRequest, setSideRequest] = useState<{ tab: 'search' | 'mine'; key: number } | null>(null); // 모바일 메뉴에서 시트를 여는 요청
   const [menuOpen, setMenuOpen] = useState(false); // 모바일 ☰ 메뉴
-  const inspectRef = useRef(false);
-  inspectRef.current = inspect;
   const [searchRequest, setSearchRequest] = useState<{ text: string; key: number } | null>(null);
   const [chatLines, setChatLines] = useState<ChatLine[]>([]);
   const [chatView, setChatView] = useState<ChatView>(loadChatView);
   const chatOnRef = useRef(chatView !== 'off');
   chatOnRef.current = chatView !== 'off';
   const chatInputRef = useRef<HTMLInputElement>(null);
-  const [touchControl, setTouchControl] = useState<TouchControl>(loadTouchControl);
-  const touchControlRef = useRef(touchControl);
-  touchControlRef.current = touchControl;
   const joyRef = useRef<HTMLDivElement>(null);
   // 공지(4.16): 들어올 때 아직 안 본 팝업 공지를 띄우고, 목록에서 못 본 새 공지가 있으면 [공지사항]에 빨간 점을 켠다.
   // 게임 중에 올라온 공지는 팝업 없이 점만 켠다(5분마다 다시 읽는다)
@@ -219,9 +221,11 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           case 'welcome':
             setDead(null); arena.setDead(false); // 처음 들어왔거나 리스폰했다
             setDash(null); arena.resetDash(); // 새 원이라 대시 남은 시간·쿨타임 표시도 지운다(서버는 이미 초기화)
+            setSkillCd({}); arena.resetSkills(); hookedUntilRef.current = 0; setHookedUntil(null); // 스킬 쿨타임과 연출도(4.33)
             arena.setMe(m.entityNo, m.x, m.y);
             arena.resendView(); // 다시 들어왔으니 보이는 범위를 서버에 다시 알린다
             myEntity = m.entityNo;
+            myEntityRef.current = m.entityNo;
             ready = true;
             resyncDir(); // 다시 연결됐을 때 아직 누르고 있는 방향키가 있으면 서버와 예측에 함께 다시 넣는다
             conn.send({ type: 'ping', t: performance.now() });
@@ -266,9 +270,13 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             // 연속 빼앗기 콤보와 불꽃(4.25). 콤보 수는 화면 위 카드로만 보이고, 원 위로 떠오르는 글자는 띄우지 않는다(점수 글자와 겹치지 않게)
             arena.setCombo(m.e, m.combo, m.flameAt);
             const mine = m.e === myEntity;
-            if (mine) setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (m.event === 'up' || m.event === 'start' ? 1 : 0) }));
+            if (mine) {
+              // 콤보가 오를 때마다 유지시간이 다시 시작되므로(4.25) 그때 사라질 시각을 새로 잡는다
+              const rose = m.event === 'up' || m.event === 'start';
+              setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (rose ? 1 : 0),
+                until: rose ? (m.maxMs ? performance.now() + m.maxMs : null) : c.until }));
+            }
             // 다른 사람이 불꽃을 얻었다는 안내는 띄우지 않는다(불꽃은 그 원 둘레로 보인다)
-            if (m.event === 'expired' && mine) showToast(t('gamescreen.comboExpired')); // 콤보 유지시간이 끝났다(4.25)
             if (m.event === 'broken') {
               if (mine) showToast(t('gamescreen.flameOut', { by: m.by ?? t('gamescreen.someone') }));
             }
@@ -317,6 +325,27 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           case 'knock': arena.applyKnock(m.dx, m.dy, m.ms); break;
           case 'levelFx': arena.showLevelFx(m.e, m.level); break; // 레벨업 이펙트(4.30)
           case 'dashFx': arena.showDashFx(m.e, m.ms); break; // 누군가 대시를 시작했다: 그 원에 강조 효과(4.27)
+          case 'skill': { // 내가 스킬을 썼다(4.33): 쿨타임 표시
+            const at = performance.now() + m.cooldownMs;
+            setSkillCd((c) => ({ ...c, [m.id]: at }));
+            break;
+          }
+          case 'cooldowns': { // 새로고침하고 다시 들어왔다: 서버가 들고 있는 스킬·대시 쿨타임을 다시 보여 준다(welcome 뒤에 온다)
+            const t0 = performance.now();
+            setSkillCd(Object.fromEntries(Object.entries(m.skills).map(([id, ms]) => [id, t0 + ms])));
+            if (m.dashReadyMs > 0) {
+              setDash({ until: t0 + m.dashActiveMs, readyAt: t0 + m.dashReadyMs });
+              if (m.dashActiveMs > 0) arena.startDash(m.dashActiveMs, m.dashMult);
+            }
+            break;
+          }
+          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : t('gamescreen.skillSafe')); break;
+          case 'skillFx': arena.showSkillFx(m); break; // 누군가 스킬을 썼다: 그 연출(4.33)
+          case 'pull': // 갈고리에 끌려온다(4.33): 끌려오는 동안 스킬 버튼을 잠깐 못 쓰는 모양으로 바꾼다
+            arena.startPull(m.ms, m.byE); showToast(t('gamescreen.hooked'));
+            hookedUntilRef.current = performance.now() + m.ms + 150; setHookedUntil(hookedUntilRef.current);
+            window.setTimeout(() => setHookedUntil((u) => (u === hookedUntilRef.current ? null : u)), m.ms + 200);
+            break;
           case 'dash': {
             // 대시 시작(4.27): 예측을 같은 속도로 올리고 아래 표시줄에 남은 시간·쿨타임을 보여 준다
             arena.startDash(m.ms, m.mult);
@@ -331,14 +360,21 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     sendEmoteRef.current = (code: string) => { if (ready) conn.send({ type: 'emote', code }); };
     // 대시(4.27): 쿨타임·움직이는 중인지는 서버가 보고, 시작하면 {type: 'dash'}로 알려 온다
     const sendDash = () => { if (ready) conn.send({ type: 'dash' }); };
+    sendDashRef.current = sendDash; // 모바일은 ⚡ 버튼으로 쓴다
+    // 스킬(4.33): 쿨타임·세이프존은 서버가 본다. 갈고리는 겨눈 지점(PC는 마우스, 모바일은 조이스틱·이동 방향)을 함께 보낸다
+    let lastPointer: { x: number; y: number } | null = null;
+    const aimPoint = (): { x: number; y: number } | null => {
+      if (joy && (joy.dx || joy.dy)) { const me = arena.mePosition(); return { x: me.x + joy.dx * 1000, y: me.y + joy.dy * 1000 }; }
+      if (hold && moveTarget) return moveTarget;
+      if (lastPointer) return arena.screenToWorld(lastPointer.x, lastPointer.y);
+      return null; // 겨누지 않았으면 서버가 가던 방향으로 쓴다
+    };
+    sendSkillRef.current = (id: string) => {
+      if (!ready) return;
+      const aim = id === 'hook' ? aimPoint() : null;
+      conn.send(aim ? { type: 'skill', id, x: Math.round(aim.x), y: Math.round(aim.y) } : { type: 'skill', id });
+    };
     conn.start();
-    // 터치 기기에는 대시 방법을 처음 한 번만 알려 준다(조이스틱을 쥔 채 다른 손가락 탭)
-    let dashHint: number | null = null;
-    try {
-      if (window.matchMedia('(pointer: coarse)').matches && !localStorage.getItem(DASH_HINT_KEY)) {
-        dashHint = window.setTimeout(() => { showToast(t('gamescreen.dashHint')); try { localStorage.setItem(DASH_HINT_KEY, '1'); } catch { /* 저장 못 해도 된다 */ } }, 5000);
-      }
-    } catch { /* 저장소를 못 쓰면 안내만 건너뛴다 */ }
     // 서버 왕복 시간을 2초마다 잰다(내 원 보정 허용 오차에 쓴다)
     const pingTimer = window.setInterval(() => conn.send({ type: 'ping', t: performance.now() }), 2000);
     // 페이지를 떠날 때(구글 로그인으로 이동, 새로고침, 탭 닫기) 서버에 알려 바로 방에서 빠진다. 닫힘 신호가 늦거나 안 와도 유령으로 남지 않게
@@ -349,7 +385,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     const pressed = new Set<string>();
     let lastSent = 0, pending: number | null = null;
     // 터치 조이스틱(4.2): 누른 자리가 중심이고, 끈 방향·거리가 방향키처럼 서버로 가는 방향(-1~1)이 된다
-    let joy: { pointerId: number; ox: number; oy: number; dx: number; dy: number } | null = null;
+    let joy: { pointerId: number; ox: number; oy: number; dx: number; dy: number; armed: boolean } | null = null; // armed: 탭 범위를 넘게 끌어서 조이스틱이 켜졌다
     const currentDir = () => {
       if (joy) return { dx: joy.dx, dy: joy.dy };
       let dx = 0, dy = 0;
@@ -376,7 +412,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     const drawJoy = () => {
       const el = joyRef.current;
       if (!el) return;
-      if (!joy) { el.hidden = true; return; }
+      if (!joy || !joy.armed) { el.hidden = true; return; } // 탭(원 누르기)일 때는 조이스틱을 띄우지 않는다
       const rect = canvas.getBoundingClientRect();
       el.hidden = false;
       el.style.left = `${joy.ox - rect.left}px`;
@@ -409,7 +445,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     };
     const canvas = canvasRef.current!;
     // 다른 플레이어 정보(4.11): PC는 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭한다. 왼쪽 클릭·터치·드래그는 언제나 이동이라 겹치지 않는다
-    const openInfo = (hit: number) => { setInfoBot(arena.botInfo(hit)); setInfoEntity(hit); };
+    const openInfo = (hit: number) => { setInfoBot(arena.botInfo(hit)); setInfoLook(arena.entityInfo(hit)?.look ?? null); setInfoEntity(hit); };
     // 누르고 있는 동안에는 손가락·마우스가 있는 곳으로 계속 따라간다(4.2). 화면이 같이 움직이므로 가만히 누르고 있어도 주기적으로 다시 찍는다
     let hold: { pointerId: number; x: number; y: number } | null = null;
     const followHold = () => {
@@ -418,26 +454,72 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       sendMove();
     };
     const holdTimer = window.setInterval(followHold, CLICK_INTERVAL_MS);
+    // PC 좌클릭으로 고른 원(플레이어·봇)을 자동으로 따라간다. 그 원의 지금 위치를 이동 목표로 계속 보낸다(초당 10회).
+    // 방향키·우클릭 이동·터치·원이 사라짐·죽음이면 멈춘다
+    let followE: number | null = null;
+    const stopFollow = () => {
+      if (followE === null) return;
+      followE = null;
+      setFollowUi(null);
+      arena.setFollowTarget(null);
+      // 마지막 이동 목표와 이미 예약된 이동 전송을 지운다. 안 지우면 방향키·WASD를 눌렀는데도 늦게 나가는 이동 명령이 서버에서 방향 입력을 덮어써서 조작이 안 먹힌다
+      moveTarget = null;
+      if (movePending !== null) { clearTimeout(movePending); movePending = null; }
+    };
+    const followTick = () => {
+      if (followE === null) return;
+      const p = ready ? arena.followPosition(followE) : null;
+      if (!p) { stopFollow(); return; }
+      moveTarget = p;
+      sendMove();
+    };
+    const followTimer = window.setInterval(followTick, CLICK_INTERVAL_MS);
+    // 탭·더블탭 기준(UX): 손가락·마우스가 조금 흔들려도 탭으로 보고, 움직이는 원을 누르는 것이라 일반 앱(Android 탭 300ms·터치 슬롭 8dp·더블탭 300ms)보다 넉넉하게 잡는다.
+    // 손가락 목표는 지름 44~48px이 권장이라 터치는 원 둘레 24px까지 맞은 것으로 본다(마우스는 정확해서 14px).
+    const TAP_MS = 300;          // 이 안에 떼야 탭(길게 누르면 탭이 아니다)
+    const TAP_SLOP = 16;         // 이만큼(px) 안 움직여야 탭이고, 이보다 많이 움직여야 조이스틱이 뜬다
+    const TOUCH_TOL = 24, MOUSE_TOL = 14;
+    // 터치 탭 후보: 눌렀을 때의 자리와 시각
+    const taps = new Map<number, { x: number; y: number; t: number }>();
+    // 원을 골라 따라간다(터치 탭·PC 좌클릭). 누른 원의 정보는 왼쪽 위 작은 카드로 보여 주고(더블클릭·더블탭은 쓰지 않는다),
+    // 빈 곳은 아무 효과 없고, 따라가는 원을 다시 누르면 따라가기만 멈춘다(카드는 그대로)
+    const selectTarget = (px: number, py: number, tol: number) => {
+      const hit = arena.entityAt(px, py, tol);
+      if (hit === null) return;
+      setTargetCard(hit);
+      setTargetTouch((n) => n + 1);
+      if (hit === followE) { stopFollow(); return; }
+      followE = hit;
+      setFollowUi(hit);
+      arena.setFollowTarget(hit);
+      followTick();
+    };
     const pointerDown = (e: PointerEvent) => {
-      if (e.button !== 0 || !ready) return; // 왼쪽 버튼(터치·펜도 0)
+      if (!ready) return;
+      const mouse = e.pointerType === 'mouse';
+      // PC(마우스): 우클릭이 이동, 좌클릭은 원을 골라 따라가기(빈 곳이면 따라가기 취소). 터치·펜은 그대로 왼쪽(0) 버튼이 이동이다
+      if (mouse ? e.button !== 0 && e.button !== 2 : e.button !== 0) return;
       setMenuOpen(false); // 아레나를 누르면 열린 메뉴는 닫는다
-      if (inspectRef.current) {
-        // 정보 보기 모드: 이동하지 않고, 누른 원의 정보를 연다. 원이 아닌 곳을 누르면 모드만 끈다
-        const hit = arena.entityAt(e.clientX, e.clientY);
-        if (hit !== null) openInfo(hit);
-        setInspect(false);
+      // 미니맵: 크게 보는 중이면 어디를 눌러도 닫고, 작은 미니맵을 누르면(PC 좌클릭·터치) 크게 본다. 이동·따라가기는 하지 않는다
+      if (arena.isMinimapEnlarged()) { arena.setMinimapEnlarged(false); return; }
+      if ((!mouse || e.button === 0) && arena.minimapHit(e.clientX, e.clientY)) { arena.setMinimapEnlarged(true); return; }
+      if (mouse && e.button === 0) {
+        const hit = arena.entityAt(e.clientX, e.clientY, MOUSE_TOL);
+        if (hit !== null && e.shiftKey) { openInfo(hit); return; } // Shift+클릭: 바로 정보
+        selectTarget(e.clientX, e.clientY, MOUSE_TOL); // 클릭: 따라가기 + 왼쪽 위 정보 카드
         return;
       }
-      // 이미 한 손가락으로 조이스틱(또는 터치 이동)을 쥐고 있을 때 다른 손가락으로 화면 어디든 탭하면 대시(4.27). 오른손·왼손 어느 쪽이든 쓸 수 있다
-      if (e.pointerType === 'touch' && (joy || hold)) { sendDash(); return; }
+      stopFollow(); // 직접 움직이면(우클릭·터치) 자동 따라가기는 멈춘다
       try { canvas.setPointerCapture(e.pointerId); } catch { /* 이미 뗐다 */ }
-      if (e.pointerType === 'touch' && touchControlRef.current === 'joystick') {
-        // 조이스틱: 누른 자리에 판이 생기고, 끌기 전까지는 움직이지 않는다. 두 번째 손가락은 무시한다
+      if (e.pointerType === 'touch') {
+        // 짧게 톡 누르고 떼면 원 고르기(따라가기)다. 조이스틱을 쥔 채 다른 손가락으로 찍어도 된다. 대시는 ⚡ 버튼으로 쓴다
+        taps.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
+        // 조이스틱: 누른 자리에 판이 생기고, 끌기 전까지는 움직이지 않는다. 두 번째 손가락은 조이스틱이 되지 않는다
         if (joy) return;
         hold = null;
         moveTarget = null;
         pressed.clear();
-        joy = { pointerId: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 };
+        joy = { pointerId: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0, armed: false };
         drawJoy();
         return;
       }
@@ -450,13 +532,20 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     };
     canvas.addEventListener('pointerdown', pointerDown);
     const pointerMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') lastPointer = { x: e.clientX, y: e.clientY }; // 갈고리를 겨누는 마우스 위치(4.33)
       if (joy && e.pointerId === joy.pointerId) {
         const vx = e.clientX - joy.ox, vy = e.clientY - joy.oy, d = Math.hypot(vx, vy);
+        if (!joy.armed) {
+          if (d < TAP_SLOP) return; // 탭 범위 안의 떨림: 조이스틱도 이동도 아니다(원을 탭하려던 것일 수 있다)
+          joy.armed = true;
+          drawJoy();
+        }
         // 판 반지름만큼 끌면 최대 속도. 소수 둘째 자리로 묶어 같은 방향을 거듭 보내지 않는다
         const k = d < JOY_DEAD ? 0 : Math.min(d, JOY_RADIUS) / JOY_RADIUS / d;
         const dx = Math.round(vx * k * 100) / 100, dy = Math.round(vy * k * 100) / 100;
         if (dx === joy.dx && dy === joy.dy) return;
         joy.dx = dx; joy.dy = dy;
+        if (dx || dy) stopFollow(); // 조이스틱으로 직접 움직이면 자동 따라가기는 멈춘다
         drawJoy();
         sendDir();
         return;
@@ -464,6 +553,11 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       if (hold && e.pointerId === hold.pointerId) { hold.x = e.clientX; hold.y = e.clientY; followHold(); }
     };
     const pointerEnd = (e: PointerEvent) => {
+      const tp = taps.get(e.pointerId);
+      taps.delete(e.pointerId);
+      if (tp && e.type === 'pointerup' && performance.now() - tp.t < TAP_MS && Math.hypot(e.clientX - tp.x, e.clientY - tp.y) < TAP_SLOP) {
+        selectTarget(tp.x, tp.y, TOUCH_TOL); // 짧은 탭: 원 고르기(따라가기 + 왼쪽 위 정보 카드)
+      }
       if (joy && e.pointerId === joy.pointerId) { endJoy(); sendDir(); return; } // 떼면 그 자리에서 감속해 멈춘다
       if (hold && e.pointerId === hold.pointerId) hold = null;
     };
@@ -471,6 +565,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     const noMenu = (e: MouseEvent) => {
       e.preventDefault();
       if (!ready) return;
+      if ((e as PointerEvent).pointerType === 'mouse') return; // PC 우클릭은 이동이다. 정보는 Shift+클릭이나 [🔍]
       const hit = arena.entityAt(e.clientX, e.clientY);
       if (hit !== null) openInfo(hit);
     };
@@ -490,13 +585,13 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         chatInputRef.current?.focus();
         return;
       }
-      // M: 미니맵, L: 리더보드, C: 채팅 켜기/끄기. 한글 입력 상태(ㅡ, ㅣ, ㅊ)에서도 되도록 key가 아니라 code로 본다.
-      // Ctrl·Cmd와 함께 누른 C(복사)는 단축키로 쓰지 않는다
-      if ((e.code === 'KeyM' || e.code === 'KeyL' || e.code === 'KeyC') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.code === 'KeyC') setChatView((v) => (v === 'off' ? 'open' : 'off'));
-        else (e.code === 'KeyM' ? setShowMinimap : setShowLeaderboard)((v) => !v);
+      // M: 미니맵 크게 보기(켜고 닫기), Esc: 크게 보기 닫기. 미니맵·리더보드·채팅을 켜고 끄는 것은 위쪽 버튼으로만 한다(예전의 M·L·C 키는 없앴다).
+      // 한글 입력 상태(ㅡ)에서도 되도록 key가 아니라 code로 본다
+      if (e.code === 'KeyM' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        arena.setMinimapEnlarged(!arena.isMinimapEnlarged());
         return;
       }
+      if (e.code === 'Escape' && arena.isMinimapEnlarged()) { arena.setMinimapEnlarged(false); return; }
       // E: 이모트 창 열기/닫기, 창이 열려 있을 때 1~8: 그 이모트를 보내고 창을 접는다(4.26). 한글 입력 상태(ㄷ)에서도 되게 code로 본다
       if (e.code === 'KeyE' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
         setEmoteOpen((v) => !v);
@@ -508,15 +603,25 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
         setEmoteOpen(false);
         return;
       }
-      // 스페이스바: 대시(4.27). 쿨타임과 움직이는 중인지는 서버가 본다. 버튼에 포커스가 있어도 눌리지 않게 막는다
-      if (e.code === 'Space') {
-        if (!e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); if (!e.repeat) sendDash(); }
-        return;
+      // 스킬·대시 키(4.33): DB의 기본 키에 사용자가 바꾼 키를 덧씌운 값. 이모트 창이 열려 있을 때의 숫자는 위에서 이모트로 처리했다.
+      // 한글 입력 상태에서도 되게 code로 보고, 숫자 줄의 키는 숫자패드로도 쓴다. 스페이스는 버튼이 눌리거나 화면이 내려가지 않게 막는다
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const overrides = loadKeyOverrides();
+        const sk = skillsRef.current.find((k) => { const key = effectiveKey(k, overrides); return key !== null && keyAliases(key).includes(e.code); });
+        if (sk) {
+          if (e.code === 'Space') e.preventDefault();
+          if (e.repeat) return;
+          if (performance.now() < hookedUntilRef.current) return; // 갈고리에 잡혀 끌려오는 동안은 쓸 수 없다
+          if (sk.requiredLevel > levelRef.current) { showToast(t('gamescreen.skillLockedToast', { n: sk.requiredLevel })); return; } // 해금 레벨이 안 됐다(서버도 막는다)
+          if (sk.code === 'dash') sendDash(); else sendSkillRef.current(sk.code);
+          return;
+        }
       }
       if (!(e.code in KEYS)) return;
       // Ctrl·Alt·Cmd와 함께 누른 키는 단축키다. 이때는 떼는 신호가 오지 않는 브라우저가 있어 이동으로 쓰지 않는다
       if (e.ctrlKey || e.metaKey || e.altKey) { releaseAll(); return; }
       e.preventDefault();
+      stopFollow(); // 방향키로 움직이면 자동 따라가기는 멈춘다
       if (pressed.has(e.code)) return; // 길게 눌러 반복되는 신호
       pressed.add(e.code); sendDir();
     };
@@ -546,11 +651,11 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
       canvas.removeEventListener('pointerleave', pointerEnd);
       canvas.removeEventListener('contextmenu', noMenu);
       clearInterval(holdTimer);
+      clearInterval(followTimer);
       if (pending !== null) clearTimeout(pending);
       if (movePending !== null) clearTimeout(movePending);
       clearInterval(pingTimer);
       window.removeEventListener('pagehide', bye);
-      if (dashHint !== null) window.clearTimeout(dashHint);
       bye(); // 로그아웃 등으로 게임 화면을 나갈 때도
       conn.stop();
       arena.stop();
@@ -568,9 +673,34 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
     saveChatView(chatView);
   }, [chatView]);
   useEffect(() => { saveHelpPref(showHelp); }, [showHelp]);
-  useEffect(() => { saveTouchControl(touchControl); }, [touchControl]);
-  const toggleTouchControl = useCallback(() => setTouchControl((v) => (v === 'joystick' ? 'tap' : 'joystick')), []);
-  const touchControlLabel = touchControl === 'joystick' ? t('gamescreen.joystick') : t('gamescreen.tapMove');
+  // 콤보 유지시간(5분)이 끝나면 서버 알림을 기다리지 않고 화면에서도 바로 지운다: 콤보 카드와 내 원의 불꽃. 서버가 곧 같은 사실을 알려 주고, 그 사이 콤보가 올랐으면 새 시각으로 다시 센다
+  useEffect(() => {
+    if (myCombo.until === null || myCombo.combo < 1) return;
+    const until = myCombo.until, flameAt = myCombo.flameAt;
+    const id = window.setTimeout(() => {
+      setMyCombo((c) => (c.until === until ? { ...c, combo: 0, until: null } : c));
+      arenaRef.current?.setCombo(myEntityRef.current, 0, flameAt);
+    }, Math.max(0, until - performance.now()) + 200);
+    return () => window.clearTimeout(id);
+  }, [myCombo.until, myCombo.combo, myCombo.flameAt]);
+  // 레벨이 올라서 새로 쓸 수 있게 된 스킬이 있으면 안내 팝업(4.33). 처음 불러온 레벨은 기준일 뿐이라 알리지 않고, 올랐을 때만 (이전 레벨, 지금 레벨] 사이에 해금되는 스킬을 알린다
+  const [unlockAlert, setUnlockAlert] = useState<{ key: number; level: number; skills: SkillInfo[] } | null>(null);
+  const prevLevelRef = useRef<number | null>(null);
+  useEffect(() => {
+    const lv = player.level, prev = prevLevelRef.current;
+    prevLevelRef.current = lv;
+    if (prev === null || lv <= prev) return;
+    const gained = skillsRef.current.filter((k) => k.requiredLevel > prev && k.requiredLevel <= lv);
+    if (gained.length) setUnlockAlert({ key: Date.now(), level: lv, skills: gained });
+  }, [player.level]);
+  useEffect(() => {
+    if (!unlockAlert) return;
+    const id = window.setTimeout(() => setUnlockAlert((a) => (a?.key === unlockAlert.key ? null : a)), 9000);
+    return () => window.clearTimeout(id);
+  }, [unlockAlert]);
+  const readMeLook = useCallback(() => arenaRef.current?.meLook() ?? null, []);
+  const readTarget = useCallback((e: number) => arenaRef.current?.entityInfo(e) ?? null, []);
+  const closeTargetCard = useCallback(() => setTargetCard(null), []);
   const closePanel = useCallback(() => { setPanel(null); setProfileView('main'); }, []);
 
 
@@ -628,29 +758,18 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             <span className="hud-long">{t('gamescreen.onlineLong', { online })}</span><span className="hud-short">👥 {online}</span>
             {bots > 0 && <span className="muted"><span className="hud-long">{t('gamescreen.botsLong', { bots })}</span><span className="hud-short"> · 🤖 {bots}</span></span>}
           </span>
+          <span className="hud-me">{t('gamescreen.score', { n: fmtNumber(Number(player.currentScore)) })}</span>
           {status !== 'open' && <span className="warn">{status === 'connecting' ? t('gamescreen.connecting') : t('gamescreen.reconnecting')}</span>}
         </div>
-        <div className="emote-dock">
-          {emoteOpen && (
-            <div className="emote-palette" role="menu" aria-label={t('gamescreen.emote')}>
-              {EMOTES.map(([code, ch, label], i) => (
-                <button key={code} role="menuitem" title={`${label} (${i + 1})`} aria-label={label}
-                        onClick={() => { sendEmoteRef.current(code); setEmoteOpen(false); }}>{ch}<kbd>{i + 1}</kbd></button>
-              ))}
-            </div>
-          )}
-          <div className="emote-row">
-            <DashChip dash={dash} />
-            <button className="emote-toggle" aria-expanded={emoteOpen} aria-label={t('gamescreen.emote')} title={t('gamescreen.emoteTitle')} onClick={() => setEmoteOpen((v) => !v)}>😀</button>
-          </div>
-        </div>
-        <div className="hud-bottom">
-          <span><LevelText level={player.level} prefix="Lv." /></span>
-          <button className="hud-name" onClick={() => setPanel('profile')} title={t('gamescreen.myInfo')}>{player.nickname}</button>
-          <span>{t('gamescreen.score', { n: fmtNumber(Number(player.currentScore)) })}</span>
-          <span className="muted hud-extra">EXP {player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</span>
-          <span className="muted hud-extra">{t('gamescreen.keywordCount', { n: player.holdCount })}</span>
-        </div>
+        {targetCard !== null && (
+          <TargetCard entityNo={targetCard} following={followUi === targetCard} touchKey={targetTouch} read={readTarget} onClose={closeTargetCard}
+                      onDetail={() => { const e = targetCard; setInfoBot(arenaRef.current?.botInfo(e) ?? null); setInfoLook(arenaRef.current?.entityInfo(e)?.look ?? null); setInfoEntity(e); }}
+                      onOpenKeyword={setOpenKeyword} />
+        )}
+        <BottomBar me={player} skills={skills} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
+                   onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
+                   emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
+                   onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />
         <div className="arena-tools">
           <div className="tool-row">
             {/* 모바일은 글자를 숨기고 아이콘만 보인다(.tool-label) */}
@@ -672,19 +791,18 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
             </button>
             <button onClick={() => setPanel('guide')} aria-label={t('gamescreen.guide')}>📖 <span className="tool-label">{t('gamescreen.guide')}</span></button>
             <button className="minimap-toggle" aria-label={t('gamescreen.minimap')} aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
-                    title={t('gamescreen.minimapTitle')}>🗺 <span className="tool-label">{t('gamescreen.minimap')}</span> <kbd>M</kbd></button>
+                    title={t('gamescreen.minimapTitle')}>🗺 <span className="tool-label">{t('gamescreen.minimap')}</span> </button>
             <button className="leaderboard-toggle" aria-label={t('gamescreen.leaderboard')} aria-pressed={showLeaderboard} onClick={() => setShowLeaderboard((v) => !v)}
-                    title={t('gamescreen.leaderboardTitle')}>🏆 <span className="tool-label">{t('gamescreen.leaderboard')}</span> <kbd>L</kbd></button>
-            <button className="inspect-toggle" aria-label={t('gamescreen.inspectAria')} aria-pressed={inspect}
-                    onClick={() => setInspect((v) => !v)} title={t('gamescreen.inspectTitle')}>🔍</button>
-            <button className="control-toggle" aria-label={t('gamescreen.moveMode', { label: touchControlLabel })} onClick={toggleTouchControl}
-                    title={t('gamescreen.moveModeTitle')}>{touchControl === 'joystick' ? '🕹' : '👆'} <span className="tool-label">{touchControlLabel}</span></button>
+                    title={t('gamescreen.leaderboardTitle')}>🏆 <span className="tool-label">{t('gamescreen.leaderboard')}</span> </button>
             <button className="chat-toggle" aria-label={t('gamescreen.chat')} aria-pressed={chatView !== 'off'} onClick={() => setChatView((v) => (v === 'off' ? 'open' : 'off'))}
-                    title={t('gamescreen.chatTitle')}>💬 <span className="tool-label">{t('gamescreen.chat')}</span> <kbd>C</kbd></button>
+                    title={t('gamescreen.chatTitle')}>💬 <span className="tool-label">{t('gamescreen.chat')}</span> </button>
             <button className="icon-button help-toggle" aria-expanded={showHelp} aria-controls="controls-help"
                     onClick={() => setShowHelp((v) => !v)} title={showHelp ? t('gamescreen.helpClose') : t('gamescreen.helpOpen')}
                     aria-label={showHelp ? t('gamescreen.helpClose') : t('gamescreen.helpOpen')}>?</button>
             {/* 모바일: 위 버튼들은 숨기고(🔍만 남김) 이 메뉴에 이름과 함께 모은다 */}
+ {/* 모바일: 메뉴 왼쪽에 검색·보관함 버튼(PC는 오른쪽 패널이 있어서 숨김) */}
+            <button className="side-toggle" onClick={() => setSideRequest({ tab: 'search', key: Date.now() })} aria-label={t('side.tabSearch')} title={t('side.tabSearch')}>🔍</button>
+            <button className="side-toggle" onClick={() => setSideRequest({ tab: 'mine', key: Date.now() })} aria-label={t('side.tabMine')} title={t('side.tabMine')}>📦</button>
             <button className="menu-toggle" aria-label={noticeDot ? t('gamescreen.menuAriaNew') : t('gamescreen.menu')} aria-expanded={menuOpen} aria-controls="mobile-menu"
                     onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}{noticeDot && !menuOpen && <span className="dot-badge" aria-hidden="true" />}</button>
           </div>
@@ -710,9 +828,6 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                   <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? t('gamescreen.on') : t('gamescreen.off')}</span>
                 </button>
               ))}
-              <button onClick={() => { setMenuOpen(false); toggleTouchControl(); }}>
-                <span aria-hidden="true">{touchControl === 'joystick' ? '🕹' : '👆'}</span>{t('gamescreen.moveModeLabel')}<span className="menu-state on">{touchControlLabel}</span>
-              </button>
               {isAdmin && <button onClick={() => { setMenuOpen(false); openAdmin(); }}><span aria-hidden="true">🛠</span>{t('gamescreen.adminPage')}</button>}
               <div className="mobile-menu-sep" />
               {guest
@@ -725,6 +840,7 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
           {myCombo.combo >= 1 && (
             <div key={myCombo.key} className={myCombo.combo >= myCombo.flameAt ? 'combo-hud on-fire' : 'combo-hud'} role="status" aria-live="polite">
               <strong>{myCombo.combo >= myCombo.flameAt ? '🔥' : '⚔️'} {myCombo.combo} Combo</strong>
+              <ComboTimer until={myCombo.until} />
             </div>
           )}
           {showHelp && (
@@ -757,30 +873,49 @@ export function GameScreen({ initialPlayer, guest, onLogout, onWithdrawn }: Prop
                      onToggleCollapsed={() => setChatView((v) => (v === 'collapsed' ? 'open' : 'collapsed'))} />
         )}
         <div ref={joyRef} className="joystick" hidden aria-hidden="true"><div className="joystick-knob" /></div>
-        {inspect && <div className="inspect-hint" role="status">{t('gamescreen.inspectHint')}</div>}
-        {toast && <div className="toast" role="status">{toast}</div>}
-        {titleAlert && (
-          <div key={titleAlert.key} className="title-alert" role="status" aria-live="polite">
-            <span className="title-alert-icon" aria-hidden="true">🏅</span>
-            <div className="title-alert-text">
-              <span className="title-alert-kicker">{t('gamescreen.newTitle')}</span>
-              <strong>{titleAlert.name}</strong>
-              <span className="muted small">{titleAlert.description}</span>
+        {/* 칭호·스킬 해금 알림은 같은 자리(아래쪽)에 차례로 쌓는다: 레벨이 오르면 둘이 함께 뜰 수 있어서 서로 겹치지 않게 */}
+        <div className="alert-stack">
+          {titleAlert && (
+            <div key={titleAlert.key} className="title-alert" role="status" aria-live="polite">
+              <span className="title-alert-icon" aria-hidden="true">🏅</span>
+              <div className="title-alert-text">
+                <span className="title-alert-kicker">{t('gamescreen.newTitle')}</span>
+                <strong>{titleAlert.name}</strong>
+                <span className="muted small">{titleAlert.description}</span>
+              </div>
+              <div className="title-alert-actions">
+                <button className="primary" onClick={() => equipTitle(titleAlert.titleId, titleAlert.name)}>{t('gamescreen.equip')}</button>
+                <button className="icon-button" onClick={dismissTitleAlert} aria-label={t('gamescreen.dismissAria')}>✕</button>
+              </div>
+              <span className="title-alert-timer" aria-hidden="true" />
             </div>
-            <div className="title-alert-actions">
-              <button className="primary" onClick={() => equipTitle(titleAlert.titleId, titleAlert.name)}>{t('gamescreen.equip')}</button>
-              <button className="icon-button" onClick={dismissTitleAlert} aria-label={t('gamescreen.dismissAria')}>✕</button>
+          )}
+          {unlockAlert && (
+            <div key={unlockAlert.key} className="title-alert unlock-alert" role="status" aria-live="polite">
+              <span className="title-alert-icon" aria-hidden="true">{unlockAlert.skills[0].icon}</span>
+              <div className="title-alert-text">
+                <span className="title-alert-kicker">{t('gamescreen.skillUnlockKicker', { n: unlockAlert.level })}</span>
+                <strong>{unlockAlert.skills.map((k) => tOr(`skills.${k.code}_name`, k.code)).join(', ')}</strong>
+                <span className="muted small">{t('gamescreen.skillUnlockDesc')} {unlockAlert.skills.map((k) => { const key = effectiveKey(k); return key ? keyLabel(key) : ''; }).filter(Boolean).join(' · ')}</span>
+              </div>
+              <div className="title-alert-actions">
+                <button className="icon-button" onClick={() => setUnlockAlert(null)} aria-label={t('gamescreen.dismissAria')}>✕</button>
+              </div>
+              <span className="title-alert-timer" aria-hidden="true" style={{ animationDuration: '9s' }} />
             </div>
-            <span className="title-alert-timer" aria-hidden="true" />
-          </div>
-        )}
-        {hit && <div key={hit.key} className="toast hit-toast" role="status">🎯 {hit.text}</div>}
-        {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
+          )}
+        </div>
+        {/* 알림은 한 줄로 쌓는다(구슬 결과 → 공격 성공 → 잃음·일반): 서로 다른 자리에 겹쳐 뜨던 것을 한 묶음으로 */}
+        <div className="notify-stack">
+          {orbReveal && <OrbReveal key={orbReveal.key} result={orbReveal.result} />}
+          {hit && <div key={hit.key} className="toast hit-toast" role="status">🎯 {hit.text}</div>}
+          {toast && <div className="toast" role="status">{toast}</div>}
+        </div>
       </div>
       <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast}
-                 onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} />
+                 onOpenKeyword={setOpenKeyword} searchRequest={searchRequest} openRequest={sideRequest} />
       {infoEntity !== null && (
-        <PlayerInfoModal entityNo={infoEntity} bot={infoBot} onClose={() => setInfoEntity(null)}
+        <PlayerInfoModal entityNo={infoEntity} bot={infoBot} look={infoLook} onClose={() => setInfoEntity(null)}
                          onOpenKeyword={(id) => { setInfoEntity(null); setOpenKeyword(id); }} onNotice={showToast} />
       )}
       {openKeyword !== null && (

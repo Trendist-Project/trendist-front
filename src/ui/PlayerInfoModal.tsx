@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { api, ApiFailure } from '../api/client';
-import type { PlayerCard, ScoreHistory } from '../api/types';
+import type { PlayerCard } from '../api/types';
 import { TurtleIcon } from './GrowthIcons';
+import { PlayerOrb } from './PlayerOrb';
+import { BOT_BASE } from '../game/turtle';
+import type { OrbLook } from '../game/skin';
 import { STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
 import { ReportDialog } from './ReportDialog';
-import { ScoreChart } from './ScoreChart';
-import { LevelText } from './LevelText';
 import { fmtNumber, t } from '../i18n';
 
 interface Props {
   entityNo: number;
   /** NPC 봇이면 서버에 묻지 않고 이 값으로 간단한 카드만 보여 준다(4.21) */
   bot?: { nickname: string; level: number; score: number } | null;
+  /** 그 원의 아레나 모양(바탕색·테두리·그림·효과). 봇은 빨간 바탕. 없으면 기본 성장 거북이 */
+  look?: OrbLook | null;
   onClose(): void;
   onOpenKeyword(keywordId: number): void;
   /** 신고 결과 안내(알림창) */
@@ -21,11 +24,10 @@ interface Props {
 
 /**
  * 다른 플레이어 정보 팝업(4.11). 아레나에서 다른 원을 누르면 열린다. 게임은 멈추지 않는다.
- * 아이콘·닉네임(관리자 배지)·활성 칭호, 현재 유행도·레벨·댓글 점수, 최근 7일 점수 추이, 보관함 중 점수 상위 3개(이름·상태만).
+ * 아이콘·닉네임(관리자 배지)·활성 칭호, 현재 유행도·레벨, 보관함 중 점수 상위 3개(이름·상태만). 점수 추이 그래프는 없다.
  */
-export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotice }: Props) {
+export function PlayerInfoModal({ entityNo, bot, look, onClose, onOpenKeyword, onNotice }: Props) {
   const [card, setCard] = useState<PlayerCard | null>(null);
-  const [history, setHistory] = useState<ScoreHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
 
@@ -35,7 +37,6 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
     api.roomPlayer(entityNo)
       .then((c) => { if (alive) setCard(c); })
       .catch((e) => { if (alive) setError(e instanceof ApiFailure ? e.message : t('player.loadFailed')); });
-    api.roomPlayerHistory(entityNo).then((h) => { if (alive) setHistory(h); }).catch(() => { /* 그래프만 빠진다 */ });
     return () => { alive = false; };
   }, [entityNo, bot]);
 
@@ -43,7 +44,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
     return (
       <Modal title={bot.nickname} onClose={onClose} className="player-modal">
         <section className="player-hero">
-          <TurtleIcon level={bot.level} size={64} />
+          <PlayerOrb look={look ?? { bg: BOT_BASE, borderColor: null, borderWidth: null, art: null, borderEffect: null, bot: true }} level={bot.level} size={72} />
           <div className="player-hero-main">
             <div className="player-name"><strong>{bot.nickname}</strong><span className="badge bot">BOT</span></div>
             <span className="muted small">{t('player.botDesc')}</span>
@@ -51,7 +52,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
         </section>
         <dl className="kw-stats">
           <div><dt>{t('player.score')}</dt><dd>{fmtNumber(bot.score)}</dd></div>
-          <div><dt>{t('profile.level')}</dt><dd><LevelText level={bot.level} prefix={t('common.levelPrefix')} suffix={t('common.levelSuffix')} size={26} /></dd></div>
+          <div><dt>{t('profile.level')}</dt><dd>{t('common.levelPrefix')}{bot.level}{t('common.levelSuffix')}</dd></div>
           <div><dt>{t('player.rank')}</dt><dd className="muted">{t('player.notRanked')}</dd></div>
         </dl>
       </Modal>
@@ -68,7 +69,7 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
       {!error && !card && <p className="muted">{t('common.loading')}</p>}
       {card && (<>
         <section className="player-hero">
-          <TurtleIcon level={card.level} size={64} />
+          {look ? <PlayerOrb look={look} level={card.level} size={72} /> : <TurtleIcon level={card.level} size={64} />}
           <div className="player-hero-main">
             <div className="player-name">
               <strong>{card.nickname}</strong>
@@ -80,14 +81,8 @@ export function PlayerInfoModal({ entityNo, bot, onClose, onOpenKeyword, onNotic
 
         <dl className="kw-stats">
           <div><dt>{t('player.score')}</dt><dd>{fmtNumber(card.score)}</dd></div>
-          <div><dt>{t('profile.level')}</dt><dd><LevelText level={card.level} prefix={t('common.levelPrefix')} suffix={t('common.levelSuffix')} size={26} /></dd></div>
-          <div><dt>{t('player.commentScore')}</dt><dd>{fmtNumber(card.commentScore)}</dd></div>
+          <div><dt>{t('profile.level')}</dt><dd>{t('common.levelPrefix')}{card.level}{t('common.levelSuffix')}</dd></div>
         </dl>
-
-        <section className="kw-activity" aria-label={t('player.last7dTrend')}>
-          <div className="kw-activity-head"><h3>{t('chart.last7d')}</h3></div>
-          {history ? <ScoreChart history={history} /> : <div className="chart-placeholder muted small">{t('chart.loading')}</div>}
-        </section>
 
         <section className="player-keywords" aria-label={t('player.keywords')}>
           <h3>{t('player.keywords')} <span className="muted small">{t('player.top3')}</span></h3>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { KeywordCard, MyKeyword, PlayerSummary } from '../api/types';
 import { remaining, STATE_BADGE } from './keywordFormat';
@@ -15,6 +15,8 @@ interface Props {
   onOpenKeyword(keywordId: number): void;
   /** 채팅의 #키워드를 누르면 검색창에 넣고 검색한다(4.13). */
   searchRequest: { text: string; key: number } | null;
+  /** 모바일 메뉴에서 [검색]·[보관함]을 눌렀다: 그 탭으로 시트를 연다(모바일은 시트가 평소에는 숨어 있다) */
+  openRequest?: { tab: Tab; key: number } | null;
 }
 
 /** 보관함 정렬 기준. 기본은 남은 시간이 많은 것부터(곧 사라질 키워드가 아래로). */
@@ -53,7 +55,7 @@ function sortMine(list: MyKeyword[], key: SortKey, dir: SortDir) {
 }
 
 
-export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, searchRequest }: Props) {
+export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, searchRequest, openRequest }: Props) {
   const [tab, setTab] = useState<Tab>('search');
   const [q, setQ] = useState('');
   const [card, setCard] = useState<KeywordCard | null>(null);
@@ -62,6 +64,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   const [busy, setBusy] = useState(false);
   // 모바일 하단 시트: 접혀 있으면 탭 줄만 보인다. 탭을 누르면 펼치고, 펼친 탭을 다시 누르면 접는다(데스크톱은 늘 펼침)
   const [expanded, setExpanded] = useState(false);
+  const sideRef = useRef<HTMLElement>(null);
   const [sort, setSort] = useState(loadSort);
   const sortedMine = useMemo(() => sortMine(mine, sort.key, sort.dir), [mine, sort]);
 
@@ -70,6 +73,27 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   }, [sort]);
 
   async function loadMine() { try { setMine(await api.myKeywords()); } catch { /* 다음에 다시 */ } }
+
+  useEffect(() => {
+    if (!openRequest) return;
+    setTab(openRequest.tab);
+    setExpanded(true);
+  }, [openRequest]);
+
+  // 모바일·가로 모드 폰의 시트: 열려 있을 때 시트 밖을 누르면(아레나·조이스틱 포함) 저절로 닫는다. 위쪽의 [🔍][📦] 버튼은 탭만 바꾸므로 제외한다
+  useEffect(() => {
+    if (!expanded) return;
+    const compact = window.matchMedia('(max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse)');
+    const onDown = (e: PointerEvent) => {
+      if (!compact.matches) return; // PC의 오른쪽 패널은 늘 열려 있다
+      const el = e.target instanceof Element ? e.target : null;
+      // 시트 안, 위쪽 [🔍][📦] 버튼, 그리고 창(키워드 상세·신고 등)을 누르는 것은 밖으로 치지 않는다: 시트에서 연 키워드 상세를 닫으면 시트는 그대로 남아 있어야 한다
+      if (!el || sideRef.current?.contains(el) || el.closest('.side-toggle, .modal-backdrop, .title-alert')) return;
+      setExpanded(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [expanded]);
 
   // 채팅의 #키워드: 검색 탭으로 옮겨 그 단어로 검색한다
   useEffect(() => {
@@ -81,8 +105,11 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchRequest]);
 
+  // 보관함 개수를 탭 글자 옆에 늘 보이려고, 어느 탭이든 불러온다(처음·바뀔 때마다, 그리고 1분마다: 24시간이 지나 사라지는 키워드가 있다)
   useEffect(() => {
-    if (tab === 'mine') loadMine();
+    loadMine();
+    const id = window.setInterval(loadMine, 60_000);
+    return () => window.clearInterval(id);
   }, [tab, refreshKey]);
 
   async function search(e: FormEvent) {
@@ -119,14 +146,14 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
   }
 
   return (
-    <aside className={expanded ? 'side expanded' : 'side'}>
+    <aside ref={sideRef} className={expanded ? 'side expanded' : 'side'}>
       <nav className="tabs" role="tablist">
-        {([['search', t('side.tabSearch')], ['mine', t('side.tabMine')]] as const).map(([k, label]) => (
+        {([['search', t('side.tabSearch')], ['mine', `${t('side.tabMine')} (${mine.length})`]] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''}
                   onClick={() => { if (tab === k && expanded) setExpanded(false); else { setTab(k); setExpanded(true); } }}>{label}</button>
         ))}
-        <button className="sheet-toggle" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}
-                aria-label={expanded ? t('side.collapsePanel') : t('side.expandPanel')}>{expanded ? '▾' : '▴'}</button>
+        <button className="sheet-toggle" onClick={() => setExpanded(false)} aria-expanded={expanded}
+                aria-label={t('side.collapsePanel')} title={t('side.collapsePanel')}>✕</button>
       </nav>
 
       {tab === 'search' && (
@@ -162,7 +189,6 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, search
         <div className="tab-body">
           {mine.length === 0 ? <p className="muted">{t('side.noneYet')}</p> : (<>
             <div className="sort-bar">
-              <span className="muted small">{t('side.holding', { n: mine.length })}</span>
               {/* 기준을 누르면 그 기준으로, 이미 고른 기준을 다시 누르면 방향을 바꾼다 */}
               <div className="sort-chips" role="group" aria-label={t('side.sortGroup')}>
                 {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => {

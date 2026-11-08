@@ -3,8 +3,7 @@ import { errorText } from '../i18n';
 import { getAdminCountry } from './adminCountry';
 import type {
   Activity, ActivityRange, PlayerCard, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
-  AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult,
-} from './types';
+  AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo } from './types';
 
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -66,7 +65,25 @@ export function resumeSession(): Promise<boolean> {
 
 export type GoogleLoginResult = 'LINKED' | 'EXISTING' | 'CREATED' | 'WITHDRAWN';
 
+const INFO_CACHE_MS = 5000;
+const infoCache = new Map<string, { at: number; p: Promise<unknown> }>();
+/** 같은 키의 요청이 5초 안에 다시 오면 같은 응답(진행 중이면 같은 요청)을 돌려준다 */
+function cached<T>(key: string, fetch: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const hit = infoCache.get(key);
+  if (hit && now - hit.at < INFO_CACHE_MS) return hit.p as Promise<T>;
+  if (infoCache.size > 100) for (const [k, v] of infoCache) if (now - v.at >= INFO_CACHE_MS) infoCache.delete(k);
+  const p = fetch();
+  infoCache.set(key, { at: now, p });
+  p.catch(() => { if (infoCache.get(key)?.p === p) infoCache.delete(key); });
+  return p;
+}
+
 export const api = {
+  allLevels: () => request<{ level: number; requiredExp: number }[]>('GET', '/api/game-info/levels'),
+  orbOdds: () => request<{ gainPercent: number; losePercent: number }>('GET', '/api/game-info/orb-odds'),
+  levelExp: (levels: number[]) => request<Record<string, number>>('GET', `/api/game-info/level-exp?levels=${levels.join(',')}`),
+  skills: () => request<SkillInfo[]>('GET', '/api/skills'),
   async startGuest() {
     accessToken = (await raw<TokenResponse>('POST', '/api/auth/guest', undefined, false)).accessToken;
   },
@@ -121,8 +138,8 @@ export const api = {
     request<void>('POST', '/api/reports', { target, targetId, reason }),
   vote: (commentId: number, vote: 'LIKE' | 'DISLIKE') => request<VoteResult>('POST', `/api/comments/${commentId}/vote`, { vote }),
   scoreHistory: (range: ScoreRange) => request<ScoreHistory>('GET', `/api/me/score-history?range=${range}`),
-  roomPlayer: (entityNo: number) => request<PlayerCard>('GET', `/api/room/players/${entityNo}`),
-  roomPlayerHistory: (entityNo: number) => request<ScoreHistory>('GET', `/api/room/players/${entityNo}/score-history?range=7d`),
+  // 같은 원의 정보는 5초 동안 다시 묻지 않는다(2.x 정보 팝업 5초 캐시). 더블탭을 거듭하거나 개발 모드(StrictMode)에서 같은 요청이 겹쳐 나가 429가 나지 않게 한다. 실패한 요청은 기억하지 않는다
+  roomPlayer: (entityNo: number) => cached(`card:${entityNo}`, () => request<PlayerCard>('GET', `/api/room/players/${entityNo}`)),
   rankings: () => request<RankingEntry[]>('GET', `/api/rankings?country=${getCountry()}`),
   notices: () => request<Notice[]>('GET', '/api/notices'),
   /** 지금 보여 줄 긴급 안내(4.29). 없으면 notice가 null */

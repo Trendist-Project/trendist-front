@@ -63,6 +63,18 @@ export interface RosterEntry {
   borderEffect?: string | null; nameColor?: string | null; nameStyle?: string | null; combo?: number;
 }
 
+/** 스킬 코드(4.33). 서버 Room.SKILLS와 같다 */
+export type SkillId = string; // DB(skills)의 스킬 코드. 동작이 있는 코드는 서버 Room.SKILLS
+
+/** skillFx: id마다 담긴 값이 다르다. 충격파 = 쓴 자리와 반지름·속도, 갈고리 = 방향·사거리·ms, hookHit = 맞은 원(t)과 끌려오는 ms, stealth = 은신(유령) 시작과 지속 ms */
+export type SkillFx =
+  | { id: 'shockwave'; e: number; x: number; y: number; r0: number; rMax: number; speed: number }
+  | { id: 'hook'; e: number; dx: number; dy: number; range: number; ms: number }
+  | { id: 'hookHit'; e: number; t: number; ms: number }
+  | { id: 'hookEnd'; e: number }
+  | { id: 'stealth'; e: number; ms: number }
+  | { id: 'stealthEnd'; e: number }
+
 export type ServerMessage =
   | { type: 'spectating'; country: string; spectators: number } // 관전 접속이 받아들여짐(관리자 관전, 13.13)
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
@@ -72,10 +84,15 @@ export type ServerMessage =
   | { type: 'levelFx'; e: number; level: number } // 레벨업 이펙트(4.30): 그 원에서 빛기둥이 솟는다
   | { type: 'dashFx'; e: number; ms: number } // 누군가 대시를 시작했다(4.27): 그 원에 강조 효과를 그린다
   | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
+  | { type: 'skill'; id: SkillId; cooldownMs: number } // 내가 스킬을 썼다(4.33): 다시 쓸 수 있을 때까지
+  | { type: 'cooldowns'; skills: Record<string, number>; dashActiveMs: number; dashReadyMs: number; dashMult: number } // 다시 들어왔을 때 서버가 알려 주는 지금 쿨타임(남은 ms, 4.33)
+  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
+  | { type: 'skillFx' } & SkillFx // 누군가 스킬을 썼다(4.33): 그 연출을 그린다
+  | { type: 'pull'; ms: number; byE: number } // 내가 갈고리에 맞았다(4.33): 쓴 원 번호(byE)에게 ms 동안 끌려온다. 그동안 이동·스킬 불가
   | { type: 'roster'; players: RosterEntry[]; flameAt?: number }
   | { type: 'emote'; e: number; code: string } // 이모트(4.26)
   // 연속 빼앗기 콤보(4.25). event: up(+1) / start(flameAt에 닿아 불꽃이 붙음) / reset(잃어서 콤보 끝) / broken(잃어서 불꽃까지 꺼짐, by가 끈 사람)
-  | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken' | 'expired'; flameAt: number; by?: string; byE?: number }
+  | { type: 'combo'; e: number; nickname: string; combo: number; event: 'up' | 'start' | 'reset' | 'broken' | 'expired'; flameAt: number; maxMs?: number; by?: string; byE?: number }
   | { type: 'emergency'; notice: import('../api/types').EmergencyNotice | null } // 긴급 안내가 올라오거나 끝났다(4.29). null이면 걷는다
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
