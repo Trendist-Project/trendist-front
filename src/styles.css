@@ -1319,3 +1319,15 @@ button.link-back:hover { color: var(--text); }
 .orb-tag.gain, .orb-tag.steal { color: #7be0b0; background: rgba(63,182,139,0.16); }
 .orb-tag.lose, .orb-tag.stolen { color: #ff9a9a; background: rgba(255,122,122,0.14); }
 .orb-reveal .orb-meta .orb-who { font-size: 0.8rem; color: var(--muted); font-weight: 600; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
+
+/* 접기 손잡이: 모바일 세로 모드에서만 보인다 */
+.bb-fold { display: none; }
+@media (max-width: 760px) and (orientation: portrait) {
+  .bb-fold { display: grid; place-items: center; position: absolute; left: 50%; top: -12px; transform: translateX(-50%); width: 52px; height: 22px; padding: 0; border-radius: 11px 11px 0 0;
+    font-size: 0.8rem; line-height: 1; color: #c9d4e3; background: rgba(20, 27, 38, 0.92); border: 1px solid var(--line); border-bottom: 0; z-index: 1; }
+  /* 접으면 내 정보(초상화·정보)를 숨기고 스킬 5개와 이모트를 한 줄에 */
+  .bottom-bar.folded { flex-wrap: nowrap; padding-top: 8px; }
+  .bottom-bar.folded .bb-me, .bottom-bar.folded .bb-info { display: none; }
+  .bottom-bar.folded .skill-row { order: 1; flex: 1 1 0; min-width: 0; padding-top: 0; border-top: 0; }
+  .bottom-bar.folded .bb-emote { order: 2; }
+}

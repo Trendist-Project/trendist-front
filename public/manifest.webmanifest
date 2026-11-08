@@ -1,0 +1,16 @@
+{
+  "name": "Trendist",
+  "short_name": "Trendist",
+  "description": "지금 유행하는 키워드를 +해서 내 원을 키우는 실시간 멀티플레이 아레나 게임",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0b0f17",
+  "theme_color": "#0b0f17",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }
+  ]
+}

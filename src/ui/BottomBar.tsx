@@ -41,6 +41,9 @@ export function BottomBar({ me, skills, readLook, cooldowns, dash, lockedUntil, 
   // 명령 줄의 실제 높이를 --bar-h로 알려 준다(세로 모드에서 채팅이 그 위에 일정한 간격으로 뜨게)
   const layer = useLayer('bar');
   useEffect(() => { if (emoteOpen) layer.front(); }, [emoteOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 모바일 세로 모드: 내 정보 줄을 접으면 스킬(과 이모트)만 남는다. 기억해 둔다
+  const [folded, setFolded] = useState(() => { try { return localStorage.getItem('trendist.barFolded') === '1'; } catch { return false; } });
+  const toggleFold = () => setFolded((v) => { const n = !v; try { localStorage.setItem('trendist.barFolded', n ? '1' : '0'); } catch { /* 저장 못 해도 된다 */ } return n; });
   const barRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = barRef.current, host = el?.closest('.arena-wrap') as HTMLElement | null;
@@ -54,7 +57,9 @@ export function BottomBar({ me, skills, readLook, cooldowns, dash, lockedUntil, 
   const pct = me.nextLevelExp > 0 ? Math.min(100, Math.round((me.exp / me.nextLevelExp) * 100)) : 100;
   const fallback: OrbLook = { bg: '#3fb68b', borderColor: null, borderWidth: null, art: null, borderEffect: null, bot: false };
   return (
-    <div className="bottom-bar" ref={barRef} {...layer.props}>
+    <div className={folded ? 'bottom-bar folded' : 'bottom-bar'} ref={barRef} {...layer.props}>
+      <button type="button" className="bb-fold" onClick={toggleFold} aria-expanded={!folded}
+              aria-label={folded ? t('gamescreen.barUnfold') : t('gamescreen.barFold')} title={folded ? t('gamescreen.barUnfold') : t('gamescreen.barFold')}>{folded ? '▴' : '▾'}</button>
       <button className="bb-me" onClick={onProfile} title={t('gamescreen.myInfo')} aria-label={t('gamescreen.myInfo')}>
         <PlayerOrb look={look ?? fallback} level={me.level} size={52} />
         <span className="bb-lv">{me.level}</span>

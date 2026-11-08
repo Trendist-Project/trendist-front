@@ -1,4 +1,7 @@
 export default {
+  fullscreen: 'Full screen',
+  barFold: 'Hide my info',
+  barUnfold: 'Show my info',
   killTitle: '💀 You took them down!',
   wipeHitTitle: '🔥 Flames wiped out all their keywords!',
   wipeLostTitle: '🔥 Flames burned all your keywords',

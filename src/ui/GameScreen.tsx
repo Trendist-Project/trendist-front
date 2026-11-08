@@ -151,6 +151,18 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   // 정보 보기 모드(모바일): 켜져 있으면 다음 탭은 이동이 아니라 그 원의 정보를 연다
   const [sideRequest, setSideRequest] = useState<{ tab: 'search' | 'mine'; key: number } | null>(null); // 모바일 메뉴에서 시트를 여는 요청
   const [menuOpen, setMenuOpen] = useState(false); // 모바일 ☰ 메뉴
+  // 전체 화면(안드로이드 크롬 등): 주소창을 가리고 화면을 넓힌다. 아이폰 사파리는 지원하지 않아 메뉴에 안 보인다(홈 화면에 추가하면 주소창 없이 열린다)
+  const canFullscreen = typeof document !== 'undefined' && !!document.fullscreenEnabled && !!document.documentElement.requestFullscreen;
+  const [isFullscreen, setIsFullscreen] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement);
+  useEffect(() => {
+    const on = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  }, []);
   const toolsLayer = useLayer('tools');
   // 메뉴·리더보드·조작 설명을 열면 도구 덩어리를 맨 위로(채팅·이모트보다 앞)
   useEffect(() => { if (menuOpen || showHelp || showLeaderboard) toolsLayer.front(); }, [menuOpen, showHelp, showLeaderboard]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -861,6 +873,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                 ['🏆', t('gamescreen.leaderboard'), showLeaderboard, () => setShowLeaderboard((v) => !v)],
                 ['💬', t('gamescreen.chat'), chatView !== 'off', () => setChatView((v) => (v === 'off' ? 'open' : 'off'))],
                 ['❔', t('gamescreen.help'), showHelp, () => setShowHelp((v) => !v)],
+                ...(canFullscreen ? [['⛶', t('gamescreen.fullscreen'), isFullscreen, toggleFullscreen] as const] : []),
               ] as const).map(([icon, label, on, act]) => (
                 <button key={label} role="menuitemcheckbox" aria-checked={on} onClick={() => { setMenuOpen(false); act(); }}>
                   <span aria-hidden="true">{icon}</span>{label}<span className={on ? 'menu-state on' : 'menu-state'}>{on ? t('gamescreen.on') : t('gamescreen.off')}</span>

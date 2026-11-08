@@ -1,4 +1,7 @@
 export default {
+  fullscreen: '전체 화면',
+  barFold: '내 정보 접기',
+  barUnfold: '내 정보 펼치기',
   killTitle: '💀 쓰러뜨렸어요!',
   wipeHitTitle: '🔥 불꽃으로 키워드를 모두 날렸어요!',
   wipeLostTitle: '🔥 불꽃에 키워드를 모두 잃었어요',
