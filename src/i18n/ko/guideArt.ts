@@ -65,7 +65,7 @@ export default {
   demoCap_shockwave_theirs: '퍼지는 빨간 고리에 닿으면 바깥으로 밀려나요. 키워드를 잃지는 않아요. 고리 밖으로 피하세요.',
   demoCap_stealth_mine: '내 원은 반투명으로 보이고 점선 고리와 남은 초가 떠요. 다른 사람 눈에는 보이지 않아요. 공격 스킬을 쓰면 풀려요.',
   demoCap_stealth_theirs: '은신한 원은 배경처럼 사라져요. 가까이 오면 내 원 위에 빨간 !가 떠서 조심하라고 알려 줘요.',
-  levelExpAria: '레벨별 필요 누적 경험치 표',
+  levelExpAria: '레벨별 필요 경험치 표(앞 레벨에서 올라올 때)',
   levelRange: '{a}~{b}레벨',
   levelUnlocks: '이 레벨에 열리는 스킬',
 } as Record<string, string>;

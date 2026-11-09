@@ -8,7 +8,8 @@ export const ORB_REVEAL_MS = 3000;
  *  kind는 카드 위의 작은 표시: GAIN 획득, LOSE 잃음, STEAL 뺏음, STOLEN 뺏김. who는 상대 이름(있으면 보여 준다). */
 export type RevealKind = 'GAIN' | 'LOSE' | 'STEAL' | 'STOLEN';
 /** wipe는 🔥 불꽃으로 키워드를 모두 날린(GAINED) 또는 모두 잃은(LOST) 개수. 키워드를 빼앗거나 빼앗긴 것이 아니라 표시(kind)는 없다 */
-export type RevealResult = OrbResult & { kind?: RevealKind; who?: string; wipe?: number; kill?: string };
+/** lostCount는 독 스택으로 한 번에 여러 개를 잃었을 때의 개수(2개 이상이면 개수만 크게 보여 주고 어떤 키워드인지는 보여 주지 않는다) */
+export type RevealResult = OrbResult & { kind?: RevealKind; who?: string; wipe?: number; kill?: string; lostCount?: number };
 const TAG_KEY: Record<RevealKind, string> = { GAIN: 'gamescreen.tagGain', LOSE: 'gamescreen.tagLose', STEAL: 'gamescreen.tagSteal', STOLEN: 'gamescreen.tagStolen' };
 
 function Tag({ kind }: { kind?: RevealKind }) {
@@ -51,6 +52,19 @@ export function OrbReveal({ result }: { result: RevealResult }) {
       <div className="orb-reveal muted-reveal" role="status">
         <p className="orb-title">{t('gamescreen.orbNone')}</p>
         <p className="muted small">{t('gamescreen.orbNoneSub')}</p>
+      </div>
+    );
+  }
+  if (result.status === 'LOST' && (result.lostCount ?? 0) > 1) { // 독 스택으로 한 번에 여러 개를 잃었다: 개수만 크게 보여 준다(어떤 키워드인지는 보여 주지 않는다)
+    return (
+      <div className="orb-reveal muted-reveal miss-reveal" role="status" aria-live="polite">
+        <p className="orb-title"><Tag kind={result.kind} />{t('gamescreen.poisonLostTitle')}</p>
+        <p className="orb-keyword"><strong>{t('gamescreen.wipeCount', { n: result.lostCount ?? 0 })}</strong></p>
+        <p className="orb-meta">
+          {result.who && <span className="orb-who">👤 {result.who}</span>}
+          {!!result.gained && <span className="orb-lostscore">{t('gamescreen.orbLostScore', { n: result.gained })}</span>}
+        </p>
+        <span className="orb-timer" style={{ animationDuration: `${ORB_REVEAL_MS}ms` }} />
       </div>
     );
   }

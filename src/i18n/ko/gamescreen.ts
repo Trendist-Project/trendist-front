@@ -109,6 +109,7 @@ export default {
   orbNone: '텅 빈 구슬이에요',
   orbNoneSub: '지금은 뜨는 키워드가 없어요',
   orbLost: '💨 키워드를 잃었어요',
+  poisonLostTitle: '☠ 독으로 한꺼번에 잃었어요',
   orbLostScore: '내 유행도 -{n}',
   orbGained: '✨ 새 키워드를 얻었어요!',
   orbRenewed: '키워드를 갱신하였어요',

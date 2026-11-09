@@ -78,6 +78,7 @@ export type SkillFx =
   | { id: 'boltEnd'; bid: number; hit?: number; x?: number; y?: number } // 투사체가 원(hit)에 맞았거나 사거리 끝에서 사라졌다
   | { id: 'poison'; t: number; stacks: number; ms: number } // 원(t)이 독에 걸렸다(스택 수, 다 지나가는 데 걸리는 ms)
   | { id: 'poisonEnd'; t: number }
+  | { id: 'darkness'; t: number; ms: number } // 원(t)이 암흑에 걸렸다(모두에게 표시. 정화는 cleanse 신호로 지운다)
   | { id: 'cleanse'; e: number } // 정화를 썼다(초록 고리)
 
 export type ServerMessage =
@@ -105,8 +106,8 @@ export type ServerMessage =
   | { type: 'emergency'; notice: import('../api/types').EmergencyNotice | null } // 긴급 안내가 올라오거나 끝났다(4.29). null이면 걷는다
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
-  | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
-  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number; poison?: boolean } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
+  | { type: 'score'; score: number; exp: number; nextExp: number; level: number; holdCount: number } // exp = 지금 레벨에서 모은 EXP, nextExp = 다음 레벨에 필요한 EXP(최고 레벨이면 -1)
+  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number; poison?: boolean; count?: number } // 내가 잃음: 잃은 키워드와 점수(4.3). 독 스택으로 한 틱에 여러 개를 잃으면 count에 개수가 온다(키워드 이름은 오지 않고 score는 합계). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로.
   // BOT = 봇을 이겨 🔥 키워드를 새로 얻음, BOT_RENEWED = 봇을 이겼는데 이미 가진 키워드라 남은 시간만 24시간으로

@@ -109,6 +109,7 @@ export default {
   orbNone: 'An empty orb',
   orbNoneSub: 'No trending keywords right now',
   orbLost: '💨 You lost a keyword',
+  poisonLostTitle: '☠ Poison took several at once',
   orbLostScore: 'My trend -{n}',
   orbGained: '✨ You got a new keyword!',
   orbRenewed: 'Keyword renewed',

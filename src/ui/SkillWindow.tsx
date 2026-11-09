@@ -26,14 +26,18 @@ interface Props {
  * 스킬창(4.33, K 키): 가로로 넓은 창을 둘로 나눈다.
  *  왼쪽: 장착한 스킬 4칸(세로 목록: 칸 번호·아이콘·이름·단축키 키캡)과 늘 쓰는 대시, [자동 장착]·[전체 해제].
  *  오른쪽 위: 스킬 아이콘 격자(누르면 선택, 장착 중이면 칸 번호 배지, 잠겼으면 🔒 Lv.N). 오른쪽 아래: 선택한 스킬의 설명과 [장착]/[해제] 버튼.
- * 장착하는 길은 두 가지다. ① 스킬을 고른 채 왼쪽 칸을 누르면 바로 그 칸에 들어간다. ② [장착]을 누르면 칸이 깜빡이고 원하는 칸을 눌러 고른다.
- * 칸에 이미 다른 스킬이 있으면 바꾸고, 선택한 스킬이 다른 칸에 있으면 두 칸의 자리를 바꾼다. 데스크톱은 끌어 놓기도 된다. 키는 칸 옆 키캡을 눌러 바꾼다.
+ * 노란 강조(놓을 수 있는 칸)는 "지금 놓는 중"일 때만 보인다.
+ *  ① 목록에서 스킬을 고르면(armed) 다른 칸이 강조되고, 칸을 누르면 그 칸에 들어가며 강조와 선택이 모두 사라진다. 고른 스킬이 있던 칸을 다시 누르면 강조만 사라진다.
+ *  ② 장착한 칸을 누르면(moving) 그 칸을 뺀 나머지 칸이 강조되고, 다른 칸을 누르면 두 칸의 자리가 바뀐다(빈 칸이면 옮겨진다). 처음 누른 칸을 다시 누르면 강조가 사라진다.
+ * [장착]을 누르면 칸이 깜빡이고 원하는 칸을 눌러 고른다. 데스크톱은 끌어 놓기도 된다. 키는 칸 옆 키캡을 눌러 바꾼다.
  */
 export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots, onSetKey, onResetKeys, onNotice }: Props) {
   const grid = skills.filter((s) => s.code !== 'dash')
     .sort((a, b) => (Number(a.requiredLevel > level) - Number(b.requiredLevel > level)) || a.requiredLevel - b.requiredLevel);
   const [picked, setPicked] = useState<string | null>(null); // 처음에는 아무것도 고르지 않는다(고른 스킬은 칸을 누르는 순간 그 칸에 들어간다)
-  const [replacing, setReplacing] = useState(false); // 칸이 모두 찼을 때 어느 칸과 바꿀지 고르는 중
+  const [replacing, setReplacing] = useState(false); // [장착]으로 원하는 칸을 고르는 중(칸이 깜빡인다)
+  const [armed, setArmed] = useState<string | null>(null); // 목록에서 고른 스킬을 칸에 놓는 중: 그 스킬이 있는 칸을 뺀 칸이 강조된다
+  const [moving, setMoving] = useState<number | null>(null); // 장착한 칸을 눌러 자리를 옮기는 중: 그 칸을 뺀 칸이 강조된다
   const [listening, setListening] = useState<number | 'dash' | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const info = (code: string | null) => (code ? skills.find((s) => s.code === code) ?? null : null);
@@ -71,26 +75,40 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
     if (from === target) return;
     if (from >= 0) next[from] = next[target] ?? null;
     next[target] = code;
-    setReplacing(false);
+    setReplacing(false); setArmed(null); setMoving(null); setPicked(null); // 장착하면 선택도 끝난다
     onChangeSlots(next);
   };
   /** [장착]: 원하는 칸을 직접 고르게 한다(칸이 깜빡인다). 다시 누르면 취소 */
   const equipPicked = () => {
     if (!sel || selLocked) return;
-    setReplacing((v) => !v);
+    if (replacing) { setReplacing(false); setArmed(null); } else { setReplacing(true); setArmed(sel.code); setMoving(null); }
   };
-  const unequip = (i: number) => { const next = [...slots]; next[i] = null; setReplacing(false); onChangeSlots(next); };
+  const unequip = (i: number) => { const next = [...slots]; next[i] = null; setReplacing(false); setArmed(null); setMoving(null); onChangeSlots(next); };
   const autoEquip = () => {
     const best = grid.filter((s) => s.requiredLevel <= level).slice(0, SLOT_COUNT).map((s) => s.code);
-    setReplacing(false);
+    setReplacing(false); setArmed(null); setMoving(null);
     onChangeSlots(Array.from({ length: SLOT_COUNT }, (_, i) => best[i] ?? null));
   };
-  const clearAll = () => { setReplacing(false); onChangeSlots(Array(SLOT_COUNT).fill(null)); };
-  /** 스킬을 고른 채 칸을 누르면 바로 그 칸에 장착한다(빈 칸이면 채우고, 다른 스킬이 있으면 바꾼다. 이미 다른 칸에 있으면 자리를 바꾼다). 고른 스킬이 없으면 그 칸의 스킬을 골라 상세를 본다 */
+  const clearAll = () => { setReplacing(false); setArmed(null); setMoving(null); onChangeSlots(Array(SLOT_COUNT).fill(null)); };
+  /**
+   * 칸을 누른다. 목록에서 고른 스킬을 놓는 중(armed)이면 그 칸에 넣고(이미 다른 칸에 있으면 자리를 바꾼다) 강조를 모두 끈다. 그 스킬이 있던 칸이면 강조만 끈다.
+   * 자리를 옮기는 중(moving)이면 누른 칸과 자리를 바꾸고(빈 칸이면 옮긴다) 강조를 끈다. 처음 누른 칸이면 강조만 끈다.
+   * 아무것도 하는 중이 아니면 장착한 스킬을 골라(상세 표시) 자리 옮기기를 시작한다.
+   */
   const onSlot = (i: number) => {
     const here = info(slots[i] ?? null);
-    if (sel && !selLocked) { if (here?.code === sel.code) return; place(sel.code, i); return; }
-    if (here) setPicked(here.code);
+    const a = info(armed);
+    if (a && a.requiredLevel <= level) {
+      if (here?.code === a.code) { setArmed(null); setReplacing(false); setPicked(null); return; }
+      place(a.code, i);
+      return;
+    }
+    if (moving !== null) {
+      if (moving !== i) { const next = [...slots]; [next[i], next[moving]] = [next[moving] ?? null, next[i] ?? null]; onChangeSlots(next); }
+      setMoving(null); setPicked(null);
+      return;
+    }
+    if (here) { setPicked(here.code); setMoving(i); }
   };
 
   const keycap = (target: number | 'dash', code: string) => (
@@ -104,13 +122,14 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
   const banner = listening !== null
     ? <p className="sw-status banner warn" role="status" aria-live="polite"><span className="sw-arrow side" aria-hidden="true">◀</span>{t('gamescreen.keyPress')}</p>
     : null;
-  const canPlace = !!sel && !selLocked; // 스킬을 골랐으면 왼쪽 칸이 장착 대상으로 표시된다
+  const armedSkill = info(armed);
+  const placing = (!!armedSkill && armedSkill.requiredLevel <= level) || moving !== null; // 놓는 중이거나 옮기는 중일 때만 칸을 강조한다
 
   return (
     <Modal title={t('gamescreen.skillWindowTitle')} onClose={onClose} className="skill-window">
       <div className="sw-layout">
         {/* 왼쪽: 장착한 스킬 */}
-        <section className={`sw-left${sel && !selLocked ? ' has-pick' : ''}`} aria-label={t('gamescreen.skillSlots')}>
+        <section className={`sw-left${placing ? ' has-pick' : ''}`} aria-label={t('gamescreen.skillSlots')}>
           <div className="sw-head"><h3>{t('gamescreen.skillSlots')}</h3><span className="sw-count">{t('gamescreen.skillSlotsCount', { n: slots.filter(Boolean).length, max: SLOT_COUNT })}</span></div>
           <div className="sw-bar-slots">
             {dashInfo && (<>
@@ -125,14 +144,14 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
               <span className="sw-vsep" aria-hidden="true" />
             </>)}
             {Array.from({ length: SLOT_COUNT }, (_, i) => {
-              const sk = info(slots[i] ?? null), target = canPlace && sk?.code !== sel?.code;
+              const sk = info(slots[i] ?? null), target = armedSkill && armedSkill.requiredLevel <= level ? sk?.code !== armedSkill.code : moving !== null && moving !== i;
               return (
                 <div key={i} className="sw-cell"
                      onDragOver={(e) => { if (e.dataTransfer.types.includes(DRAG_TYPE)) { e.preventDefault(); setDragOver(i); } }}
                      onDragLeave={() => setDragOver((v) => (v === i ? null : v))}
                      onDrop={(e) => { e.preventDefault(); setDragOver(null); const c = e.dataTransfer.getData(DRAG_TYPE); if (c) place(c, i); }}>
                   <span className={`sw-target-arrow${target ? ' on' : ''}`} aria-hidden="true">▼</span>
-                  <button type="button" className={`sw-slot${sk ? ` cat-${catOf(sk)}` : ' empty'}${target ? ' target' : ''}${replacing ? ' swap' : ''}${dragOver === i ? ' over' : ''}${sk && sk.code === picked ? ' picked' : ''}`}
+                  <button type="button" className={`sw-slot${sk ? ` cat-${catOf(sk)}` : ' empty'}${target ? ' target' : ''}${replacing && target ? ' swap' : ''}${dragOver === i ? ' over' : ''}${sk && sk.code === picked ? ' picked' : ''}`}
                           onClick={() => onSlot(i)} draggable={!!sk} title={sk ? nameOf(sk) : t('gamescreen.skillEmptySlot')}
                           onDragStart={(e) => { if (sk) { e.dataTransfer.setData(DRAG_TYPE, sk.code); e.dataTransfer.effectAllowed = 'move'; } }}
                           aria-label={sk ? `${i + 1}. ${nameOf(sk)}` : `${i + 1}. ${t('gamescreen.skillEmptySlot')}`}>
@@ -160,7 +179,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
               return (
                 <li key={sk.code}>
                   <button type="button" className={`sw-tile cat-${catOf(sk)}${locked ? ' locked' : ''}${sk.code === picked ? ' picked' : ''}`}
-                          onClick={() => { setPicked(sk.code); setReplacing(false); }} aria-pressed={sk.code === picked} draggable={!locked} title={nameOf(sk)}
+                          onClick={() => { setPicked(sk.code); setReplacing(false); setMoving(null); setArmed(locked ? null : sk.code); }} aria-pressed={sk.code === picked} draggable={!locked} title={nameOf(sk)}
                           onDragStart={(e) => { if (!locked) { e.dataTransfer.setData(DRAG_TYPE, sk.code); e.dataTransfer.effectAllowed = 'move'; } }}
                           aria-label={`${nameOf(sk)}${locked ? `, ${t('gamescreen.skillLockedAria', { n: sk.requiredLevel })}` : slot >= 0 ? `, ${t('gamescreen.skillEquipped')} ${slot + 1}` : ''}`}>
                     <span className="sw-ico">{sk.icon}</span>

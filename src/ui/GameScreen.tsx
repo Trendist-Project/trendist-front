@@ -325,7 +325,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           case 'titleGranted': showTitleAlert(m.titleId, m.name, m.description); break;
           case 'roster': arena.setRoster(m.players, m.flameAt); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
           case 'score':
-            setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, level: m.level, holdCount: m.holdCount }));
+            setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, nextLevelExp: m.nextExp, level: m.level, holdCount: m.holdCount }));
             break;
           case 'pong': {
             const ms = performance.now() - m.t;
@@ -381,7 +381,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
             if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
-            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison ? 'LOSE' : 'STOLEN', who: m.by || undefined }); // 독으로 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
+            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison ? 'LOSE' : 'STOLEN', who: m.by || undefined, lostCount: m.count }); // 독으로 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;

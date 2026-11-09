@@ -348,9 +348,9 @@ function SkillsTab() {
   const [draft, setDraft] = useState<Record<string, SkillDraft>>({});
   const [msg, setMsg] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [needExp, setNeedExp] = useState<Record<number, number>>({}); // 레벨 → 필요 누적 EXP(읽기 전용 안내)
+  const [needExp, setNeedExp] = useState<Record<number, number>>({}); // 레벨 → 그 레벨이 되는 데 모은 EXP 전체(앞 레벨들의 필요 EXP 합, 읽기 전용 안내)
   useEffect(() => { adminApi.skills().then(setItems).catch(() => setItems([])); }, []);
-  useEffect(() => { api.allLevels().then((l) => setNeedExp(Object.fromEntries(l.map((x) => [x.level, x.requiredExp])))).catch(() => { /* 안내만 빠진다 */ }); }, []);
+  useEffect(() => { api.allLevels().then((l) => { let sum = 0; setNeedExp(Object.fromEntries(l.map((x) => [x.level, (sum += x.requiredExp)]))); }).catch(() => { /* 안내만 빠진다 */ }); }, []);
 
   const valueOf = (s: AdminSkill) => { const d = draft[s.code] ?? {}; return { cd: d.cd ?? String(s.cooldownSeconds), lv: d.lv ?? String(s.requiredLevel) }; };
   const errorsOf = (s: AdminSkill) => { const v = valueOf(s); return { cd: checkCooldown(v.cd), lv: checkLevel(v.lv) }; };

@@ -27,7 +27,8 @@ export class SkillFxLayer {
   private bolts = new Map<number, Bolt>();
   private bursts: Burst[] = [];
   private poisons = new Map<number, { stacks: number; at: number; until: number }>();
-  private cleanses: { e: number; at: number }[] = [];
+  private darks = new Map<number, { at: number; until: number }>(); // 암흑에 걸린 원 번호 → 걸린 시각과 끝나는 시각
+  private cleanses: { e: number; at: number; seed: number }[] = [];
   private stealthEnded = new Map<number, number>(); // 은신이 막 끝나 다시 나타나는 중인 원 번호 → 끝난 시각
   private puffs: { e: number; at: number; kind: 'out' | 'in' }[] = []; // 은신 시작(out)·끝(in) 연출
 
@@ -39,7 +40,7 @@ export class SkillFxLayer {
 
   constructor(private readonly reducedMotion: boolean) {}
 
-  clear() { this.shocks = []; this.hooks = []; this.stealth.clear(); this.stealthEnded.clear(); this.puffs = []; this.bolts.clear(); this.bursts = []; this.poisons.clear(); this.cleanses = []; }
+  clear() { this.shocks = []; this.hooks = []; this.stealth.clear(); this.stealthEnded.clear(); this.puffs = []; this.bolts.clear(); this.bursts = []; this.poisons.clear(); this.darks.clear(); this.cleanses = []; }
 
   show(fx: SkillFx, now: number) {
     switch (fx.id) {
@@ -83,9 +84,11 @@ export class SkillFxLayer {
       }
       case 'poison': this.poisons.set(fx.t, { stacks: fx.stacks, at: now, until: now + fx.ms }); break;
       case 'poisonEnd': this.poisons.delete(fx.t); break;
+      case 'darkness': this.darks.set(fx.t, { at: now, until: now + fx.ms }); break;
       case 'cleanse':
+        this.darks.delete(fx.e);
         if (this.cleanses.length >= FX_CAP) this.cleanses.shift();
-        this.cleanses.push({ e: fx.e, at: now });
+        this.cleanses.push({ e: fx.e, at: now, seed: Math.floor(Math.random() * 2 ** 31) }); // seed: 쓸 때마다 끊어지는 모양이 다르게
         break;
     }
   }
@@ -139,6 +142,7 @@ export class SkillFxLayer {
     this.drawPuffs(ctx, now, z, pos);
     this.drawBolts(ctx, now, z);
     this.drawPoisons(ctx, now, z, pos);
+    this.drawDarks(ctx, now, z, pos);
     this.drawCleanses(ctx, now, z, pos);
   }
 
@@ -202,44 +206,100 @@ export class SkillFxLayer {
   }
 
   /**
-   * 정화: 몸을 묶고 있던 사슬(CC)을 끊어 던지는 연출. 처음에 원을 사슬 고리가 감고 있다가 "툭" 끊어지며,
-   * 사슬 조각이 사방으로 튀어 나가 빙글 돌며 떨어지고, 초록빛 충격 고리가 퍼진다. 줌아웃해도 조각이 보이도록 화면 기준 최소 크기가 있다.
+   * 암흑에 걸린 원(모두에게 보인다): 원 위에 보라빛 어두운 안개, 둘레를 도는 연기 조각, 머리 위 🕶️와 남은 시간 링.
+   * 독(초록 점선 고리·방울)과 색뿐 아니라 모양(안개·연기·🕶️)으로도 구별된다. 줌아웃해도 보이도록 화면 기준 최소 크기가 있다.
+   */
+  private drawDarks(ctx: CanvasRenderingContext2D, now: number, z: number, pos: PosFn) {
+    for (const [e, d] of this.darks) {
+      if (now >= d.until + 300) { this.darks.delete(e); continue; }
+      const o = pos(e, now);
+      if (!o) continue;
+      const total = Math.max(1, d.until - d.at), left = Math.max(0, d.until - now);
+      const fade = Math.min(1, (now - d.at) / 200, (left + 300) / 300); // 걸릴 때 빠르게 덮이고 끝날 때 부드럽게 걷힌다
+      const pulse = this.reducedMotion ? 0 : Math.sin(now / 220) * 0.06;
+      ctx.save();
+      // 안개: 가운데는 짙고 가장자리는 번지는 보라·검정
+      const fog = ctx.createRadialGradient(o.x, o.y, o.r * 0.2, o.x, o.y, o.r * 1.15);
+      fog.addColorStop(0, `rgba(10,6,20,${(0.62 + pulse) * fade})`);
+      fog.addColorStop(0.75, `rgba(40,20,80,${(0.5 + pulse) * fade})`);
+      fog.addColorStop(1, 'rgba(60,30,110,0)');
+      ctx.fillStyle = fog;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 1.15, 0, Math.PI * 2); ctx.fill();
+      // 둘레를 도는 연기 조각
+      if (!this.reducedMotion) {
+        ctx.fillStyle = `rgba(30,16,56,${0.55 * fade})`; ctx.strokeStyle = `rgba(155,108,255,${0.6 * fade})`;
+        ctx.lineWidth = Math.max(1.5 / z, o.r * 0.03);
+        const wisp = Math.max(5 / z, o.r * 0.14);
+        for (let i = 0; i < 4; i++) {
+          const a = now / 700 * (i % 2 ? -1 : 1) + (i / 4) * Math.PI * 2 + e, dist = o.r * (1.0 + 0.12 * Math.sin(now / 300 + i));
+          ctx.beginPath(); ctx.arc(o.x + Math.cos(a) * dist, o.y + Math.sin(a) * dist, wisp * (0.8 + 0.3 * Math.sin(now / 200 + i * 2)), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+      }
+      // 남은 시간 링(위에서 시계 방향으로 줄어든다)
+      ctx.strokeStyle = `rgba(155,108,255,${0.9 * fade})`; ctx.lineWidth = Math.max(3 / z, o.r * 0.07); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 1.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (left / total)); ctx.stroke();
+      // 머리 위 🕶️
+      const fs = Math.max(18 / z, Math.min(o.r * 0.6, 44));
+      ctx.globalAlpha = fade; ctx.font = `${fs}px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText('🕶️', o.x, o.y - o.r * 1.1 - 4 / z);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * 정화: 원을 감싼 초록 테두리가 불규칙하게 금이 가다 여러 조각의 호로 끊어져 사방으로 튀어 나가며 돌고 떨어지는 연출.
+   * 처음에는 테두리가 팽팽하게 떨리며 끊어질 자리에 금이 가고, "툭" 끊어지면 길이가 제각각인 호 조각이 바깥으로 흩어지며
+   * 돌고 아래로 떨어지며 사라지고, 초록빛 충격 고리가 퍼진다. 조각 수·길이·틈·튀는 거리는 쓸 때마다 다르다(seed).
+   * 줌아웃해도 보이도록 화면 기준 최소 굵기가 있고, 움직임 줄이기 설정이면 흩어지는 거리와 회전을 줄인다.
    */
   private drawCleanses(ctx: CanvasRenderingContext2D, now: number, z: number, pos: PosFn) {
     this.cleanses = this.cleanses.filter((c) => now - c.at < CLEANSE_MS);
-    const LINKS = 14, SNAP = 0.16;
+    const SNAP = 0.16, GREEN = 'rgba(110,255,160,0.9)';
     for (const c of this.cleanses) {
       const o = pos(c.e, now);
       if (!o) continue;
       const t = (now - c.at) / CLEANSE_MS;
-      const link = Math.max(o.r * 0.17, 9 / z), lw = Math.max(2.2 / z, link * 0.28);
+      const R = o.r * 1.06, lw = Math.max(3 / z, o.r * 0.1);
+      // 같은 seed면 같은 조각이 나오는 간단한 난수(mulberry32)
+      let st = c.seed >>> 0;
+      const rnd = () => { st = (st + 0x6d2b79f5) >>> 0; let x = Math.imul(st ^ (st >>> 15), 1 | st); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+      const count = 7 + Math.floor(rnd() * 4); // 7~10조각
+      const weights = Array.from({ length: count }, () => 0.45 + rnd() * 1.1), sum = weights.reduce((a, w) => a + w, 0);
+      const start0 = rnd() * Math.PI * 2;
+      let cursor = start0;
+      const pieces = weights.map((w) => {
+        const span = (w / sum) * Math.PI * 2, gap = span * (0.06 + rnd() * 0.16), a0 = cursor + gap / 2, a1 = cursor + span - gap / 2;
+        cursor += span;
+        return { a0, a1, mid: (a0 + a1) / 2, far: 0.35 + rnd() * 1.1, spin: (rnd() - 0.5) * 6, fall: 0.6 + rnd() * 0.7, wob: rnd() * Math.PI * 2 };
+      });
       ctx.save();
-      ctx.lineJoin = 'round';
-      for (let i = 0; i < LINKS; i++) {
-        const base = (i / LINKS) * Math.PI * 2;
-        let px: number, py: number, rot: number, alpha: number;
-        if (t < SNAP) { // 끊기기 직전: 원을 감은 사슬이 팽팽하게 떨린다
-          const shake = this.reducedMotion ? 0 : Math.sin(now / 18 + i) * o.r * 0.02;
-          px = o.x + Math.cos(base) * (o.r * 1.06 + shake); py = o.y + Math.sin(base) * (o.r * 1.06 + shake);
-          rot = base + Math.PI / 2; alpha = 1;
-        } else { // 끊어져 사방으로 튀어 나가며 돌고 떨어진다
-          const u = (t - SNAP) / (1 - SNAP), ease = 1 - (1 - u) ** 3;
-          const spread = this.reducedMotion ? 0.5 : 1;
-          const dist = o.r * 1.06 + o.r * (1.1 + 0.5 * ((i * 7) % 5) / 4) * ease * spread;
-          px = o.x + Math.cos(base) * dist; py = o.y + Math.sin(base) * dist + o.r * 0.9 * u * u * spread; // 아래로 떨어진다
-          rot = base + Math.PI / 2 + (this.reducedMotion ? 0 : u * (i % 2 ? 5 : -5));
-          alpha = 1 - u ** 2;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (t < SNAP) { // 끊기기 직전: 테두리가 팽팽하게 떨리고, 끊어질 자리마다 금(밝은 짧은 선)이 점점 선명해진다
+        const k = t / SNAP, shake = this.reducedMotion ? 0 : Math.sin(now / 16) * o.r * 0.02 * k;
+        ctx.strokeStyle = GREEN; ctx.lineWidth = lw; ctx.shadowColor = 'rgba(110,255,160,0.9)'; ctx.shadowBlur = this.reducedMotion ? 0 : 8;
+        ctx.beginPath(); ctx.arc(o.x, o.y, R + shake, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.strokeStyle = `rgba(235,255,242,${0.95 * k})`; ctx.lineWidth = Math.max(1.6 / z, lw * 0.35);
+        for (const p of pieces) {
+          const a = p.a0 - 0.02;
+          ctx.beginPath(); ctx.moveTo(o.x + Math.cos(a) * (R - lw * 0.9), o.y + Math.sin(a) * (R - lw * 0.9)); ctx.lineTo(o.x + Math.cos(a) * (R + lw * 0.9), o.y + Math.sin(a) * (R + lw * 0.9)); ctx.stroke();
         }
-        ctx.save();
-        ctx.translate(px, py); ctx.rotate(rot + (i % 2 ? Math.PI / 2 : 0));
-        ctx.globalAlpha = Math.max(0, alpha);
-        ctx.lineWidth = lw;
-        ctx.strokeStyle = '#d9ffe6'; ctx.shadowColor = 'rgba(110,255,160,0.9)'; ctx.shadowBlur = this.reducedMotion ? 0 : 6;
-        ctx.beginPath(); ctx.ellipse(0, 0, link * (i % 2 ? 0.55 : 0.8), link * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-      }
-      if (t >= SNAP) { // 끊어지는 순간 초록빛 충격 고리와 번쩍임
-        const u = (t - SNAP) / (1 - SNAP), ease = 1 - (1 - u) ** 3;
+      } else { // 끊어져 흩어지는 조각들
+        const u = (t - SNAP) / (1 - SNAP), ease = 1 - (1 - u) ** 3, spread = this.reducedMotion ? 0.4 : 1;
+        for (const p of pieces) {
+          const dist = o.r * p.far * ease * spread;
+          // 조각의 가운데(원래 테두리 위의 점)가 바깥으로 흩어지고, 포물선으로 떨어지며, 제 가운데를 축으로 돈다
+          const mx = o.x + Math.cos(p.mid) * (R + dist) + Math.sin(now / 90 + p.wob) * (this.reducedMotion ? 0 : o.r * 0.02);
+          const my = o.y + Math.sin(p.mid) * (R + dist) + o.r * 0.9 * p.fall * u * u * spread;
+          ctx.save();
+          ctx.translate(mx, my); ctx.rotate(this.reducedMotion ? 0 : p.spin * u);
+          ctx.globalAlpha = Math.max(0, 1 - u ** 1.6);
+          ctx.strokeStyle = '#d9ffe6'; ctx.lineWidth = lw * (1 - 0.45 * u);
+          ctx.shadowColor = 'rgba(110,255,160,0.9)'; ctx.shadowBlur = this.reducedMotion ? 0 : 7;
+          ctx.beginPath(); ctx.arc(-Math.cos(p.mid) * R, -Math.sin(p.mid) * R, R, p.a0, p.a1); ctx.stroke();
+          ctx.restore();
+        }
+        // 끊어지는 순간 초록빛 충격 고리와 번쩍임
         ctx.strokeStyle = `rgba(110,255,160,${0.9 * (1 - u)})`; ctx.lineWidth = Math.max(3 / z, o.r * 0.12) * (1 - u * 0.5);
         ctx.beginPath(); ctx.arc(o.x, o.y, o.r * (1.05 + 1.4 * ease), 0, Math.PI * 2); ctx.stroke();
         if (u < 0.25) {
@@ -279,6 +339,22 @@ export class SkillFxLayer {
   }
 
 
+  /**
+   * 반지름이 각도에 따라 규칙적으로 오르내리는 닫힌 물결 곡선 경로(r(θ) = radius + amp·wave(lobes·θ + phase)).
+   * wave는 사인과 삼각파를 섞어 뾰족한 지그재그 느낌이 나면서도 부드러운 곡선이다. lobes는 정수라 한 바퀴를 돌면 이어진다.
+   */
+  private wavePath(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, amp: number, lobes: number, phase: number) {
+    const steps = lobes * 10;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 2, u = lobes * a + phase;
+      const tri = (2 / Math.PI) * Math.asin(Math.sin(u)), w = 0.6 * tri + 0.4 * Math.sin(u); // -1..1
+      const r = Math.max(0, radius + amp * w);
+      if (i === 0) ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    }
+    ctx.closePath();
+  }
+
   private drawShocks(ctx: CanvasRenderingContext2D, now: number, z: number) {
     this.shocks = this.shocks.filter((s) => now - s.at < (s.rMax - s.r0) / s.speed * 1000 + SHOCK_FADE_MS);
     for (const s of this.shocks) {
@@ -293,17 +369,22 @@ export class SkillFxLayer {
       ctx.beginPath(); ctx.arc(s.x, s.y, s.rMax, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
       const band = Math.max(5 / z, s.r0 * 0.22);
+      // 앞쪽 가장자리는 깔끔한 원이 아니라 일정한 간격으로 지그재그인 물결 곡선이다. 물결의 마루가 판정 반지름(radius)을 넘지 않게
+      // 안쪽으로 파여서 그려 눈에 보이는 범위가 판정보다 커지지 않는다. 바깥(흰색)과 안쪽(빨강) 줄은 위상이 반대라 엇갈려 일렁인다
+      const amp = band * 0.5, lobes = Math.max(6, Math.min(24, Math.round((Math.PI * 2 * radius * z) / 90)));
+      const phase = this.reducedMotion ? 0 : age / 140; // 물결이 천천히 돌며 퍼진다
       const grad = ctx.createRadialGradient(s.x, s.y, Math.max(0, radius - band * 3), s.x, s.y, radius);
       grad.addColorStop(0, 'rgba(255,90,110,0)');
       grad.addColorStop(1, `rgba(255,90,110,${0.28 * alpha})`);
       ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(s.x, s.y, radius, 0, Math.PI * 2); ctx.fill();
+      this.wavePath(ctx, s.x, s.y, radius - amp, amp, lobes, phase); ctx.fill();
+      ctx.lineJoin = 'round';
       ctx.strokeStyle = `rgba(255,225,230,${0.95 * alpha})`;
       ctx.lineWidth = band * 0.5;
-      ctx.beginPath(); ctx.arc(s.x, s.y, radius, 0, Math.PI * 2); ctx.stroke();
+      this.wavePath(ctx, s.x, s.y, radius - amp, amp, lobes, phase); ctx.stroke();
       ctx.strokeStyle = `rgba(255,70,100,${0.9 * alpha})`;
       ctx.lineWidth = band * 0.3;
-      ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(0, radius - band * 0.4), 0, Math.PI * 2); ctx.stroke();
+      this.wavePath(ctx, s.x, s.y, Math.max(0, radius - band * 0.4 - amp), amp, lobes, phase + Math.PI); ctx.stroke();
       ctx.restore();
     }
   }
