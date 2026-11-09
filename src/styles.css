@@ -1084,7 +1084,7 @@ button.link-back:hover { color: var(--text); }
 .skill-btn.cat-attack:hover { border-color: #ff7a90; }
 .skill-btn.cat-defense:hover { border-color: #5fd3c2; }
 .skill-btn.cat-stealth:hover { border-color: #b9a8ff; }
-@media (hover: none), (max-width: 760px) { .skill-slot .skill-tip { display: none; } }
+@media (hover: none), (pointer: coarse), (max-width: 760px), (orientation: landscape) and (max-height: 520px) { .skill-slot .skill-tip { display: none; } } /* 터치 기기(가로 모드 포함)에서는 스킬을 누르면 설명이 뜨지 않는다 */
 /* 스킬 줄을 감싸는 칸 안에서 버튼은 칸을 채운다 */
 .skill-slot > .skill-btn { display: inline-flex; }
 
