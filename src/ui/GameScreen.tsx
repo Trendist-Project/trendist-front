@@ -18,9 +18,10 @@ import { ComboTimer } from './ComboTimer';
 import { TargetCard } from './TargetCard';
 import type { OrbLook } from '../game/skin';
 import type { DashState, SkillCooldowns } from './SkillBar';
-import type { SkillInfo } from '../api/types';
+import type { KeybindingsResponse, SkillInfo } from '../api/types';
 import { useSkills } from './useSkills';
-import { effectiveKey, keyAliases, keyLabel, loadKeyOverrides } from '../game/skillKeys';
+import { actionOf, cacheSlotKeys, defaultSlotKeys, keysFromBindings, legacyChanges, loadSlotKeys, markLegacySynced, setCurrentSlots, SKILL_WINDOW_KEY, targetOfKey, type SlotKeys } from '../game/skillKeys';
+import { SkillWindow } from './SkillWindow';
 import { BottomBar } from './BottomBar';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
@@ -137,12 +138,49 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const levelRef = useRef(player.level);
   levelRef.current = player.level;
   const sendSkillRef = useRef<(id: string) => void>(() => {});
+  // 장착한 스킬 4칸(서버가 알려 준다, 4.33)과 칸의 단축키(이 브라우저에 저장). 장착해야만 쓸 수 있다
+  const [slots, setSlots] = useState<(string | null)[]>([null, null, null, null]);
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
+  const [slotKeys, setSlotKeys] = useState<SlotKeys>(loadSlotKeys);
+  const sendLoadoutRef = useRef<(s: (string | null)[]) => void>(() => {});
+  // 단축키는 서버가 저장한다(4.33). 접속하면 받아 쓰고, 바꿀 때마다 저장한다. 같은 값을 이 브라우저에도 복사해 두어 서버에 닿기 전에도 키가 먹는다
+  const applyKeys = useCallback((res: KeybindingsResponse) => { const k = keysFromBindings(res.bindings); cacheSlotKeys(k); setSlotKeys(k); return k; }, []);
+  useEffect(() => {
+    let alive = true;
+    api.keybindings().then(async (res) => {
+      if (!alive) return;
+      let k = applyKeys(res);
+      const legacy = legacyChanges(k); // 서버에 저장하기 전에 이 브라우저에서 바꿔 둔 키가 있으면 한 번 올려 준다
+      if (legacy.length) {
+        try { k = applyKeys(await api.saveKeybindings(legacy)); } catch { /* 겹치는 옛 설정은 올리지 않고 서버 값을 쓴다 */ }
+      }
+      markLegacySynced();
+    }).catch(() => { /* 서버에 못 닿으면 이 브라우저에 복사해 둔 키로 쓴다 */ });
+    return () => { alive = false; };
+  }, [applyKeys]);
+  const setKey = useCallback(async (target: number | 'dash', code: string) => {
+    const prev = loadSlotKeys();
+    const next: SlotKeys = target === 'dash' ? { ...prev, dash: code } : { ...prev, slots: prev.slots.map((k, i) => (i === target ? code : k)) };
+    cacheSlotKeys(next); setSlotKeys(next); // 바로 쓰이게 먼저 바꾼다
+    try { applyKeys(await api.saveKeybindings([{ action: actionOf(target), key: code }])); }
+    catch (e) {
+      showToast(e instanceof ApiFailure && (e.status === 409 || e.status === 400) ? t('gamescreen.keyReserved') : t('gamescreen.keySaveFailed'));
+      try { applyKeys(await api.keybindings()); } catch { cacheSlotKeys(prev); setSlotKeys(prev); }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyKeys]);
+  const resetKeys = useCallback(async () => {
+    const d = defaultSlotKeys(); cacheSlotKeys(d); setSlotKeys(d);
+    try { applyKeys(await api.resetKeybindings()); } catch { showToast(t('gamescreen.keySaveFailed')); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyKeys]);
   const sendDashRef = useRef<() => void>(() => {});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
-  const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | null>(null);
+  const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | 'skills' | null>(null);
   const [orbReveal, setOrbReveal] = useState<{ result: RevealResult; key: number } | null>(null);
   // 키워드를 얻거나 잃은 결과 카드(구슬·빼앗기·빼앗김·봇)는 모두 이 한 곳으로 띄운다
   const showReveal = useCallback((result: RevealResult) => {
@@ -332,7 +370,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
             if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
-            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: 'STOLEN', who: m.by || undefined });
+            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison ? 'LOSE' : 'STOLEN', who: m.by || undefined }); // 독으로 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
@@ -389,8 +427,12 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             }
             break;
           }
-          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : t('gamescreen.skillSafe')); break;
+          case 'loadout': setSlots(m.slots); setCurrentSlots(m.slots); break; // 장착한 스킬 4칸(4.33)
+          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : t('gamescreen.skillSafe')); break;
           case 'skillFx': arena.showSkillFx(m); break; // 누군가 스킬을 썼다: 그 연출(4.33)
+          case 'dark': arena.setDark(m.ms); showToast(t('gamescreen.darkened')); break; // 암흑에 맞았다(4.33)
+          case 'darkEnd': arena.clearDark(); break; // 정화로 암흑이 풀렸다
+          case 'pullEnd': arena.endPull(); hookedUntilRef.current = 0; setHookedUntil(null); break; // 정화로 갈고리에서 풀렸다
           case 'pull': // 갈고리에 끌려온다(4.33): 끌려오는 동안 스킬 버튼을 잠깐 못 쓰는 모양으로 바꾼다
             arena.startPull(m.ms, m.byE); showToast(t('gamescreen.hooked'));
             hookedUntilRef.current = performance.now() + m.ms + 150; setHookedUntil(hookedUntilRef.current);
@@ -419,9 +461,10 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
       if (lastPointer) return arena.screenToWorld(lastPointer.x, lastPointer.y);
       return null; // 겨누지 않았으면 서버가 가던 방향으로 쓴다
     };
+    sendLoadoutRef.current = (s: (string | null)[]) => { if (ready) conn.send({ type: 'loadout', slots: s }); };
     sendSkillRef.current = (id: string) => {
       if (!ready) return;
-      const aim = id === 'hook' ? aimPoint() : null;
+      const aim = id === 'hook' || id === 'poison' || id === 'darkness' ? aimPoint() : null;
       conn.send(aim ? { type: 'skill', id, x: Math.round(aim.x), y: Math.round(aim.y) } : { type: 'skill', id });
     };
     conn.start();
@@ -671,17 +714,22 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         setEmoteOpen(false);
         return;
       }
-      // 스킬·대시 키(4.33): DB의 기본 키에 사용자가 바꾼 키를 덧씌운 값. 이모트 창이 열려 있을 때의 숫자는 위에서 이모트로 처리했다.
-      // 한글 입력 상태에서도 되게 code로 보고, 숫자 줄의 키는 숫자패드로도 쓴다. 스페이스는 버튼이 눌리거나 화면이 내려가지 않게 막는다
+      // 스킬 키(4.33): 칸(1~4번)에 묶인 키를 눌러 그 칸에 장착한 스킬을 쓴다. 대시는 장착과 상관없이 대시 키로 쓴다. 키는 사용자가 바꾼 것이 있으면 그것이다.
+      // 이모트 창이 열려 있을 때의 숫자는 위에서 이모트로 처리했다. 한글 입력 상태에서도 되게 code로 보고, 숫자 줄의 키는 숫자패드로도 쓴다.
+      // K는 스킬창을 열고 닫는다. 스페이스는 버튼이 눌리거나 화면이 내려가지 않게 막는다
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        const overrides = loadKeyOverrides();
-        const sk = skillsRef.current.find((k) => { const key = effectiveKey(k, overrides); return key !== null && keyAliases(key).includes(e.code); });
-        if (sk) {
+        if (e.code === SKILL_WINDOW_KEY) { if (!e.repeat) setPanel((p) => (p === 'skills' ? null : 'skills')); return; }
+        const target = targetOfKey(e.code, loadSlotKeys());
+        if (target !== null) {
           if (e.code === 'Space') e.preventDefault();
           if (e.repeat) return;
-          if (performance.now() < hookedUntilRef.current) return; // 갈고리에 잡혀 끌려오는 동안은 쓸 수 없다
-          if (sk.requiredLevel > levelRef.current) { showToast(t('gamescreen.skillLockedToast', { n: sk.requiredLevel })); return; } // 해금 레벨이 안 됐다(서버도 막는다)
-          if (sk.code === 'dash') sendDash(); else sendSkillRef.current(sk.code);
+          if (performance.now() < hookedUntilRef.current) return; // 갈고리에 잡혀 끌려오는 동안은 쓸 수 없다(정화는 서버가 따로 받는다)
+          if (target === 'dash') { sendDash(); return; }
+          const code = slotsRef.current[target];
+          if (!code) { showToast(t('gamescreen.skillEmptySlotTip')); return; }
+          const sk = skillsRef.current.find((k) => k.code === code);
+          if (sk && sk.requiredLevel > levelRef.current) { showToast(t('gamescreen.skillLockedToast', { n: sk.requiredLevel })); return; } // 해금 레벨이 안 됐다(서버도 막는다)
+          sendSkillRef.current(code);
           return;
         }
       }
@@ -843,7 +891,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                       onDetail={() => { const e = targetCard; setInfoBot(arenaRef.current?.botInfo(e) ?? null); setInfoLook(arenaRef.current?.entityInfo(e)?.look ?? null); setInfoEntity(e); }}
                       onOpenKeyword={setOpenKeyword} />
         )}
-        <BottomBar me={player} skills={skills} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
+        <BottomBar me={player} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
                    onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
                    emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
                    onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />
@@ -866,6 +914,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             <button className="notice-toggle-button" onClick={() => setPanel('notice')} aria-label={noticeDot ? t('gamescreen.noticesAriaNew') : t('gamescreen.notices')}>
               📢 <span className="tool-label">{t('gamescreen.notices')}</span>{noticeDot && <span className="dot-badge" aria-hidden="true" />}
             </button>
+            <button onClick={() => setPanel('skills')} aria-label={t('gamescreen.skillWindowTitle')} title={t('gamescreen.skillWindowTitle')}>⚔️ <span className="tool-label">{t('gamescreen.skills')}</span></button>
             <button onClick={() => setPanel('guide')} aria-label={t('gamescreen.guide')}>📖 <span className="tool-label">{t('gamescreen.guide')}</span></button>
             <button className="minimap-toggle" aria-label={t('gamescreen.minimap')} aria-pressed={showMinimap} onClick={() => setShowMinimap((v) => !v)}
                     title={t('gamescreen.minimapTitle')}>🗺 <span className="tool-label">{t('gamescreen.minimap')}</span> </button>
@@ -891,6 +940,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             <nav id="mobile-menu" className="mobile-menu" aria-label={t('gamescreen.menu')}>
               {([
                 ['👤', t('gamescreen.myInfo'), () => setPanel('profile')],
+                ['⚔️', t('gamescreen.skills'), () => setPanel('skills')],
                 ['📢', t('gamescreen.notices'), () => setPanel('notice')],
                 ['📖', t('gamescreen.guide'), () => setPanel('guide')],
               ] as const).map(([icon, label, act]) => (
@@ -978,7 +1028,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
               <div className="title-alert-text">
                 <span className="title-alert-kicker">{t('gamescreen.skillUnlockKicker', { n: unlockAlert.level })}</span>
                 <strong>{unlockAlert.skills.map((k) => tOr(`skills.${k.code}_name`, k.code)).join(', ')}</strong>
-                <span className="muted small">{t('gamescreen.skillUnlockDesc')} {unlockAlert.skills.map((k) => { const key = effectiveKey(k); return key ? keyLabel(key) : ''; }).filter(Boolean).join(' · ')}</span>
+                <span className="muted small">{t('gamescreen.skillUnlockEquip')}</span>
               </div>
               <div className="title-alert-actions">
                 <button className="icon-button" onClick={() => setUnlockAlert(null)} aria-label={t('gamescreen.dismissAria')}>✕</button>
@@ -1015,6 +1065,10 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         }} />
       )}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
+      {panel === 'skills' && (
+        <SkillWindow skills={skills} slots={slots} keys={slotKeys} level={player.level} onClose={closePanel} onNotice={showToast}
+                     onChangeSlots={(next) => sendLoadoutRef.current(next)} onSetKey={setKey} onResetKeys={resetKeys} />
+      )}
       {panel === 'profile' && (
         <ProfileModal key={profileView} player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
                       onLogout={onLogout} onWithdrawn={onWithdrawn} initialView={profileView} />

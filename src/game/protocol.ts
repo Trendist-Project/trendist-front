@@ -74,6 +74,11 @@ export type SkillFx =
   | { id: 'hookEnd'; e: number }
   | { id: 'stealth'; e: number; ms: number }
   | { id: 'stealthEnd'; e: number }
+  | { id: 'bolt'; kind: 'poison' | 'darkness'; bid: number; e: number; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number } // 독·암흑 투사체가 날아간다
+  | { id: 'boltEnd'; bid: number; hit?: number; x?: number; y?: number } // 투사체가 원(hit)에 맞았거나 사거리 끝에서 사라졌다
+  | { id: 'poison'; t: number; stacks: number; ms: number } // 원(t)이 독에 걸렸다(스택 수, 다 지나가는 데 걸리는 ms)
+  | { id: 'poisonEnd'; t: number }
+  | { id: 'cleanse'; e: number } // 정화를 썼다(초록 고리)
 
 export type ServerMessage =
   | { type: 'spectating'; country: string; spectators: number } // 관전 접속이 받아들여짐(관리자 관전, 13.13)
@@ -86,8 +91,12 @@ export type ServerMessage =
   | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
   | { type: 'skill'; id: SkillId; cooldownMs: number } // 내가 스킬을 썼다(4.33): 다시 쓸 수 있을 때까지
   | { type: 'cooldowns'; skills: Record<string, number>; dashActiveMs: number; dashReadyMs: number; dashMult: number } // 다시 들어왔을 때 서버가 알려 주는 지금 쿨타임(남은 ms, 4.33)
-  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
+  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level' | 'unequipped'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
   | { type: 'skillFx' } & SkillFx // 누군가 스킬을 썼다(4.33): 그 연출을 그린다
+  | { type: 'loadout'; slots: (string | null)[] } // 장착한 스킬 4칸(4.33). 입장할 때와 바뀔 때마다 온다. 빈 칸은 null
+  | { type: 'dark'; ms: number } // 내가 암흑에 맞았다(4.33): ms 동안 화면이 어두워진다
+  | { type: 'darkEnd' } // 정화로 암흑이 풀렸다
+  | { type: 'pullEnd' } // 정화로 갈고리에서 풀렸다
   | { type: 'pull'; ms: number; byE: number } // 내가 갈고리에 맞았다(4.33): 쓴 원 번호(byE)에게 ms 동안 끌려온다. 그동안 이동·스킬 불가
   | { type: 'roster'; players: RosterEntry[]; flameAt?: number }
   | { type: 'emote'; e: number; code: string } // 이모트(4.26)
@@ -97,7 +106,7 @@ export type ServerMessage =
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
   | { type: 'score'; score: number; exp: number; level: number; holdCount: number }
-  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
+  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number; poison?: boolean } // 내가 잃음: 잃은 키워드와 점수(4.3). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로.
   // BOT = 봇을 이겨 🔥 키워드를 새로 얻음, BOT_RENEWED = 봇을 이겼는데 이미 가진 키워드라 남은 시간만 24시간으로

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { t, tOr } from '../i18n';
 import type { SkillId } from '../game/protocol';
 import type { SkillInfo } from '../api/types';
-import { effectiveKey, keyLabel, loadKeyOverrides } from '../game/skillKeys';
+import { keyLabel, type SlotKeys } from '../game/skillKeys';
 
 /** readyAt: 스킬마다 다시 쓸 수 있는 시각(performance.now 기준 ms). 아직 안 썼으면 없다 */
 export type SkillCooldowns = Partial<Record<SkillId, number>>;
@@ -13,11 +13,13 @@ export interface DashState { until: number; readyAt: number }
 const CATEGORY_KEY: Record<string, string> = { MOVE: 'move', ATTACK: 'attack', DEFENSE: 'defense', STEALTH: 'stealth' };
 
 /**
- * 스킬 버튼 줄(4.33). 스킬 목록·아이콘·기본 키·쿨타임은 DB에서 오고(useSkills), 키는 사용자가 바꾼 것이 있으면 그것을 쓴다(skillKeys).
- * 마우스를 올리거나 키보드로 포커스하면 툴팁 카드(이름·키·종류·쿨타임·설명·지금 상태)가 위로 뜬다. 대시(dash)는 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
+ * 스킬 버튼 줄(4.33). 장착한 4칸(slots)과 대시를 보여 주고, 칸의 키(keys)는 사용자가 바꾼 것이 있으면 그것을 쓴다. 스킬 목록·아이콘·쿨타임은 DB에서 온다(useSkills).
+ * 빈 칸을 누르면 스킬창이 열린다. 마우스를 올리거나 키보드로 포커스하면 툴팁 카드(이름·키·종류·쿨타임·설명·지금 상태)가 위로 뜬다.
+ * 대시(dash)는 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
  */
-export function SkillBar({ skills, level, cooldowns, dash, lockedUntil, onUse, onDash }: {
-  skills: SkillInfo[]; level: number; cooldowns: SkillCooldowns; dash: DashState | null; lockedUntil: number | null; onUse: (id: SkillId) => void; onDash: () => void;
+export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
+  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; dash: DashState | null; lockedUntil: number | null;
+  onUse: (id: SkillId) => void; onDash: () => void; onOpenWindow: () => void;
 }) {
   // 지금 시각은 그리는 순간마다 새로 잰다. 상태로 들고 있으면 쿨타임이 없던 동안 낡은 값이 남아서, 쓴 직후에 30초가 31초로 보였다
   const [, setTick] = useState(0);
@@ -29,17 +31,32 @@ export function SkillBar({ skills, level, cooldowns, dash, lockedUntil, onUse, o
     const id = window.setInterval(() => setTick((n) => n + 1), 200);
     return () => window.clearInterval(id);
   }, [busy]);
-  const overrides = loadKeyOverrides();
+  const dashInfo = skills.find((k) => k.code === 'dash');
+  const entries: { skill: SkillInfo | null; key: string; slot: number | null }[] = [
+    ...slots.map((code, i) => ({ skill: (code && skills.find((k) => k.code === code)) || null, key: keys.slots[i], slot: i })),
+    ...(dashInfo ? [{ skill: dashInfo, key: keys.dash, slot: null }] : []),
+  ];
   return (
     <div className="skill-row" role="group" aria-label={t('gamescreen.skills')}>
-      {skills.map((s) => {
+      {entries.map(({ skill: s, key: keyCode, slot }) => {
+        const key = keyLabel(keyCode);
+        if (!s) { // 빈 칸: 누르면 스킬창
+          return (
+            <div key={`empty-${slot}`} className="skill-slot">
+              <button type="button" className="skill-btn empty" onClick={(e) => { e.currentTarget.blur(); onOpenWindow(); }}
+                      aria-label={`${t('gamescreen.skillEmptySlot')} (${key})`} title={t('gamescreen.skillEmptySlotTip')}>
+                <span className="skill-icon" aria-hidden="true">＋</span>
+                {key && <kbd>{key}</kbd>}
+              </button>
+            </div>
+          );
+        }
         const isDash = s.code === 'dash';
         const locked = s.requiredLevel > level; // 아직 해금 레벨이 안 됐다(4.33)
         const active = isDash && dash !== null && now < dash.until;
         const readyAt = isDash ? dash?.readyAt ?? 0 : cooldowns[s.code] ?? 0;
         const left = Math.max(0, readyAt - now);
         const shown = active && dash ? dash.until - now : left;
-        const key = keyLabel(effectiveKey(s, overrides));
         const cat = CATEGORY_KEY[s.category] ?? 'move';
         const name = tOr(`skills.${s.code}_name`, s.code), desc = tOr(`skills.${s.code}_desc`, '');
         return (

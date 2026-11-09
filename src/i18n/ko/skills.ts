@@ -13,4 +13,10 @@ export default {
   shield_desc: '잠깐 다른 원과 부딪히지 않고 통과해요.',
   stealth_name: '은신',
   stealth_desc: '잠깐 다른 사람 눈에 배경처럼 안 보여요. 공격 스킬을 쓰면 풀려요.',
+  poison_name: '독',
+  poison_desc: '겨눈 방향으로 독 투사체를 던져요. 맞은 원은 9초 동안 3초마다 키워드를 잃어요. 다시 맞으면 스택이 쌓여 한 번에 더 많이 잃어요. 세이프존에서는 쓸 수 없어요.',
+  darkness_name: '암흑',
+  darkness_desc: '겨눈 방향으로 검은 투사체를 던져요. 맞은 원은 3초 동안 자기 주변과 닉네임만 보이고 미니맵도 가려져요. 세이프존에서는 쓸 수 없어요.',
+  cleanse_name: '정화',
+  cleanse_desc: '걸려 있는 갈고리·독·암흑을 한꺼번에 풀어요. 끌려오는 중에도 쓸 수 있어요.',
 } as Record<string, string>;

@@ -1355,3 +1355,143 @@ button.link-back:hover { color: var(--text); }
 
 /* 전체 화면 버튼(모바일 위쪽, 🔍 왼쪽): 켜져 있으면 초록 윤곽 */
 .fs-toggle[aria-pressed="true"] { border-color: var(--accent); color: #d8fff0; background: rgba(63, 182, 139, 0.18); }
+
+/* 스킬창(4.33, K): 가로로 넓은 창. 왼쪽 장착한 스킬(세로 목록) · 오른쪽 위 스킬 아이콘 격자 · 오른쪽 아래 상세와 장착/해제 버튼. 종류 색은 스킬 바·툴팁과 같다 */
+.skill-btn.empty { border-style: dashed; color: var(--muted); background: rgba(11,15,23,0.45); }
+.skill-btn.empty:hover { color: var(--text); border-color: #7dd3fc; }
+.skill-window { width: min(940px, 100%); max-height: min(86vh, 760px); }
+.skill-window .cat-attack { --cat: #ff7a90; }
+.skill-window .cat-defense { --cat: #5fd3c2; }
+.skill-window .cat-move { --cat: #ffd166; }
+.skill-window .cat-stealth { --cat: #b9a8ff; }
+.sw-layout { display: grid; grid-template-columns: minmax(380px, 0.85fr) minmax(0, 1.4fr); gap: 14px; align-items: start; }
+.sw-left, .sw-right { position: relative; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #0f151f; align-content: start; min-width: 0; }
+.sw-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sw-head h3 { margin: 0; font-size: 0.95rem; }
+.sw-count { font-size: 0.8rem; color: var(--muted); }
+.sw-bar-slots { display: flex; justify-content: center; align-items: flex-start; gap: 8px; }
+.sw-vsep { align-self: stretch; width: 2px; margin: 24px 4px 0; border-radius: 1px; background: #3a475c; flex: none; }
+.sw-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sw-slot { position: relative; width: 60px; height: 60px; padding: 0; border-radius: 14px; border: 2px solid var(--cat, var(--line)); background: color-mix(in srgb, var(--cat, #94a3b8) 14%, #0b0f17); display: inline-flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.12s; }
+.sw-slot.empty { border: 2px dashed #3a475c; background: rgba(11,15,23,0.5); color: var(--muted); }
+.sw-slot.fixed { cursor: default; }
+.sw-slot.picked { border-color: #38bdf8; border-width: 4px; box-shadow: 0 0 0 3px rgba(56,189,248,0.35), 0 0 16px rgba(56,189,248,0.6); transform: scale(1.05); }
+.sw-slot.target { border-color: #facc15; border-width: 4px; border-style: solid; box-shadow: 0 0 0 2px rgba(250,204,21,0.35), 0 0 14px rgba(250,204,21,0.55); }
+.sw-slot.swap { animation: sw-pulse 0.9s ease-in-out infinite; }
+.sw-target-arrow { height: 20px; line-height: 20px; font-size: 1.15rem; color: #facc15; visibility: hidden; text-shadow: 0 0 8px rgba(250,204,21,0.7); }
+.sw-target-arrow.on { visibility: visible; animation: sw-drop 0.9s ease-in-out infinite; }
+@keyframes sw-drop { 50% { transform: translateY(4px); } }
+.sw-slot.over { box-shadow: 0 0 0 3px rgba(63,182,139,0.7); transform: scale(1.05); }
+.sw-left.has-pick .sw-slot.target:hover { border-color: #fde047; box-shadow: 0 0 0 3px rgba(253,224,71,0.55), 0 0 18px rgba(253,224,71,0.75); }
+@keyframes sw-pulse { 50% { box-shadow: 0 0 0 4px rgba(242,184,75,0.45); } }
+.sw-no { position: absolute; top: 3px; left: 6px; font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.7); }
+.sw-slot .sw-ico { font-size: 1.8rem; line-height: 1; }
+.sw-keycap { flex: none; min-width: 40px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid #4a5a78; border-bottom-width: 3px; background: #1d2635; font-family: inherit; font-weight: 700; font-size: 0.9rem; }
+.sw-keycap:hover { border-color: #7dd3fc; }
+.sw-keycap.listening { border-color: #f2b84b; color: #f2b84b; animation: sw-blink 1s ease-in-out infinite; }
+@keyframes sw-blink { 50% { opacity: 0.55; } }
+.sw-bar-tools { display: flex; gap: 8px; }
+.sw-bar-tools button { flex: 1; font-size: 0.85rem; padding: 8px 10px; border-radius: 999px; }
+.sw-status { margin: 0; text-align: center; font-size: 0.82rem; color: var(--muted); min-height: 1.3em; line-height: 1.4; }
+.sw-status.banner { position: absolute; top: 8px; left: 10px; right: 10px; z-index: 3; box-shadow: 0 4px 14px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 14px; border-radius: 12px; border: 2px solid #38bdf8; background: rgba(56,189,248,0.14); color: #fff; font-size: 1rem; font-weight: 700; text-align: left; background: #0e2433; }
+.sw-status.banner b { color: #7dd3fc; font-size: 1.1rem; font-weight: 900; }
+.sw-status.banner.warn { border-color: #f2b84b; background: #2a2210; }
+.sw-status.banner.warn .sw-arrow { color: #f2b84b; }
+.sw-pick-ico { width: 32px; height: 32px; flex: none; font-size: 1.25rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(255,255,255,0.08); }
+.sw-arrow { color: #38bdf8; font-size: 1.1rem; animation: sw-bounce 0.9s ease-in-out infinite; }
+.sw-arrow.side { animation-name: sw-bounce-x; }
+@keyframes sw-bounce-x { 50% { transform: translateX(-4px); } }
+.sw-grid { list-style: none; margin: 0; padding: 10px 4px 2px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 12px; }
+.sw-grid li { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.sw-tile { position: relative; width: 100%; max-width: 84px; aspect-ratio: 1; padding: 0; border-radius: 16px; border: 2px solid var(--cat, var(--line)); background: color-mix(in srgb, var(--cat, #94a3b8) 14%, #0b0f17); display: inline-flex; align-items: center; justify-content: center; transition: box-shadow 0.12s; }
+.sw-tile .sw-ico { font-size: 2.2rem; line-height: 1; }
+/* 마우스가 올라간 스킬: 위아래로 움직이지 않고 진한 노란 굵은 테두리로 위치를 또렷하게 보여 준다(선택한 스킬의 하늘색 빛무리는 그대로 남는다) */
+@media (hover: hover) { .sw-tile:hover { border-color: #facc15; border-width: 5px; border-style: solid; } .sw-tile.locked:hover { border-color: #facc15; } }
+.sw-tile.picked { border-color: #38bdf8; border-width: 5px; box-shadow: 0 0 0 3px rgba(56,189,248,0.35), 0 0 18px rgba(56,189,248,0.65); transform: scale(1.06); }
+.sw-tile.locked { background: #0b0f17; border-color: #2b3648; }
+.sw-tile.locked.picked { border-color: #94a3b8; box-shadow: 0 0 0 3px rgba(148,163,184,0.3); }
+.sw-tile.locked .sw-ico { filter: grayscale(1) brightness(0.55); }
+.sw-badge { position: absolute; top: -10px; right: -10px; min-width: 32px; height: 32px; padding: 0 7px; border-radius: 999px; background: var(--accent); color: #062014; font-size: 1.05rem; font-weight: 900; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border: 3px solid var(--panel); box-shadow: 0 2px 6px rgba(0,0,0,0.45); z-index: 1; }
+.sw-locked { position: absolute; inset: 0; border-radius: 14px; background: rgba(5,8,13,0.62); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 0.75rem; color: #cbd5e1; }
+.sw-locked b { font-size: 0.78rem; }
+.sw-detail { display: flex; flex-direction: column; gap: 10px; height: 178px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(11,15,23,0.6); overflow: hidden; }
+.sw-detail.empty { border-style: dashed; background: transparent; }
+.sw-d-empty { margin: 0; text-align: center; padding: 12px 0; }
+.sw-d-head { display: flex; align-items: center; gap: 12px; flex: none; }
+.sw-d-ico { width: 56px; height: 56px; flex: none; font-size: 1.9rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; border: 2px solid var(--cat, var(--line)); background: color-mix(in srgb, var(--cat, #94a3b8) 14%, #0b0f17); }
+.sw-d-title { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.sw-d-title strong { font-size: 1.05rem; }
+.sw-d-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sw-chip { padding: 0 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: #0b0f17; background: var(--cat, #94a3b8); line-height: 1.7; }
+.sw-chip.plain { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; }
+.sw-d-desc { margin: 0; flex: 1; min-height: 0; overflow-y: auto; font-size: 0.88rem; line-height: 1.5; color: #cbd5e1; padding-right: 4px; }
+.sw-mini-btn { margin-left: auto; height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #062014; font-size: 0.82rem; font-weight: 800; white-space: nowrap; }
+.sw-mini-btn.active { background: #f2b84b; border-color: #f2b84b; }
+.sw-mini-btn:disabled { background: #1d2635; border-color: var(--line); color: var(--muted); font-weight: 600; }
+.sw-mini-btn.off { background: transparent; color: #ff8f8f; border-color: rgba(255,107,107,0.6); }
+.sw-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+@media (max-width: 720px) {
+  .sw-layout { grid-template-columns: minmax(0, 1fr); }
+  .skill-window { max-height: 92vh; }
+}
+@media (prefers-reduced-motion: reduce) { .sw-keycap.listening, .sw-slot.swap, .sw-arrow, .sw-target-arrow.on { animation: none; } .sw-slot, .sw-tile { transition: none; } }
+
+/* 스킬창: 휴대폰 가로 모드(높이가 낮은 가로 화면)에서는 두 칸 배치를 그대로 두고 모든 크기를 줄여 한눈에 들어오게 한다.
+   화면 너비와 상관없이(좁은 가로 폰 포함) 왼쪽 장착 / 오른쪽 목록·상세의 두 칸을 유지한다 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .modal-backdrop:has(.skill-window) { padding: 6px; }
+  .skill-window { width: min(980px, 100%); max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); }
+  .skill-window .modal-head { padding: 6px 12px; }
+  .skill-window .modal-head h2 { font-size: 0.95rem; }
+  .skill-window .modal-body { padding: 8px 10px; gap: 8px; }
+  .skill-window .sw-layout { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); gap: 8px; }
+  .sw-left, .sw-right { padding: 8px; gap: 6px; }
+  .sw-head h3 { font-size: 0.85rem; }
+  .sw-count { font-size: 0.72rem; }
+  .sw-bar-slots { gap: 5px; }
+  .sw-slot { width: 46px; height: 46px; border-radius: 11px; }
+  .sw-slot .sw-ico { font-size: 1.35rem; }
+  .sw-no { font-size: 0.62rem; top: 2px; left: 4px; }
+  .sw-cell { gap: 3px; }
+  .sw-target-arrow { height: 14px; line-height: 14px; font-size: 0.9rem; }
+  .sw-vsep { margin: 17px 2px 0; }
+  .sw-keycap { min-width: 34px; height: 24px; padding: 0 6px; font-size: 0.78rem; border-bottom-width: 2px; }
+  .sw-bar-tools button { font-size: 0.78rem; padding: 5px 8px; }
+  .sw-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px; padding: 8px 2px 0; }
+  .sw-tile { max-width: 54px; border-radius: 12px; }
+  .sw-tile .sw-ico { font-size: 1.7rem; }
+  .sw-tile.picked { border-width: 4px; }
+  .sw-badge { top: -8px; right: -8px; min-width: 24px; height: 24px; font-size: 0.85rem; border-width: 2px; padding: 0 4px; }
+  .sw-locked { font-size: 0.62rem; }
+  .sw-locked b { font-size: 0.66rem; }
+  .sw-detail { height: 112px; padding: 8px 10px; gap: 6px; border-radius: 12px; }
+  .sw-d-head { gap: 8px; }
+  .sw-d-ico { width: 38px; height: 38px; font-size: 1.35rem; border-radius: 10px; }
+  .sw-d-title { gap: 2px; }
+  .sw-d-title strong { font-size: 0.92rem; }
+  .sw-chip { font-size: 0.64rem; padding: 0 6px; line-height: 1.6; }
+  .sw-d-chips { gap: 4px; }
+  .sw-d-desc { font-size: 0.78rem; line-height: 1.4; }
+  .sw-mini-btn { height: 24px; padding: 0 9px; font-size: 0.74rem; }
+  .sw-foot { margin-top: -2px; }
+  .sw-foot .link { font-size: 0.74rem; padding: 0 4px; }
+  .sw-status.banner { padding: 6px 10px; font-size: 0.82rem; top: 6px; }
+}
+/* 아주 낮은 화면(높이 380px 이하)과 폭이 좁은 가로 폰: 한 단계 더 줄인다 */
+@media (orientation: landscape) and (max-height: 380px) {
+  .skill-window .modal-body { padding: 6px 8px; gap: 6px; }
+  .sw-slot { width: 42px; height: 42px; }
+  .sw-tile { max-width: 48px; }
+  .sw-tile .sw-ico { font-size: 1.5rem; }
+  .sw-grid { gap: 6px 5px; }
+  .sw-detail { height: 98px; padding: 6px 8px; }
+  .sw-d-ico { width: 32px; height: 32px; font-size: 1.15rem; }
+  .sw-d-desc { font-size: 0.74rem; }
+}
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 640px) {
+  .sw-slot { width: 38px; height: 38px; }
+  .sw-slot .sw-ico { font-size: 1.1rem; }
+  .sw-keycap { min-width: 28px; padding: 0 4px; }
+  .sw-bar-slots { gap: 3px; }
+  .sw-tile { max-width: 44px; }
+}

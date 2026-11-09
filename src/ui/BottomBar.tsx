@@ -14,9 +14,12 @@ export interface MeSummary { nickname: string; level: number; currentScore: numb
  * 채팅은 왼쪽 아래 끝, 미니맵은 오른쪽 아래에 있어서 서로 겹치지 않는다. 작은 화면(모바일)에서는 초상화·정보는 빼고(왼쪽 위 줄에 레벨·유행도를 둔다)
  * 스킬·이모트를 오른쪽 아래에 2줄로 모아, 왼쪽 엄지가 쓰는 조이스틱 자리를 비운다(CSS).
  */
-export function BottomBar({ me, skills, readLook, cooldowns, dash, lockedUntil, onUse, onDash, onProfile, emoteOpen, onToggleEmote, onEmote }: {
+export function BottomBar({ me, skills, slots, keys, onOpenSkills, readLook, cooldowns, dash, lockedUntil, onUse, onDash, onProfile, emoteOpen, onToggleEmote, onEmote }: {
   me: MeSummary;
   skills: SkillInfo[];
+  slots: (string | null)[];
+  keys: import('../game/skillKeys').SlotKeys;
+  onOpenSkills: () => void;
   readLook: () => OrbLook | null;
   cooldowns: SkillCooldowns;
   dash: DashState | null;
@@ -77,7 +80,7 @@ export function BottomBar({ me, skills, readLook, cooldowns, dash, lockedUntil, 
         </div>
       </div>
       <div className="bb-skills">
-        <SkillBar skills={skills} level={me.level} cooldowns={cooldowns} dash={dash} lockedUntil={lockedUntil} onUse={onUse} onDash={onDash} />
+        <SkillBar skills={skills} slots={slots} keys={keys} level={me.level} cooldowns={cooldowns} dash={dash} lockedUntil={lockedUntil} onUse={onUse} onDash={onDash} onOpenWindow={onOpenSkills} />
         <div className="bb-emote">
           {emoteOpen && (
             <div className="emote-palette" role="menu" aria-label={t('gamescreen.emote')}>

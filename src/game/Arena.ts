@@ -226,7 +226,41 @@ export class Arena {
     this.target = null; this.knock = null;
   }
   /** 새 원이다(리스폰): 스킬 상태와 연출을 비운다 */
-  resetSkills() { this.pull = null; this.fx.clear(); }
+  resetSkills() { this.pull = null; this.darkUntil = 0; this.fx.clear(); }
+  /** 정화로 갈고리에서 풀렸다(4.33): 끌려오는 예측을 멈춘다 */
+  endPull() { this.pull = null; }
+  /** 암흑에 맞았다(4.33): ms 동안 내 원 둘레(반지름 1.5배)와 닉네임만 보이고 미니맵도 가린다 */
+  private darkUntil = 0;
+  setDark(ms: number) { this.darkUntil = performance.now() + ms; }
+  clearDark() { this.darkUntil = 0; }
+  private isDark(now: number) { return !this.spec && now < this.darkUntil; }
+
+  /** 암흑 가림막: 화면 전체를 검게 덮고 내 원 중심에서 반지름 1.5배만 구멍을 낸다. 가장자리에서 연기가 일렁이고 닉네임은 그 위에 다시 그린다. */
+  private drawDarkness(ctx: CanvasRenderingContext2D, w: number, h: number, now: number) {
+    const cx = w / 2, cy = h / 2, hole = this.me.r * this.zoom * 1.5;
+    const fade = Math.min(1, (this.darkUntil - now) / 250, 1); // 끝날 때 부드럽게 걷힌다
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, fade);
+    const g = ctx.createRadialGradient(cx, cy, hole * 0.88, cx, cy, hole);
+    g.addColorStop(0, 'rgba(8,6,12,0)'); g.addColorStop(1, 'rgba(8,6,12,1)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    if (!this.reducedMotionUi) {
+      for (let i = 0; i < 9; i++) { // 가장자리에서 일렁이는 검은 연기
+        const ang = i * 0.7 + now / 2600 * (i % 2 ? 1 : -1), rr = hole * (1.02 + 0.12 * Math.sin(now / 700 + i));
+        const px = cx + Math.cos(ang) * rr, py = cy + Math.sin(ang) * rr, sz = hole * (0.3 + 0.08 * Math.sin(now / 900 + i * 2));
+        const sg = ctx.createRadialGradient(px, py, 0, px, py, sz);
+        sg.addColorStop(0, 'rgba(20,16,28,0.85)'); sg.addColorStop(1, 'rgba(20,16,28,0)');
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+    const info = this.names.get(this.me.e);
+    if (info) {
+      const fs = Math.max(12, Math.min(this.me.r * this.zoom * 0.45, 40));
+      drawNameTag(ctx, info.nickname, cx, cy + this.me.r * this.zoom + 4, fs, info.bot ? null : info.nameColor, info.bot ? null : info.nameStyle, info.borderColor ?? '#11372a');
+    }
+  }
+  private reducedMotionUi = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   /** 좌클릭으로 고른 따라갈 원(PC). 그 원 둘레에 표시를 그린다. null이면 해제 */
   setFollowTarget(e: number | null) { this.followTarget = e; }
   /** 따라갈 원의 지금 위치. 사라졌거나 은신(유령) 중이어서 안 보이면 null */
@@ -730,8 +764,10 @@ export class Arena {
     this.fx.drawActive(ctx, now, this.zoom, (e, t) => this.entityPos(e, t)); // 충격파·갈고리(4.33)
     this.drawLevelFxs(ctx, now);
     ctx.restore();
+    const dark = this.isDark(now);
+    if (dark) this.drawDarkness(ctx, w, h, now);
     if (!this.spec) this.drawFloatTexts(ctx, w, h, now);
-    if ((this.minimapVisible || this.minimapBig) && (this.me.initialized || this.spec)) this.drawMinimap(ctx, w, h);
+    if (!dark && (this.minimapVisible || this.minimapBig) && (this.me.initialized || this.spec)) this.drawMinimap(ctx, w, h);
   }
 
   /** 관전 카메라: 전체 보기면 아레나 전체, 따라가기면 그 원, 아니면 사용자가 둔 자리. 배율은 바로 적용한다(손에 붙는 확대) */

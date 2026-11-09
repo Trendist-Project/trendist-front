@@ -7,11 +7,14 @@ import type { SkillInfo } from '../api/types';
  * 쿨타임은 서버가 판정하므로 여기 값은 툴팁에 보여 주는 용도다.
  */
 const FALLBACK: SkillInfo[] = [
+  { code: 'dash', icon: '⚡', category: 'MOVE', defaultKey: 'Space', cooldownSeconds: 30, requiredLevel: 1 },
   { code: 'shield', icon: '🛡', category: 'DEFENSE', defaultKey: 'Digit1', cooldownSeconds: 30, requiredLevel: 10 },
   { code: 'hook', icon: '🪝', category: 'ATTACK', defaultKey: 'Digit2', cooldownSeconds: 30, requiredLevel: 15 },
   { code: 'shockwave', icon: '💥', category: 'ATTACK', defaultKey: 'Digit3', cooldownSeconds: 30, requiredLevel: 20 },
   { code: 'stealth', icon: '👻', category: 'STEALTH', defaultKey: 'Digit4', cooldownSeconds: 30, requiredLevel: 25 },
-  { code: 'dash', icon: '⚡', category: 'MOVE', defaultKey: 'Space', cooldownSeconds: 30, requiredLevel: 1 },
+  { code: 'darkness', icon: '🕶️', category: 'ATTACK', defaultKey: 'Digit5', cooldownSeconds: 30, requiredLevel: 30 },
+  { code: 'cleanse', icon: '✨', category: 'DEFENSE', defaultKey: 'Digit6', cooldownSeconds: 30, requiredLevel: 35 },
+  { code: 'poison', icon: '☠️', category: 'ATTACK', defaultKey: 'Digit7', cooldownSeconds: 30, requiredLevel: 40 },
 ];
 let cache: SkillInfo[] | null = null;
 let pending: Promise<SkillInfo[]> | null = null;

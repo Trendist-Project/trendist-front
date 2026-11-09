@@ -3,7 +3,7 @@ import { errorText } from '../i18n';
 import { getAdminCountry } from './adminCountry';
 import type {
   Activity, ActivityRange, PlayerCard, PlayerHit, PopularityResult, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
-  AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo } from './types';
+  AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo, KeybindingsResponse } from './types';
 
 /** 관리자 스킬 설정(13.3) */
 export interface AdminSkill { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; enabled: boolean; defaultCooldown: number; updatedAt: string }
@@ -89,6 +89,10 @@ export const api = {
   orbOdds: () => request<{ gainPercent: number; losePercent: number }>('GET', '/api/game-info/orb-odds'),
   levelExp: (levels: number[]) => request<Record<string, number>>('GET', `/api/game-info/level-exp?levels=${levels.join(',')}`),
   skills: () => request<SkillInfo[]>('GET', '/api/skills'),
+  /** 내 단축키(4.33): 서버가 바꾸지 않은 동작은 기본 키로 채워서 준다 */
+  keybindings: () => request<KeybindingsResponse>('GET', '/api/me/keybindings'),
+  saveKeybindings: (bindings: { action: string; key: string | null }[]) => request<KeybindingsResponse>('PUT', '/api/me/keybindings', { bindings }),
+  resetKeybindings: () => request<KeybindingsResponse>('DELETE', '/api/me/keybindings'),
   async startGuest() {
     accessToken = (await raw<TokenResponse>('POST', '/api/auth/guest', undefined, false)).accessToken;
   },

@@ -155,4 +155,9 @@ export interface ShareCardCreated { code: string; url: string; imageUrl: string;
 export interface EmergencyNotice { id: number; message: string; messageEn: string | null; endsAt: string; remainingSeconds: number }
 
 /** 스킬 한 개(4.33): DB(skills)에서 온다. defaultKey는 KeyboardEvent.code(Space, Digit1 …), cooldownSeconds는 DB의 쿨타임. 이름·설명은 번역 파일(skills.<코드>_name·_desc)에서 코드로 찾는다 */
+/** 내 단축키(4.33): 동작마다 지금 키(KeyboardEvent.code, null이면 비움)와 기본 키를 쓰는지, 그리고 쓸 수 있는 키 목록 */
+export interface KeyBindingInfo { action: string; type: string; param: number | null; key: string | null; usingDefault: boolean }
+export interface KeyInfo { code: string; label: string; category: string; reserved: boolean; aliasOf: string | null }
+export interface KeybindingsResponse { bindings: KeyBindingInfo[]; keys: KeyInfo[] }
+
 export interface SkillInfo { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number }

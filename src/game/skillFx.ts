@@ -11,6 +11,12 @@ const FX_CAP = 24;
 const STEALTH_FADE_MS = 550;   // 은신에 들어갈 때 사라지고, 풀릴 때 다시 나타나는 시간(끊긴 것과 구분되게 부드럽게)
 const PUFF_MS = 750;           // 은신 시작·끝에 퍼지는 고리와 반짝임
 
+interface Bolt { kind: 'poison' | 'darkness'; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number; at: number }
+interface Burst { x: number; y: number; kind: 'poison' | 'darkness'; at: number }
+const BURST_MS = 450;
+const BOLT_MIN_SCREEN_RADIUS = 6;   // 화면에서 투사체 반지름이 이보다 작아지지 않게 그린다(px)
+const CLEANSE_MS = 900;
+
 interface Shock { x: number; y: number; r0: number; rMax: number; speed: number; at: number }
 interface Hook { e: number; dx: number; dy: number; range: number; ms: number; at: number; hit?: { t: number; at: number; ms: number }; endAt?: number }
 
@@ -18,6 +24,10 @@ export class SkillFxLayer {
   private shocks: Shock[] = [];
   private hooks: Hook[] = [];
   private stealth = new Map<number, { at: number; until: number }>();
+  private bolts = new Map<number, Bolt>();
+  private bursts: Burst[] = [];
+  private poisons = new Map<number, { stacks: number; at: number; until: number }>();
+  private cleanses: { e: number; at: number }[] = [];
   private stealthEnded = new Map<number, number>(); // 은신이 막 끝나 다시 나타나는 중인 원 번호 → 끝난 시각
   private puffs: { e: number; at: number; kind: 'out' | 'in' }[] = []; // 은신 시작(out)·끝(in) 연출
 
@@ -29,7 +39,7 @@ export class SkillFxLayer {
 
   constructor(private readonly reducedMotion: boolean) {}
 
-  clear() { this.shocks = []; this.hooks = []; this.stealth.clear(); this.stealthEnded.clear(); this.puffs = []; }
+  clear() { this.shocks = []; this.hooks = []; this.stealth.clear(); this.stealthEnded.clear(); this.puffs = []; this.bolts.clear(); this.bursts = []; this.poisons.clear(); this.cleanses = []; }
 
   show(fx: SkillFx, now: number) {
     switch (fx.id) {
@@ -58,6 +68,25 @@ export class SkillFxLayer {
         this.addPuff(fx.e, now, 'out');
         break;
       case 'stealthEnd': this.endStealth(fx.e, now); break;
+      case 'bolt':
+        if (this.bolts.size >= FX_CAP) this.bolts.delete(this.bolts.keys().next().value as number);
+        this.bolts.set(fx.bid, { kind: fx.kind, x: fx.x, y: fx.y, dx: fx.dx, dy: fx.dy, speed: fx.speed, range: fx.range, radius: fx.radius, at: now });
+        break;
+      case 'boltEnd': {
+        const b = this.bolts.get(fx.bid);
+        this.bolts.delete(fx.bid);
+        if (b && fx.hit !== undefined && fx.x !== undefined && fx.y !== undefined) {
+          if (this.bursts.length >= FX_CAP) this.bursts.shift();
+          this.bursts.push({ x: fx.x, y: fx.y, kind: b.kind, at: now });
+        }
+        break;
+      }
+      case 'poison': this.poisons.set(fx.t, { stacks: fx.stacks, at: now, until: now + fx.ms }); break;
+      case 'poisonEnd': this.poisons.delete(fx.t); break;
+      case 'cleanse':
+        if (this.cleanses.length >= FX_CAP) this.cleanses.shift();
+        this.cleanses.push({ e: fx.e, at: now });
+        break;
     }
   }
 
@@ -108,6 +137,118 @@ export class SkillFxLayer {
     this.drawShocks(ctx, now, z);
     this.drawHooks(ctx, now, z, pos);
     this.drawPuffs(ctx, now, z, pos);
+    this.drawBolts(ctx, now, z);
+    this.drawPoisons(ctx, now, z, pos);
+    this.drawCleanses(ctx, now, z, pos);
+  }
+
+  /** 독(초록)·암흑(검정 + 보라 테두리) 투사체와 맞은 자리의 퍼지는 고리. 위치는 시작점에서 속도 × 지난 시간으로 구해 서버와 같은 곳에 그린다 */
+  private drawBolts(ctx: CanvasRenderingContext2D, now: number, z: number) {
+    for (const [id, b] of this.bolts) {
+      const traveled = Math.min(b.range, b.speed * (now - b.at) / 1000);
+      if (now - b.at > (b.range / b.speed) * 1000 + 400) { this.bolts.delete(id); continue; } // 끝 신호를 놓쳐도 사라진다
+      const x = b.x + b.dx * traveled, y = b.y + b.dy * traveled;
+      const r = Math.max(b.radius, BOLT_MIN_SCREEN_RADIUS / z); // 판정은 월드 반지름 그대로이고, 줌아웃해도 화면에서 이만큼은 보이게 그린다
+      const poison = b.kind === 'poison';
+      ctx.save();
+      const len = r * 7; // 꼬리 길이도 투사체 크기에 맞춘다
+      const tail = ctx.createLinearGradient(x, y, x - b.dx * len, y - b.dy * len);
+      tail.addColorStop(0, poison ? 'rgba(90,220,90,0.55)' : 'rgba(120,70,200,0.5)');
+      tail.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.strokeStyle = tail; ctx.lineWidth = r * 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - b.dx * len, y - b.dy * len); ctx.stroke();
+      ctx.fillStyle = poison ? '#4cd964' : '#14101c';
+      ctx.strokeStyle = poison ? '#c9ffd0' : '#9b6cff'; ctx.lineWidth = Math.max(2 / z, 2.5);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    this.bursts = this.bursts.filter((u) => now - u.at < BURST_MS);
+    for (const u of this.bursts) {
+      const t = (now - u.at) / BURST_MS;
+      ctx.save();
+      ctx.strokeStyle = u.kind === 'poison' ? `rgba(90,220,90,${1 - t})` : `rgba(155,108,255,${1 - t})`;
+      ctx.lineWidth = Math.max(3 / z, 5) * (1 - t * 0.6);
+      ctx.beginPath(); ctx.arc(u.x, u.y, 14 + 60 * t, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /** 독에 걸린 원: 초록 고리와 떠오르는 방울, 머리 위 ☠×스택 수(모두에게 보인다) */
+  private drawPoisons(ctx: CanvasRenderingContext2D, now: number, z: number, pos: PosFn) {
+    for (const [e, p] of this.poisons) {
+      if (now >= p.until + 400) { this.poisons.delete(e); continue; }
+      const o = pos(e, now);
+      if (!o) continue;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(90,220,90,0.8)'; ctx.lineWidth = Math.max(3 / z, o.r * 0.08);
+      ctx.setLineDash([o.r * 0.35, o.r * 0.25]); ctx.lineDashOffset = this.reducedMotion ? 0 : now / 40;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 1.1, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      if (!this.reducedMotion) {
+        ctx.fillStyle = 'rgba(120,235,110,0.65)';
+        for (let i = 0; i < 6; i++) {
+          const ph = ((now / 1200) + i / 6) % 1, ang = i * 2.1 + e;
+          ctx.beginPath(); ctx.arc(o.x + Math.cos(ang) * o.r * 0.7, o.y - o.r * 0.4 - ph * o.r * 0.9, Math.max(2 / z, o.r * 0.08) * (1 - ph), 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      const fs = Math.max(14 / z, Math.min(o.r * 0.5, 36)), left = Math.max(0, Math.ceil((p.until - now) / 1000));
+      ctx.font = `700 ${fs}px "Noto Sans KR", system-ui, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.lineWidth = Math.max(2 / z, fs * 0.15); ctx.strokeStyle = 'rgba(10,40,10,0.9)'; ctx.fillStyle = '#b8ffb0';
+      const label = `☠ ×${p.stacks}  ${left}s`;
+      ctx.strokeText(label, o.x, o.y - o.r - 6 / z); ctx.fillText(label, o.x, o.y - o.r - 6 / z);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * 정화: 몸을 묶고 있던 사슬(CC)을 끊어 던지는 연출. 처음에 원을 사슬 고리가 감고 있다가 "툭" 끊어지며,
+   * 사슬 조각이 사방으로 튀어 나가 빙글 돌며 떨어지고, 초록빛 충격 고리가 퍼진다. 줌아웃해도 조각이 보이도록 화면 기준 최소 크기가 있다.
+   */
+  private drawCleanses(ctx: CanvasRenderingContext2D, now: number, z: number, pos: PosFn) {
+    this.cleanses = this.cleanses.filter((c) => now - c.at < CLEANSE_MS);
+    const LINKS = 14, SNAP = 0.16;
+    for (const c of this.cleanses) {
+      const o = pos(c.e, now);
+      if (!o) continue;
+      const t = (now - c.at) / CLEANSE_MS;
+      const link = Math.max(o.r * 0.17, 9 / z), lw = Math.max(2.2 / z, link * 0.28);
+      ctx.save();
+      ctx.lineJoin = 'round';
+      for (let i = 0; i < LINKS; i++) {
+        const base = (i / LINKS) * Math.PI * 2;
+        let px: number, py: number, rot: number, alpha: number;
+        if (t < SNAP) { // 끊기기 직전: 원을 감은 사슬이 팽팽하게 떨린다
+          const shake = this.reducedMotion ? 0 : Math.sin(now / 18 + i) * o.r * 0.02;
+          px = o.x + Math.cos(base) * (o.r * 1.06 + shake); py = o.y + Math.sin(base) * (o.r * 1.06 + shake);
+          rot = base + Math.PI / 2; alpha = 1;
+        } else { // 끊어져 사방으로 튀어 나가며 돌고 떨어진다
+          const u = (t - SNAP) / (1 - SNAP), ease = 1 - (1 - u) ** 3;
+          const spread = this.reducedMotion ? 0.5 : 1;
+          const dist = o.r * 1.06 + o.r * (1.1 + 0.5 * ((i * 7) % 5) / 4) * ease * spread;
+          px = o.x + Math.cos(base) * dist; py = o.y + Math.sin(base) * dist + o.r * 0.9 * u * u * spread; // 아래로 떨어진다
+          rot = base + Math.PI / 2 + (this.reducedMotion ? 0 : u * (i % 2 ? 5 : -5));
+          alpha = 1 - u ** 2;
+        }
+        ctx.save();
+        ctx.translate(px, py); ctx.rotate(rot + (i % 2 ? Math.PI / 2 : 0));
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.lineWidth = lw;
+        ctx.strokeStyle = '#d9ffe6'; ctx.shadowColor = 'rgba(110,255,160,0.9)'; ctx.shadowBlur = this.reducedMotion ? 0 : 6;
+        ctx.beginPath(); ctx.ellipse(0, 0, link * (i % 2 ? 0.55 : 0.8), link * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+      if (t >= SNAP) { // 끊어지는 순간 초록빛 충격 고리와 번쩍임
+        const u = (t - SNAP) / (1 - SNAP), ease = 1 - (1 - u) ** 3;
+        ctx.strokeStyle = `rgba(110,255,160,${0.9 * (1 - u)})`; ctx.lineWidth = Math.max(3 / z, o.r * 0.12) * (1 - u * 0.5);
+        ctx.beginPath(); ctx.arc(o.x, o.y, o.r * (1.05 + 1.4 * ease), 0, Math.PI * 2); ctx.stroke();
+        if (u < 0.25) {
+          ctx.fillStyle = `rgba(220,255,235,${0.35 * (1 - u / 0.25)})`;
+          ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 1.15, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
   }
 
   /**
