@@ -47,7 +47,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
 .main-howto { list-style: none; text-align: left; background: #151d2a; border: 1px solid var(--line); border-radius: 14px;
   padding: 10px 14px; margin: 0 0 18px; display: grid; gap: 4px; font-size: 0.85rem; line-height: 1.4; }
 @media (max-width: 760px) { .main-card { padding: 22px 18px; } .main-howto { padding: 10px 12px; } }
-.main-bg { position: absolute; inset: 0; }
+.main-bg { position: absolute; inset: 0; overflow: hidden; } /* 아래쪽 끝의 떠다니는 원이 화면 밖으로 나가 아주 조금 스크롤을 만들지 않게 배경 안에서 자른다 */
 .bubble { position: absolute; border-radius: 50%; background: rgba(63, 182, 139, 0.18); border: 2px solid rgba(63, 182, 139, 0.35); animation: drift1 8s ease-in-out infinite; will-change: transform; }
 /* 배경 원 경로 3가지: 원마다 경로·속도·시작 시점이 달라서 제각각 떠다닌다 */
 @keyframes drift1 {
@@ -1218,6 +1218,27 @@ button.link-back:hover { color: var(--text); }
    소개(로고·이름·한 줄 설명·3단계)와 행동(방법·시작·로그인·서버 선택) 두 묶음. 세로·PC는 한 줄로 쌓고(묶음은 레이아웃에 영향이 없다), 가로 모드 폰은 두 칸으로 나눠서
    낮은 화면에서도 한눈에 들어오고 [시작]이 잘리지 않게 한다. */
 .main-hero, .main-actions { display: contents; }
+/* 노트북·낮은 PC 화면(너비 761px 이상, 높이 900px 이하): 세로로 쌓은 배치는 그대로 두고, 로고·글자·여백·버튼 크기를 화면 높이(vh)에 맞춰 줄여 스크롤 없이 한 화면에 넣는다.
+   높이가 620px 이하이면 방법 줄을 숨기고(왼쪽의 3단계로 충분), 520px 이하이면 소개 글도 숨긴다. 그래도 모자랄 만큼 낮으면 화면 안에서만 스크롤한다. 폰 가로 모드(터치)는 아래의 두 칸 규칙이 이어서 덮는다 */
+/* PC 너비에서는 화면 높이를 고정해서(카드가 넘치면 MainScreen이 카드를 줄여 맞춘다) 페이지 스크롤이 생기지 않게 한다 */
+@media (min-width: 761px) { .main-screen { height: 100%; min-height: 0; overflow-x: hidden; overflow-y: auto; } }
+@media (min-width: 761px) and (max-height: 900px) {
+  .main-screen { height: 100%; min-height: 0; padding: clamp(6px, 1.6vh, 20px) 20px; overflow-x: hidden; overflow-y: auto; }
+  .main-card { margin: auto; padding: clamp(12px, 2.6vh, 32px) 28px; }
+  .main-logo { width: clamp(44px, 9.5vh, 96px); height: clamp(44px, 9.5vh, 96px); margin-bottom: clamp(2px, 0.8vh, 10px); }
+  .main-card h1 { font-size: clamp(1.6rem, 4.6vh, 2.6rem); margin: 0 0 2px; }
+  .main-card .tagline { font-size: clamp(0.92rem, 2.1vh, 1.15rem); margin: 0 0 4px; }
+  .main-hero .muted { margin: 0; font-size: clamp(0.78rem, 1.9vh, 0.9rem); line-height: 1.4; }
+  .main-hero .steps { margin: clamp(6px, 1.4vh, 16px) 0; gap: 6px; }
+  .main-hero .steps li { font-size: clamp(0.74rem, 1.7vh, 0.9rem); padding: clamp(3px, 0.6vh, 6px) 9px; }
+  .main-howto { margin: 0 0 clamp(8px, 1.6vh, 18px); padding: clamp(6px, 1.1vh, 10px) 12px; font-size: clamp(0.72rem, 1.7vh, 0.85rem); line-height: 1.3; gap: 2px; }
+  .main-actions button.big, .main-actions .google-btn { height: clamp(40px, 6.4vh, 52px); margin-top: clamp(6px, 1.2vh, 10px); }
+  .main-actions .or-divider { margin: clamp(6px, 1.2vh, 14px) 0 2px; }
+  .main-actions .muted.small { margin: 3px 0 0; font-size: 0.72rem; }
+  .main-actions .server-select { margin-top: clamp(6px, 1.4vh, 18px); }
+}
+@media (min-width: 761px) and (max-height: 620px) { .main-howto { display: none; } }
+@media (min-width: 761px) and (max-height: 520px) { .main-hero .muted { display: none; } }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .main-screen { padding: 6px 16px; overflow: hidden; } /* 스크롤 없이 한 화면에 들어가게 아래 크기들을 낮은 화면에 맞춰 줄인다 */
   .main-card { width: min(900px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 0 26px; align-items: center; text-align: left; padding: 12px 22px; border-radius: 18px; }

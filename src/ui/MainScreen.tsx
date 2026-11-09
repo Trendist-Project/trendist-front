@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { GoogleButton } from './GoogleButton';
 import { COUNTRIES, getCountry, setCountry, type Country } from '../country';
 import { t } from '../i18n';
@@ -21,8 +22,30 @@ function chooseCountry(c: Country) {
 }
 
 export function MainScreen({ onStart, error, loggedIn, onLogout }: Props) {
+  const screenRef = useRef<HTMLElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  // PC·노트북: 카드가 화면 높이보다 크면 한 화면에 들어가도록 카드 전체를 줄인다(스크롤이 생기지 않게). 글이 길어 줄이 더 늘어나는 언어·창 크기·확대 비율에서도
+  // 실제로 잰 높이로 맞추므로 어긋나지 않는다. 너무 작아지지 않게 60%까지만 줄이고 그 아래는 화면 안에서만 스크롤한다. 폰(너비 760px 이하)은 건드리지 않는다
+  useLayoutEffect(() => {
+    const screen = screenRef.current, card = cardRef.current;
+    if (!screen || !card) return;
+    const wide = window.matchMedia('(min-width: 761px)');
+    const fit = () => {
+      card.style.zoom = '1';
+      if (!wide.matches) return;
+      const cs = getComputedStyle(screen);
+      const avail = screen.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2; // 소수점 올림으로 1~2px 넘치지 않게 여유를 둔다
+      const natural = card.getBoundingClientRect().height;
+      card.style.zoom = String(natural > avail && avail > 0 ? Math.max(0.6, avail / natural) : 1);
+    };
+    fit();
+    const ro = new ResizeObserver(fit); // 창 크기(확대·축소 포함)가 바뀌면 다시 맞춘다. 카드는 보지 않는다(줄이는 것이 다시 알림을 만들지 않게)
+    ro.observe(screen);
+    document.fonts?.ready.then(fit).catch(() => { /* 글꼴이 늦게 와도 그대로 둔다 */ });
+    return () => ro.disconnect();
+  }, [loggedIn, error]);
   return (
-    <main className="main-screen">
+    <main className="main-screen" ref={screenRef}>
       <div className="main-bg" aria-hidden="true">
         {BUBBLES.map(([left, top, size, path, seconds, delay], i) => (
           <span key={i} className="bubble" style={{
@@ -31,7 +54,7 @@ export function MainScreen({ onStart, error, loggedIn, onLogout }: Props) {
           }} />
         ))}
       </div>
-      <section className="main-card">
+      <section className="main-card" ref={cardRef}>
         {/* 가로 모드 폰에서는 왼쪽(소개)·오른쪽(방법·시작)의 두 칸이 된다. 그 밖에서는 두 묶음이 레이아웃에 영향을 주지 않는다(CSS display: contents) */}
         <div className="main-hero">
           <img className="main-logo" src="/logo.png" alt="" width={96} height={96} />
