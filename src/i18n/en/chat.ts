@@ -1,5 +1,6 @@
 export default {
   playerDetail: 'View {name}',
+  resizeTip: 'Drag the handle to resize (double-click: reset)',
   resize: 'Drag to resize chat',
   label: 'Chat',
   emptyCollapsed: 'No chat yet',

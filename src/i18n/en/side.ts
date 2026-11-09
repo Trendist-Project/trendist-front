@@ -9,6 +9,7 @@ export default {
   plusFailed: "Couldn't add it",
   tabSearch: '🔍 Search',
   tabMine: '📦 Stash',
+  hidePanel: 'Hide the side panel',
   collapsePanel: 'Close',
   expandPanel: 'Expand panel',
   placeholder: 'Enter a keyword',

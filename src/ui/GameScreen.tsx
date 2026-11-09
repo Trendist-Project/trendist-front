@@ -60,6 +60,15 @@ function isSmallScreen() {
 
 /** 미니맵 켜짐 여부는 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
 const MINIMAP_KEY = 'trendist.minimap';
+/** PC에서 오른쪽 검색·보관함·플레이어 영역을 숨겼는지(이 브라우저에 기억한다). 모바일은 하단 시트라 이 값을 쓰지 않는다 */
+const SIDE_HIDDEN_KEY = 'trendist.sideHidden';
+function loadSideHidden() {
+  try { return localStorage.getItem(SIDE_HIDDEN_KEY) === '1'; } catch { return false; }
+}
+function saveSideHidden(hidden: boolean) {
+  try { localStorage.setItem(SIDE_HIDDEN_KEY, hidden ? '1' : '0'); } catch { /* 무시 */ }
+}
+
 function loadMinimapPref() {
   try { return localStorage.getItem(MINIMAP_KEY) !== '0'; } catch { return true; }
 }
@@ -178,6 +187,8 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const sendDashRef = useRef<() => void>(() => {});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMinimap, setShowMinimap] = useState(loadMinimapPref);
+  const [sideHidden, setSideHidden] = useState(loadSideHidden);
+  const setSide = useCallback((hidden: boolean) => { setSideHidden(hidden); saveSideHidden(hidden); }, []);
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | 'skills' | null>(null);
@@ -848,7 +859,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   return (
     <div className="game-shell">
       {emergency && <EmergencyBar text={emergencyText(emergency)} />}
-    <div className="game">
+    <div className={sideHidden ? 'game side-hidden' : 'game'}>
       {kicked && (
         <div className="modal-backdrop kicked-backdrop" role="alertdialog" aria-labelledby="kicked-title">
           <div className="modal kicked-box">
@@ -859,6 +870,11 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         </div>
       )}
       <div className={showMinimap ? 'arena-wrap with-minimap' : 'arena-wrap'}>
+        {sideHidden && (
+          <button type="button" className="side-show" onClick={() => setSide(false)} aria-label={t('gamescreen.sideShow')} title={t('gamescreen.sideShow')}>
+            <span aria-hidden="true">◀</span><span className="side-show-label">{t('gamescreen.sideShowShort')}</span>
+          </button>
+        )}
         <canvas ref={canvasRef} className={dead ? 'arena dead' : 'arena'}
                 aria-label={t('gamescreen.arenaAria')} />
         {dead && (
@@ -1044,7 +1060,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           {toast && <div className="toast" role="status">{toast}</div>}
         </div>
       </div>
-      <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast}
+      <SidePanel onPlused={onPlused} refreshKey={refreshKey} onError={showToast} onHide={() => setSide(true)}
                  onOpenKeyword={setOpenKeyword} onSharePlayer={sharePlayer} searchRequest={searchRequest} openRequest={sideRequest} />
       {infoEntity !== null && (
         <PlayerInfoModal entityNo={infoEntity} bot={infoBot} look={infoLook} onClose={() => setInfoEntity(null)}

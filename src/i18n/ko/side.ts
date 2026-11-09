@@ -9,6 +9,7 @@ export default {
   plusFailed: '추가하지 못했어요',
   tabSearch: '🔍 검색',
   tabMine: '📦 보관함',
+  hidePanel: '검색·보관함 영역 숨기기',
   collapsePanel: '닫기',
   expandPanel: '패널 펼치기',
   placeholder: '키워드를 입력하세요',

@@ -158,6 +158,8 @@ export default {
   skillChooseCancel: 'Cancel',
   keySaveFailed: 'Could not save the key. Please try again',
   skillLockedShort: 'Locked',
+  sideShow: 'Show the search / vault / players panel',
+  sideShowShort: 'Panel',
   hooked: '🪝 Caught by a hook!',
   skillCat_move: 'Movement',
   skillCat_attack: 'Attack',

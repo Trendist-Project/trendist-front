@@ -158,6 +158,8 @@ export default {
   skillChooseCancel: '장착 취소',
   keySaveFailed: '키를 저장하지 못했어요. 잠시 뒤 다시 해 보세요',
   skillLockedShort: '잠김',
+  sideShow: '검색·보관함·플레이어 영역 열기',
+  sideShowShort: '검색·보관함',
   hooked: '🪝 갈고리에 붙잡혔어요!',
   skillCat_move: '이동',
   skillCat_attack: '공격',

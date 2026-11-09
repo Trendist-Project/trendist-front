@@ -19,6 +19,8 @@ interface Props {
   onSharePlayer?(playerId: number, nickname: string): void;
   /** 채팅의 #키워드를 누르면 검색창에 넣고 검색한다(4.13). */
   searchRequest: { text: string; key: number } | null;
+  /** PC: 이 영역을 숨긴다(탭 줄 오른쪽 ▶ 버튼). 숨기면 아레나 오른쪽 가장자리의 탭으로 다시 연다 */
+  onHide?(): void;
   /** 모바일 메뉴에서 [검색]·[보관함]을 눌렀다: 그 탭으로 시트를 연다(모바일은 시트가 평소에는 숨어 있다) */
   openRequest?: { tab: Tab; key: number } | null;
 }
@@ -59,7 +61,7 @@ function sortMine(list: MyKeyword[], key: SortKey, dir: SortDir) {
 }
 
 
-export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, onSharePlayer, searchRequest, openRequest }: Props) {
+export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, onSharePlayer, searchRequest, openRequest, onHide }: Props) {
   const layer = useLayer('side');
   const [tab, setTab] = useState<Tab>('search');
   const [q, setQ] = useState('');
@@ -158,6 +160,7 @@ export function SidePanel({ onPlused, onError, refreshKey, onOpenKeyword, onShar
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''}
                   onClick={() => { if (tab === k && expanded) setExpanded(false); else { setTab(k); setExpanded(true); } }}>{label}</button>
         ))}
+        {onHide && <button className="side-hide" onClick={onHide} aria-label={t('side.hidePanel')} title={t('side.hidePanel')}>▶</button>}
         <button className="sheet-toggle" onClick={() => setExpanded(false)} aria-expanded={expanded}
                 aria-label={t('side.collapsePanel')} title={t('side.collapsePanel')}>✕</button>
       </nav>

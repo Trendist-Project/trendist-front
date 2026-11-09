@@ -1,5 +1,6 @@
 export default {
   playerDetail: '{name} 상세 정보 보기',
+  resizeTip: '위쪽 손잡이를 끌어 높이를 조절해요 (더블클릭: 기본 높이)',
   resize: '끌어서 채팅창 높이 조절',
   label: '채팅',
   emptyCollapsed: '아직 채팅이 없어요',

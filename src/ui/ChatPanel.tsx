@@ -21,8 +21,10 @@ interface Props {
 
 const MAX = 100;
 // 모바일 세로 모드: 처음 열면 2줄이 보이는 높이. 위쪽 끝을 끌어 원하는 만큼 늘리거나 줄인다(기억해 둔다)
-const H_KEY = 'trendist.chatHeight.v1', H_DEFAULT = 112, H_MIN = 90;
-const loadHeight = () => { try { const n = Number(localStorage.getItem(H_KEY)); return n >= H_MIN ? n : H_DEFAULT; } catch { return H_DEFAULT; } };
+const H_KEY = 'trendist.chatHeight.v1', H_MIN = 90;
+/** 사용자가 끌어서 정한 높이(없으면 null: PC 220px, 모바일 112px가 CSS 기본값). PC와 모바일 모두 같은 손잡이로 조절한다 */
+const loadHeight = (): number | null => { try { const n = Number(localStorage.getItem(H_KEY)); return n >= H_MIN ? n : null; } catch { return null; } };
+const MOBILE_MQ = '(max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse)';
 const TAG = /(#[^\s#]{1,20})/g;
 /** 플레이어 공유 표기: @[닉네임](p번호). 닉네임에는 대괄호·소괄호를 쓸 수 없어 안전하다 */
 const PLAYER = /(@\[[^\]\n]{1,40}\]\(p\d{1,12}\))/g;
@@ -38,15 +40,31 @@ export const ChatPanel = forwardRef<HTMLInputElement, Props>(function ChatPanel(
   const [text, setText] = useState('');
   const [reporting, setReporting] = useState<ChatLine | null>(null);
   const logRef = useRef<HTMLOListElement>(null);
-  const [height, setHeight] = useState(loadHeight);
+  const [height, setHeight] = useState<number | null>(loadHeight);
   const drag = useRef<{ y: number; h: number } | null>(null);
-  const maxHeight = () => Math.max(H_MIN, Math.round(window.innerHeight * 0.55));
-  const dragStart = (e: RPointerEvent) => { drag.current = { y: e.clientY, h: height }; e.currentTarget.setPointerCapture(e.pointerId); };
+  const heightRef = useRef<number | null>(height);
+  heightRef.current = height;
+  // PC는 화면 높이의 70%까지, 모바일은 55%까지 늘린다(아레나가 가려지지 않게)
+  const maxHeight = () => Math.max(H_MIN, Math.round(window.innerHeight * (window.matchMedia(MOBILE_MQ).matches ? 0.55 : 0.7)));
+  const saveHeight = (h: number | null) => { try { if (h === null) localStorage.removeItem(H_KEY); else localStorage.setItem(H_KEY, String(h)); } catch { /* 저장 못 해도 된다 */ } };
+  const clampH = (h: number) => Math.min(maxHeight(), Math.max(H_MIN, Math.round(h)));
+  const dragStart = (e: RPointerEvent) => {
+    const box = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect(); // 아직 정한 적 없으면 지금 보이는 높이에서 시작한다
+    drag.current = { y: e.clientY, h: heightRef.current ?? box.height };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
   const dragMove = (e: RPointerEvent) => {
     if (!drag.current) return;
-    setHeight(Math.min(maxHeight(), Math.max(H_MIN, Math.round(drag.current.h + drag.current.y - e.clientY)))); // 위로 끌면 커진다
+    setHeight(clampH(drag.current.h + drag.current.y - e.clientY)); // 위로 끌면 커진다
   };
-  const dragEnd = () => { if (!drag.current) return; drag.current = null; try { localStorage.setItem(H_KEY, String(height)); } catch { /* 저장 못 해도 된다 */ } };
+  const dragEnd = () => { if (!drag.current) return; drag.current = null; saveHeight(heightRef.current); };
+  // 키보드: 손잡이에 포커스를 두고 ↑↓로 16px씩, 두 번 누르거나 Home을 누르면 기본 높이로
+  const nudge = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const cur = heightRef.current ?? (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect().height;
+    if (e.key === 'ArrowUp') { e.preventDefault(); const h = clampH(cur + 16); setHeight(h); saveHeight(h); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); const h = clampH(cur - 16); setHeight(h); saveHeight(h); }
+    else if (e.key === 'Home') { e.preventDefault(); setHeight(null); saveHeight(null); }
+  };
   const shown = collapsed ? lines.slice(-1) : lines;
 
   // 맨 아래를 보고 있는지는 스크롤할 때마다 기억해 둔다. 렌더가 끝난 뒤에 재면, 접혀 있던 동안 스크롤 위치가 0이 되어
@@ -85,9 +103,10 @@ export const ChatPanel = forwardRef<HTMLInputElement, Props>(function ChatPanel(
 
   return (
     <section className={collapsed ? 'chat collapsed' : 'chat'} aria-label={t('chat.label')} {...layer.props}
-             style={{ ...layer.props.style, '--chat-h': `${height}px` } as React.CSSProperties}>
+             style={{ ...layer.props.style, ...(height !== null ? { '--chat-h': `${height}px` } : {}) } as React.CSSProperties}>
       {!collapsed && (
         <div className="chat-resize" onPointerDown={dragStart} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd}
+             onDoubleClick={() => { setHeight(null); saveHeight(null); }} onKeyDown={nudge} tabIndex={0} title={t('chat.resizeTip')}
              role="separator" aria-orientation="horizontal" aria-label={t('chat.resize')}><i /></div>
       )}
       <ol className="chat-log" ref={logRef} aria-live="polite" onScroll={onScroll}>
