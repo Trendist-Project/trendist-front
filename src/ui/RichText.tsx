@@ -20,6 +20,9 @@ const EMBEDS: Record<string, () => ReactNode> = {
   '[[스킬 갈고리]]': () => <SkillDemo skill="hook" />,
   '[[스킬 충격파]]': () => <SkillDemo skill="shockwave" />,
   '[[스킬 은신]]': () => <SkillDemo skill="stealth" />,
+  '[[스킬 독]]': () => <SkillDemo skill="poison" />,
+  '[[스킬 암흑]]': () => <SkillDemo skill="darkness" />,
+  '[[스킬 정화]]': () => <SkillDemo skill="cleanse" />,
 };
 
 /** 관리자 편집기의 [그림] 메뉴가 쓰는 이름들(한국어 이름이 기준) */
@@ -41,6 +44,9 @@ const EN_ALIASES: Record<string, string> = {
   '[[skill hook]]': '[[스킬 갈고리]]',
   '[[skill shockwave]]': '[[스킬 충격파]]',
   '[[skill stealth]]': '[[스킬 은신]]',
+  '[[skill poison]]': '[[스킬 독]]',
+  '[[skill darkness]]': '[[스킬 암흑]]',
+  '[[skill cleanse]]': '[[스킬 정화]]',
 };
 
 /**

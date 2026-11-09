@@ -204,7 +204,7 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 @media (prefers-reduced-motion: reduce) { .toast.hit-toast { animation: none; } }
 .side { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .tabs { display: flex; border-bottom: 1px solid var(--line); }
-.tabs button { flex: 1; border: 0; border-radius: 0; background: transparent; padding: 12px 6px; font-size: 0.9rem; color: var(--muted); }
+.tabs button { flex: 1 1 auto; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 12px 6px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* 보관함 글자와 개수는 PC에서도 한 줄로(글자 수에 맞춰 폭을 나눈다) */
 .tabs button.active { color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
 .tabs .sheet-toggle { display: none; } /* 모바일 하단 시트에서만 보인다 */
 /* PC: 오른쪽 검색·보관함·플레이어 영역 숨기기. 탭 줄 오른쪽 ▶로 숨기고, 숨기면 아레나 오른쪽 가장자리의 세로 탭으로 다시 연다 */
@@ -1434,6 +1434,15 @@ button.link-back:hover { color: var(--text); }
 .sw-status.banner b { color: #7dd3fc; font-size: 1.1rem; font-weight: 900; }
 .sw-status.banner.warn { border-color: #f2b84b; background: #2a2210; }
 .sw-status.banner.warn .sw-arrow { color: #f2b84b; }
+/* 키 바꾸기 안내: PC와 가로 모드 폰은 장착 칸 영역 바깥쪽 바로 밑(흐름 안), 세로로 쌓이는 좁은 화면은 오른쪽 위에 겹쳐 뜬다 */
+.sw-leftcol { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.sw-status.banner.sw-banner-under { position: static; margin: 0; box-shadow: none; }
+.sw-status.banner.sw-banner-top { display: none; }
+.sw-status.banner.sw-banner-under .sw-arrow { display: none; } /* 칸 밑에 뜰 때는 왼쪽 화살표(◀)가 필요 없다 */
+@media (max-width: 720px) and (orientation: portrait) {
+  .sw-status.banner.sw-banner-under { display: none; }
+  .sw-status.banner.sw-banner-top { display: flex; }
+}
 .sw-pick-ico { width: 32px; height: 32px; flex: none; font-size: 1.25rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(255,255,255,0.08); }
 .sw-arrow { color: #38bdf8; font-size: 1.1rem; animation: sw-bounce 0.9s ease-in-out infinite; }
 .sw-arrow.side { animation-name: sw-bounce-x; }

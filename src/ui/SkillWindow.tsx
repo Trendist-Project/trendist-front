@@ -119,8 +119,9 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
   );
 
   // 안내 띠: 키를 바꾸는 중에만 보인다. 스킬을 고른 뒤에는 글 대신 왼쪽 칸의 노란 테두리와 화살표가 어디에 넣을지 알려 준다
-  const banner = listening !== null
-    ? <p className="sw-status banner warn" role="status" aria-live="polite"><span className="sw-arrow side" aria-hidden="true">◀</span>{t('gamescreen.keyPress')}</p>
+  // PC와 가로 모드 폰은 장착 칸 영역 바깥쪽 바로 밑에, 세로로 쌓이는 좁은 화면(세로 폰)은 오른쪽 위에 띄운다(CSS가 둘 중 하나만 보인다)
+  const banner = (where: 'under' | 'top') => listening !== null
+    ? <p className={`sw-status banner warn sw-banner-${where}`} role="status" aria-live="polite"><span className="sw-arrow side" aria-hidden="true">◀</span>{t('gamescreen.keyPress')}</p>
     : null;
   const armedSkill = info(armed);
   const placing = (!!armedSkill && armedSkill.requiredLevel <= level) || moving !== null; // 놓는 중이거나 옮기는 중일 때만 칸을 강조한다
@@ -128,7 +129,8 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
   return (
     <Modal title={t('gamescreen.skillWindowTitle')} onClose={onClose} className="skill-window">
       <div className="sw-layout">
-        {/* 왼쪽: 장착한 스킬 */}
+        {/* 왼쪽: 장착한 스킬(칸 영역 바로 밑에 키 바꾸기 안내가 뜬다) */}
+        <div className="sw-leftcol">
         <section className={`sw-left${placing ? ' has-pick' : ''}`} aria-label={t('gamescreen.skillSlots')}>
           <div className="sw-head"><h3>{t('gamescreen.skillSlots')}</h3><span className="sw-count">{t('gamescreen.skillSlotsCount', { n: slots.filter(Boolean).length, max: SLOT_COUNT })}</span></div>
           <div className="sw-bar-slots">
@@ -168,10 +170,12 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
             <button type="button" onClick={clearAll}>{t('gamescreen.skillClearAll')}</button>
           </div>
         </section>
+        {banner('under')}
+        </div>
 
         {/* 오른쪽: 스킬 목록 + 선택한 스킬 상세 */}
         <section className="sw-right">
-          {banner}
+          {banner('top')}
           <div className="sw-head"><h3>{t('gamescreen.skillList')}</h3></div>
           <ul className="sw-grid" aria-label={t('gamescreen.skillList')}>
             {grid.map((sk) => {

@@ -9,7 +9,7 @@ import { t } from '../i18n';
  * 화면에 보일 때만 움직이고(IntersectionObserver), 모션 줄이기 설정이면 대표 장면 한 컷만 그린다.
  * 노란 테두리 원 = 스킬을 쓰는 사람(청록), 파란 원 = 다른 사람. 흰 테두리가 "이 화면의 주인(나)"이다.
  */
-export type DemoSkill = 'dash' | 'shield' | 'hook' | 'shockwave' | 'stealth';
+export type DemoSkill = 'dash' | 'shield' | 'hook' | 'shockwave' | 'stealth' | 'poison' | 'darkness' | 'cleanse';
 
 const W = 280, H = 150, R = 15;
 const USER_BG = TURTLE_BASE, OTHER_BG = '#4f7fd8';
@@ -19,8 +19,9 @@ interface Frame {
   user: Pt; other: Pt;
   shield: number;                // 방패 남은 ms(0이면 없음)
   dash: boolean; dashAt: number; // 대시 중
-  lostAt: number | null;         // 상대가 키워드를 잃는 순간(갈고리) ms
+  lostAt: number | null;         // 상대가 키워드를 잃는 순간(갈고리·독) ms
   note: 'a' | 'b' | 'c' | null;  // 화면 위 안내 문구 번호
+  dark?: { from: number; to: number; who: 'user' | 'other' }; // 암흑에 걸려 그 사람의 화면이 어두운 때(ms)와 그 사람
 }
 interface Script {
   total: number;
@@ -32,7 +33,8 @@ const ease = (x: number) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 const base: Frame = { user: { x: 0, y: 75 }, other: { x: 0, y: 75 }, shield: 0, dash: false, dashAt: 0, lostAt: null, note: null };
 
-const SCRIPTS: Record<DemoSkill, Script> = {
+// 독·암흑·정화는 아래에서 이어서 더한다(투사체 도우미가 필요해서)
+const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'shockwave' | 'stealth', Script> = {
   // 대시: 같은 속도로 걷다가 쓰면 2배 속도로 멀어진다. 쫓아가던 사람은 점점 뒤처진다
   dash: {
     total: 3600,
@@ -84,10 +86,53 @@ const SCRIPTS: Record<DemoSkill, Script> = {
   },
 };
 
+// 독·암흑 투사체: 쓰는 사람(왼쪽)이 상대(오른쪽)에게 던진다. 투사체 위치는 시작점 + 속도 × 시간으로 그려져(실제 게임과 같다) 맞는 때에 맞춰 boltEnd를 보낸다
+const BOLT_FROM = 60 + R, BOLT_TO = 200 - R, BOLT_SPEED = 300, BOLT_HIT_MS = ((BOLT_TO - BOLT_FROM) / BOLT_SPEED) * 1000;
+const boltAt = (at: number, bid: number, kind: 'poison' | 'darkness') => ({
+  at, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'bolt', kind, bid, e: 1, x: BOLT_FROM, y: 75, dx: 1, dy: 0, speed: BOLT_SPEED, range: 200, radius: 5 }, now),
+});
+const boltHit = (at: number, bid: number) => ({ at, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'boltEnd', bid, hit: 2, x: BOLT_TO, y: 75 }, now) });
+
+const POISON_SCRIPT: Script = {
+  // 독: 맞으면 머리 위에 ☠ ×스택과 남은 초가 뜨고, 한 번 더 맞으면 스택이 올라 틱마다 더 많이 잃는다(한꺼번에 잃으면 개수만 알려 준다)
+  total: 7600,
+  events: [
+    boltAt(600, 1, 'poison'), boltHit(600 + BOLT_HIT_MS, 1),
+    { at: 600 + BOLT_HIT_MS, run: (fx, now) => fx.show({ id: 'poison', t: 2, stacks: 1, ms: 6000 }, now) },
+    boltAt(2100, 2, 'poison'), boltHit(2100 + BOLT_HIT_MS, 2),
+    { at: 2100 + BOLT_HIT_MS, run: (fx, now) => fx.show({ id: 'poison', t: 2, stacks: 2, ms: 5000 }, now) },
+    { at: 7000, run: (fx, now) => fx.show({ id: 'poisonEnd', t: 2 }, now) },
+  ],
+  frame: (u) => ({ ...base, user: { x: 60, y: 75 }, other: { x: 200, y: 75 }, lostAt: u >= 4600 ? 4600 : null, note: u > 1100 && u < 6800 ? 'a' : null }),
+};
+const DARKNESS_SCRIPT: Script = {
+  // 암흑: 맞은 사람은 3초 동안 자기 원 둘레만 보이고 나머지는 어두워진다. 걸린 원은 모두에게 안개·🕶️·남은 시간 링이 보인다
+  total: 6400,
+  events: [
+    boltAt(600, 1, 'darkness'), boltHit(600 + BOLT_HIT_MS, 1),
+    { at: 600 + BOLT_HIT_MS, run: (fx, now) => fx.show({ id: 'darkness', t: 2, ms: 3000 }, now) },
+  ],
+  frame: (u) => ({ ...base, user: { x: 60, y: 75 }, other: { x: 200, y: 75 }, dark: { from: 600 + BOLT_HIT_MS, to: 600 + BOLT_HIT_MS + 3000, who: 'other' }, note: u > 1100 && u < 5200 ? 'a' : null }),
+};
+const CLEANSE_SCRIPT: Script = {
+  // 정화: 독과 암흑에 걸린 원이 쓰면 둘 다 한꺼번에 풀리고 초록 테두리가 끊어져 떨어져 나간다
+  total: 7000,
+  events: [
+    { at: 200, run: (fx, now) => fx.show({ id: 'poison', t: 1, stacks: 2, ms: 9000 }, now) },
+    { at: 200, run: (fx, now) => fx.show({ id: 'darkness', t: 1, ms: 9000 }, now) },
+    { at: 2800, run: (fx, now) => fx.show({ id: 'poisonEnd', t: 1 }, now) },
+    { at: 2800, run: (fx, now) => fx.show({ id: 'cleanse', e: 1 }, now) },
+  ],
+  frame: (u) => ({ ...base, user: { x: 110, y: 75 }, other: { x: 215, y: 75 }, dark: { from: 200, to: 2800, who: 'user' }, note: u > 600 && u < 5600 ? 'a' : null }),
+};
+
+const SCRIPTS: Record<DemoSkill, Script> = { ...BASE_SCRIPTS, poison: POISON_SCRIPT, darkness: DARKNESS_SCRIPT, cleanse: CLEANSE_SCRIPT };
+
 type View = 'mine' | 'theirs';
 
 /** 임시 캔버스에 그린 뒤 투명하게 올린다(거북이 그림이 알파를 직접 바꾸므로) */
 let tmp: HTMLCanvasElement | null = null;
+let darkTmp: HTMLCanvasElement | null = null; // 암흑 막을 따로 그려 구멍을 뚫는 임시 캔버스
 function drawActor(ctx: CanvasRenderingContext2D, p: Pt, bg: string, alpha: number, ring: boolean, label: string, angle: number, labelAlpha = 1) {
   if (alpha <= 0.01) return;
   const size = 96, c = size / 2;
@@ -153,9 +198,9 @@ function drawScene(ctx: CanvasRenderingContext2D, view: View, skill: DemoSkill, 
   if (f.shield > 0) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, f.shield / 300) * 0.9;
-    ctx.strokeStyle = '#7cd3ff'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -now / 40;
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 5.5; ctx.setLineDash([12, 7]); ctx.lineDashOffset = -now / 40;
     ctx.beginPath(); ctx.arc(f.user.x, f.user.y, R + 6, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(124,211,255,0.12)'; ctx.fill();
+    ctx.fillStyle = 'rgba(74,222,128,0.12)'; ctx.fill();
     ctx.globalAlpha = 1; ctx.font = '800 14px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; const lb = `🛡 ${Math.ceil(f.shield / 1000)}`;
     ctx.strokeText(lb, f.user.x, f.user.y - R - 8); ctx.fillStyle = '#fff'; ctx.fillText(lb, f.user.x, f.user.y - R - 8);
@@ -183,14 +228,36 @@ function drawScene(ctx: CanvasRenderingContext2D, view: View, skill: DemoSkill, 
     }
   }
 
-  // 갈고리: 맞은 원 위로 "키워드 -1"
-  if (skill === 'hook' && f.lostAt !== null) {
+  // 암흑에 걸린 사람의 화면: 자기 원 둘레(반지름 1.5배)만 보이고 나머지는 어두워진다(실제 게임의 drawDarkness와 같은 모양)
+  if (f.dark && ((f.dark.who === 'user') === userIsMe) && u >= f.dark.from && u <= f.dark.to + 250) {
+    const who = f.dark.who === 'user' ? f.user : f.other, k = Math.min(1, (u - f.dark.from) / 250, (f.dark.to + 250 - u) / 250);
+    const hole = R * 1.5;
+    // 어두운 막은 따로 그려 구멍을 뚫은 뒤 얹는다(그림 위에서 직접 뚫으면 아래 장면까지 지워진다)
+    darkTmp ??= document.createElement('canvas');
+    if (darkTmp.width !== ctx.canvas.width || darkTmp.height !== ctx.canvas.height) { darkTmp.width = ctx.canvas.width; darkTmp.height = ctx.canvas.height; }
+    const dc = darkTmp.getContext('2d')!;
+    dc.setTransform(1, 0, 0, 1, 0, 0); dc.clearRect(0, 0, darkTmp.width, darkTmp.height);
+    dc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dc.fillStyle = `rgba(8,5,16,${0.94 * k})`; dc.fillRect(0, 0, W, H);
+    const g = dc.createRadialGradient(who.x, who.y, hole * 0.7, who.x, who.y, hole * 1.35);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    dc.globalCompositeOperation = 'destination-out'; dc.fillStyle = g;
+    dc.beginPath(); dc.arc(who.x, who.y, hole * 1.35, 0, Math.PI * 2); dc.fill();
+    dc.globalCompositeOperation = 'source-over';
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(darkTmp, 0, 0); ctx.restore();
+    // 구멍 안의 원은 다시 또렷하게
+    ctx.save(); ctx.globalAlpha = k; ctx.beginPath(); ctx.arc(who.x, who.y, hole, 0, Math.PI * 2); ctx.clip();
+    drawActor(ctx, who, f.dark.who === 'user' ? USER_BG : OTHER_BG, 1, who === f.user ? userIsMe : !userIsMe, who === f.user ? userLabel : otherLabel, 0); ctx.restore();
+  }
+
+  // 갈고리·독: 맞은 원 위로 "키워드 -1"(독은 스택으로 한꺼번에 잃어 개수만 보여 준다)
+  if ((skill === 'hook' || skill === 'poison') && f.lostAt !== null) {
     const age = u - f.lostAt;
     if (age < 1800) {
       ctx.save(); ctx.globalAlpha = Math.min(1, age / 150) * Math.min(1, (1800 - age) / 400);
       ctx.font = '800 13px "Noto Sans KR", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.fillStyle = '#ff8a8a';
-      const txt = t('guideArt.demoLose'), y = f.other.y - R - 8 - age * 0.012;
+      const txt = t(skill === 'poison' ? 'guideArt.demoLose2' : 'guideArt.demoLose'), y = f.other.y - R - 8 - age * 0.012;
       ctx.strokeText(txt, f.other.x, y); ctx.fillText(txt, f.other.x, y); ctx.restore();
     }
   }

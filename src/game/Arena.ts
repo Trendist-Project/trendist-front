@@ -1337,13 +1337,13 @@ export class Arena {
       const r = pos.r + 6 / z;
       ctx.save();
       ctx.globalAlpha = Math.min(1, left / 300) * 0.9; // 끝날 때 살짝 옅어진다
-      ctx.strokeStyle = '#7cd3ff';
-      ctx.lineWidth = 4 / z;
-      ctx.setLineDash([10 / z, 7 / z]);
+      ctx.strokeStyle = '#4ade80'; // 방패: 초록
+      ctx.lineWidth = 8 / z; // 굵은 테두리
+      ctx.setLineDash([16 / z, 9 / z]);
       ctx.lineDashOffset = -now / 40 / z;
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(124,211,255,0.10)';
+      ctx.fillStyle = 'rgba(74,222,128,0.10)';
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
       // 남은 초: 원 바로 위, 화면 기준 일정한 크기
       const fs = 20 / z;
