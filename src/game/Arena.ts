@@ -444,6 +444,9 @@ export class Arena {
     return { x: c.x, y: c.y };
   }
 
+  /** 부드럽게 다듬은 서버 왕복 시간(ms). 서버가 구슬 판정의 지연 보상에 쓰도록 ping에 실어 보낸다. */
+  rttMs() { return Math.round(this.rtt * 1000); }
+
   updateRtt(ms: number) {
     if (!Number.isFinite(ms) || ms < 0 || ms > 5000) return;
     this.rtt += (ms / 1000 - this.rtt) * 0.2;

@@ -112,6 +112,7 @@ export function App() {
 
   async function logout() {
     await api.logout().catch(() => { /* 서버에 못 닿아도 화면은 나간다 */ });
+    setAccount(false); // 메인에서 로그아웃하면 단계가 그대로라 계정 확인이 다시 돌지 않으므로 직접 내린다
     setPhase({ kind: 'main' });
   }
 
@@ -131,7 +132,7 @@ export function App() {
   switch (phase.kind) {
     case 'main':
       return (<>
-        <MainScreen onStart={start} error={error} loggedIn={account} />
+        <MainScreen onStart={start} error={error} loggedIn={account} onLogout={logout} />
         {restoreToken && <RestoreDialog onRestore={restore} onCancel={() => setRestoreToken(null)} />}
       </>);
     case 'nickname':

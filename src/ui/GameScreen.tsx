@@ -426,7 +426,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     };
     conn.start();
     // 서버 왕복 시간을 2초마다 잰다(내 원 보정 허용 오차에 쓴다)
-    const pingTimer = window.setInterval(() => conn.send({ type: 'ping', t: performance.now() }), 2000);
+    const pingTimer = window.setInterval(() => conn.send({ type: 'ping', t: performance.now(), rtt: arenaRef.current?.rttMs() ?? 0 }), 2000);
     // 페이지를 떠날 때(구글 로그인으로 이동, 새로고침, 탭 닫기) 서버에 알려 바로 방에서 빠진다. 닫힘 신호가 늦거나 안 와도 유령으로 남지 않게
     const bye = () => conn.send({ type: 'bye' });
     window.addEventListener('pagehide', bye);
@@ -914,7 +914,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
               <div className="mobile-menu-sep" />
               {guest
                 ? <button className="menu-login" onClick={() => { setMenuOpen(false); startGoogleLogin(); }}><span aria-hidden="true">🔑</span>{t('gamescreen.loginGoogle')}</button>
-                : <button onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>{t('gamescreen.logout')}</button>}
+                : <button className="menu-logout" onClick={() => { setMenuOpen(false); onLogout(); }}><span aria-hidden="true">🚪</span>{t('gamescreen.logout')}</button>}
             </nav>
           )}
           {showLeaderboard && <Leaderboard myPlayerId={player.id} />}

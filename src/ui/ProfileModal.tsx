@@ -159,8 +159,8 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
         </>) : (<>
           <p className="muted small">{t('profile.googleLoggedIn')}</p>
           <div className="account-actions">
-            <button onClick={onLogout}>{t('profile.logout')}</button>
-            <button className="link-danger" onClick={() => setView('withdraw')}>{t('profile.withdraw')}</button>
+            <button className="account-btn logout-btn" onClick={onLogout}><span aria-hidden="true">🚪</span> {t('profile.logout')}</button>
+            <button className="account-btn link-danger" onClick={() => setView('withdraw')}>{t('profile.withdraw')}</button>
           </div>
         </>)}
       </section>

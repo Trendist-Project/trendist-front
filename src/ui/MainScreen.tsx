@@ -3,7 +3,7 @@ import { COUNTRIES, getCountry, setCountry, type Country } from '../country';
 import { t } from '../i18n';
 
 /** loggedIn: 구글 계정으로 로그인한 상태면 true(구글 버튼을 숨긴다), 확인 중이면 null */
-interface Props { onStart(): void; error: string | null; loggedIn: boolean | null }
+interface Props { onStart(): void; error: string | null; loggedIn: boolean | null; onLogout(): void }
 
 /** 배경 원: [왼쪽 %, 위 %, 크기 px, 움직임 경로 1~3, 한 바퀴 초, 시작 지연 초]. 원마다 경로·속도를 달리해 따로 떠다니게 한다. */
 const BUBBLES: [number, number, number, number, number, number][] = [
@@ -20,7 +20,7 @@ function chooseCountry(c: Country) {
   location.reload();
 }
 
-export function MainScreen({ onStart, error, loggedIn }: Props) {
+export function MainScreen({ onStart, error, loggedIn, onLogout }: Props) {
   return (
     <main className="main-screen">
       <div className="main-bg" aria-hidden="true">
@@ -53,7 +53,8 @@ export function MainScreen({ onStart, error, loggedIn }: Props) {
           <li>{t('main.howto5')}</li>
         </ul>
         <button className="primary big" onClick={onStart} autoFocus>{t('main.start')}</button>
-        {/* 이미 로그인한 계정이면 [시작]만(그 계정으로 이어 간다). 확인하는 동안에도 구글 버튼을 잠깐 띄웠다 숨기지 않게 기다린다 */}
+        {/* 이미 로그인한 계정이면 [시작]과 그 아래 [로그아웃](그 계정으로 이어 가거나 다른 계정으로 바꾼다). 확인하는 동안에도 구글 버튼을 잠깐 띄웠다 숨기지 않게 기다린다 */}
+        {loggedIn === true && <button className="big logout-btn" onClick={onLogout}>🚪 {t('main.logout')}</button>}
         {loggedIn === false && (<>
           <div className="or-divider" aria-hidden="true"><span>{t('main.or')}</span></div>
           <GoogleButton />
