@@ -1,5 +1,6 @@
 export default {
   createdLabel: '생성일',
+  me: '나',
   share: '💬 공유',
   shared: '공유함',
   shareTitle: "채팅에 이 플레이어를 보내요. 닉네임을 누르면 상세 정보가 열려요",
@@ -16,7 +17,6 @@ export default {
   searchAria: '플레이어 검색',
   searchNone: '찾는 플레이어가 없어요',
   searchHint: "닉네임 일부로 같은 나라 플레이어를 찾아요. 인기도는 플레이어마다 하루에 한 번 올리거나 내릴 수 있어요.",
-  me: '나',
   loadFailed: '정보를 불러오지 못했어요',
   botDesc: '아레나를 함께 돌아다니는 봇이에요. 사람과 같은 규칙으로 커지고 작아지고, 부딪히면 이기고 져요.',
   score: '현재 유행도',

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { PlayerCard } from '../api/types';
 import { TurtleIcon } from './GrowthIcons';
+import { ProfileHero, StatGroups } from './ProfileParts';
 import { PlayerOrb } from './PlayerOrb';
 import { BOT_BASE } from '../game/turtle';
 import type { OrbLook } from '../game/skin';
@@ -9,7 +10,7 @@ import { STATE_BADGE } from './keywordFormat';
 import { Modal } from './Modal';
 import { ReportDialog } from './ReportDialog';
 import { PopularityVote } from './PopularityVote';
-import { fmtDate, fmtNumber, t } from '../i18n';
+import { t } from '../i18n';
 
 interface Props {
   /** 방 안 세션 번호. 검색 결과에서 열 때는 -1이고 playerId로 가리킨다 */
@@ -48,26 +49,22 @@ export function PlayerInfoModal({ entityNo, playerId, bot, look, onClose, onOpen
   }, [entityNo, playerId, bot]);
 
   if (bot) {
+    const botLook = look ?? { bg: BOT_BASE, borderColor: null, borderWidth: null, art: null, borderEffect: null, bot: true };
     return (
-      <Modal title={bot.nickname} onClose={onClose} className="player-modal">
-        <section className="player-hero">
-          <PlayerOrb look={look ?? { bg: BOT_BASE, borderColor: null, borderWidth: null, art: null, borderEffect: null, bot: true }} level={bot.level} size={72} />
-          <div className="player-hero-main">
-            <div className="player-name"><strong>{bot.nickname}</strong><span className="badge bot">BOT</span></div>
-            <span className="muted small">{t('player.botDesc')}</span>
-          </div>
-        </section>
-        <dl className="kw-stats">
-          <div><dt>{t('player.score')}</dt><dd>{fmtNumber(bot.score)}</dd></div>
-          <div><dt>{t('profile.level')}</dt><dd>{t('common.levelPrefix')}{bot.level}{t('common.levelSuffix')}</dd></div>
-          <div><dt>{t('player.rank')}</dt><dd className="muted">{t('player.notRanked')}</dd></div>
-        </dl>
+      <Modal title={bot.nickname} onClose={onClose} className="player-modal me-modal">
+        <ProfileHero color={botLook.bg} name={bot.nickname} badge={<span className="badge bot">BOT</span>} level={bot.level}
+                     score={bot.score} scoreLabel={t('player.score')} orb={<PlayerOrb look={botLook} level={bot.level} size={112} />}
+                     extra={<span className="muted small pi-desc">{t('player.botDesc')}</span>} />
+        <dl className="me-stats pi-botrank"><div><dt><span aria-hidden="true">🏆</span>{t('player.rank')}</dt><dd className="muted">{t('player.notRanked')}</dd></div></dl>
       </Modal>
     );
   }
 
+  // 방 안 원의 모양이 있으면 그것(실시간), 없으면(검색·채팅에서 열었을 때) 서버가 카드에 담아 준 장착 모양, 그것도 없으면 기본 성장 거북이
+  const orbLook: OrbLook | null = look ?? (card?.look ? { bg: card.look.bg ?? '', borderColor: card.look.borderColor, borderWidth: card.look.borderWidth, art: card.look.art, borderEffect: card.look.borderEffect, bot: false } : null);
+
   return (
-    <Modal title={card?.nickname ?? t('player.title')} onClose={onClose} className="player-modal"
+    <Modal title={card?.nickname ?? t('player.title')} onClose={onClose} className="player-modal me-modal"
            titleExtra={card && (
              // 플레이어 신고(13.5): 닉네임·행동 등. 방에서 연 카드든 검색에서 연 카드든 플레이어 번호(card.playerId)로 보낸다
              <span className="pi-actions">
@@ -83,39 +80,35 @@ export function PlayerInfoModal({ entityNo, playerId, bot, look, onClose, onOpen
       {error && <p className="muted">{error}</p>}
       {!error && !card && <p className="muted">{t('common.loading')}</p>}
       {card && (<>
-        <section className="player-hero">
-          {look ? <PlayerOrb look={look} level={card.level} size={72} /> : <TurtleIcon level={card.level} size={64} />}
-          <div className="player-hero-main">
-            <div className="player-name">
-              <strong>{card.nickname}</strong>
-            </div>
-            {card.title && <span className="muted small">{card.title}</span>}
-          </div>
-        </section>
+        <ProfileHero color={orbLook?.bg} name={card.nickname} badge={card.me ? <span className="badge me">{t('player.me')}</span> : undefined}
+                     title={card.title} level={card.level} exp={card.stats?.exp} nextExp={card.stats?.nextLevelExp}
+                     score={card.score} scoreLabel={t('player.score')}
+                     orb={orbLook ? <PlayerOrb look={orbLook} level={card.level} size={112} /> : <TurtleIcon level={card.level} size={84} />} />
 
-        <dl className="kw-stats">
-          <div><dt>{t('player.score')}</dt><dd>{fmtNumber(card.score)}</dd></div>
-          <div><dt>{t('profile.level')}</dt><dd>{t('common.levelPrefix')}{card.level}{t('common.levelSuffix')}</dd></div>
-          <div className="pop-stat"><dt>{t('player.popularity')}</dt><dd>
+        <StatGroups s={{
+          holdCount: card.stats?.holdCount ?? 0, addCount: card.stats?.addCount ?? 0, searchCount: card.stats?.searchCount ?? 0, activeDays: card.stats?.activeDays ?? 0,
+          stealCount: card.stats?.stealCount ?? 0, botWinCount: card.stats?.botWinCount ?? 0, killCount: card.stats?.killCount ?? 0, defeatCount: card.stats?.defeatCount ?? 0,
+          createdAt: card.createdAt,
+          popularity: (
             <PopularityVote playerId={card.playerId} name={card.nickname} me={card.me} popularity={card.popularity} myVote={card.myVote}
-                          onChange={(popularity, myVote) => setCard((c) => c && { ...c, popularity, myVote })} />
-          </dd></div>
-          <div><dt>{t('player.createdLabel')}</dt><dd>{fmtDate(card.createdAt)}</dd></div>
-        </dl>
+                            onChange={(popularity, myVote) => setCard((c) => c && { ...c, popularity, myVote })} />
+          ),
+        }} />
 
-        <section className="player-keywords" aria-label={t('player.keywords')}>
+        <section className="player-keywords pi-keywords" aria-label={t('player.keywords')}>
           <h3>{t('player.keywords')} <span className="muted small">{t('player.top3')}</span></h3>
-          {card.topKeywords.length === 0 ? <p className="muted small">{t('player.noKeywords')}</p> : (
-            <ul>
-              {card.topKeywords.map((k) => (
+          {card.topKeywords.length === 0 ? <p className="muted small pi-empty">{t('player.noKeywords')}</p> : (
+            <ol>
+              {card.topKeywords.map((k, i) => (
                 <li key={k.keywordId}>
-                  <button className="mine-open" onClick={() => onOpenKeyword(k.keywordId)} aria-label={t('player.detailAria', { text: k.text })}>
-                    <span><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></span>
+                  <button className="mine-open pi-kw" onClick={() => onOpenKeyword(k.keywordId)} aria-label={t('player.detailAria', { text: k.text })}>
+                    <span className={`pi-rank r${i + 1}`} aria-hidden="true">{i + 1}</span>
+                    <span className="pi-kw-text"><strong>{k.text}</strong> <span className="badge">{STATE_BADGE[k.state] ?? k.state}</span></span>
                     <span className="mine-chevron" aria-hidden="true">›</span>
                   </button>
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
         </section>
       </>)}

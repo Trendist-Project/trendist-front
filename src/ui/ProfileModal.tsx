@@ -2,6 +2,10 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiFailure } from '../api/client';
 import type { PlayerSummary, ScoreHistory, ScoreRange } from '../api/types';
 import { GoogleButton } from './GoogleButton';
+import { ProfileHero, StatGroups } from './ProfileParts';
+import { PlayerOrb } from './PlayerOrb';
+import { TurtleIcon } from './GrowthIcons';
+import type { OrbLook } from '../game/skin';
 import { Modal } from './Modal';
 import { ScoreChart } from './ScoreChart';
 import { CustomizeView } from './CustomizeView';
@@ -9,10 +13,9 @@ import { ShareCardView } from './ShareCardView';
 import { TitlesView } from './TitlesView';
 import { WithdrawDialog } from './WithdrawDialog';
 import { successToast } from './toast';
-import { LevelText } from './LevelText';
 import { intlLocale } from './keywordFormat';
 import { getLang } from '../country';
-import { fmtDate, fmtNumber, t } from '../i18n';
+import { fmtNumber, t } from '../i18n';
 
 const SCORE_RANGES: [ScoreRange, string][] = [['24h', t('chart.range24h')], ['7d', t('chart.range7d')], ['30d', t('chart.range30d')], ['all', t('chart.rangeAll')]];
 
@@ -21,12 +24,14 @@ interface Props {
   guest: boolean; onLogout(): void; onWithdrawn(): void;
   /** 처음 열 화면. 새 칭호 알림의 [칭호 보기]는 칭호함으로 바로 연다 */
   initialView?: 'main' | 'titles';
+  /** 내 원의 지금 모양(아레나에서 보이는 그대로). 없으면 기본 성장 거북이 */
+  look?: OrbLook | null;
 }
 
 const timeFormat = new Intl.DateTimeFormat(intlLocale(), { hour: 'numeric', minute: '2-digit', timeZone: getLang() === 'ko' ? 'Asia/Seoul' : undefined });
 
 /** 내 정보(4.1): 지금 기록을 보여 주고 닉네임을 바꾼다. 변경 간격은 서버가 정하고, 화면은 다음 가능 시각만 안내한다. */
-export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn, initialView = 'main' }: Props) {
+export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWithdrawn, initialView = 'main', look = null }: Props) {
   // 칭호함·꾸미기·이동 효과·탈퇴 확인은 내 정보 창 대신 뜨는 창이다(창이 겹치면 ESC가 둘 다 닫는다)
   const [view, setView] = useState<'main' | 'titles' | 'customize' | 'share' | 'withdraw'>(initialView);
   const [activeTitle, setActiveTitle] = useState<string | null | undefined>(undefined);
@@ -88,23 +93,14 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
   if (view === 'customize') return <CustomizeView level={player.level} nickname={player.nickname} onBack={() => setView('main')} onClose={onClose} />;
 
   return (
-    <Modal title={t('profile.title')} onClose={onClose}>
-      <dl className="profile-stats">
-        <div><dt>{t('profile.nickname')}</dt><dd>{player.nickname}</dd></div>
-        <div><dt>{t('profile.level')}</dt><dd><LevelText level={player.level} prefix={t('common.levelPrefix')} suffix={t('common.levelSuffix')} size={26} /></dd></div>
-        <div><dt>EXP</dt><dd>{player.exp}{player.nextLevelExp > 0 ? ` / ${player.nextLevelExp}` : ''}</dd></div>
-        <div><dt>{t('profile.myScore')}</dt><dd>{fmtNumber(Number(player.currentScore))}</dd></div>
-        <div><dt>{t('profile.heldKeywords')}</dt><dd>{t('profile.countItems', { n: player.holdCount })}</dd></div>
-        <div><dt>{t('profile.adds')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.addCount) })}</dd></div>
-        <div><dt>{t('profile.searches')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.searchCount ?? 0) })}</dd></div>
-        <div><dt>{t('profile.steals')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.stealCount ?? 0) })}</dd></div>
-        <div><dt>{t('profile.botHunts')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.botWinCount ?? 0) })}</dd></div>
-        <div><dt>{t('profile.kills')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.killCount ?? 0) })}</dd></div>
-        <div><dt>{t('profile.defeats')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(player.defeatCount ?? 0) })}</dd></div>
-        <div><dt>{t('player.popularity')}</dt><dd>{fmtNumber(player.popularity ?? 0)}</dd></div>
-        <div><dt>{t('player.createdLabel')}</dt><dd>{player.createdAt ? fmtDate(player.createdAt) : '-'}</dd></div>
-        <div><dt>{t('profile.activeDays')}</dt><dd>{t('profile.countDays', { n: fmtNumber(player.activeDays ?? 0) })}</dd></div>
-      </dl>
+    <Modal title={t('profile.title')} onClose={onClose} className="me-modal">
+      {/* 히어로: 내 원(꾸민 모양 그대로)·닉네임·칭호·레벨·다음 레벨까지의 EXP·내 유행도. 다른 플레이어 정보 창과 같은 조각(ProfileParts)을 쓴다 */}
+      <ProfileHero color={look?.bg} name={player.nickname} title={activeTitle} level={player.level} exp={player.exp} nextExp={player.nextLevelExp}
+                   score={Number(player.currentScore)} scoreLabel={t('profile.myScore')}
+                   orb={look ? <PlayerOrb look={look} level={player.level} size={112} /> : <TurtleIcon level={player.level} size={84} />} />
+      <StatGroups s={{ holdCount: player.holdCount, addCount: player.addCount, searchCount: player.searchCount ?? 0, activeDays: player.activeDays ?? 0,
+                       stealCount: player.stealCount ?? 0, botWinCount: player.botWinCount ?? 0, killCount: player.killCount ?? 0, defeatCount: player.defeatCount ?? 0,
+                       popularity: fmtNumber(player.popularity ?? 0), createdAt: player.createdAt }} />
 
       <div className="profile-links">
         <button className="profile-link" onClick={() => setView('titles')}>

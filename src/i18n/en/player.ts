@@ -1,4 +1,5 @@
 export default {
+  me: 'Me',
   createdLabel: 'Created',
   share: '💬 Share',
   shared: 'Shared',
@@ -16,7 +17,6 @@ export default {
   searchAria: 'Search players',
   searchNone: 'No players found',
   searchHint: "Find players in your country by part of a nickname. You can raise or lower each player’s popularity once a day.",
-  me: 'Me',
   loadFailed: 'Couldn\'t load player info',
   botDesc: 'A bot that roams the arena with you. It grows and shrinks by the same rules as players, and wins or loses when it bumps into others.',
   score: 'Current trend score',

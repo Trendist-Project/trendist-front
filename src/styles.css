@@ -475,6 +475,72 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
 .player-keywords li { border: 1px solid var(--line); border-radius: 10px; background: #0f151f; }
 .player-keywords p { margin: 0; }
 
+/* ---- 플레이어 정보(4.11)·내 정보(4.1) 팝업 디자인 ----
+   히어로 카드(그 원의 바탕색으로 은은하게 물든다) → 핵심 수치(유행도) → 보조 수치 → 키워드/묶음 순서로 눈이 내려가게 한다 */
+.me-modal { width: min(660px, 100%); }
+/* 두 팝업의 본문은 높이가 제한된 그리드라 행이 내용보다 줄어들어 카드가 겹치거나 잘린다: 행은 늘 내용만큼 */
+.me-modal .modal-body, .player-modal .modal-body { grid-auto-rows: max-content; }
+.pi-hero, .me-hero { --hero: #3fb68b; position: relative; display: flex; align-items: center; gap: 18px; padding: 18px 20px; min-height: max-content; /* 팝업 본문 그리드가 높이를 줄여도 카드는 내용만큼 유지(overflow:hidden을 두면 0까지 줄어 내용이 잘린다) */
+  border-radius: 18px; border: 1px solid color-mix(in srgb, var(--hero) 42%, var(--line));
+  background: radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, var(--hero) 32%, #0f151f) 0%, #0f151f 64%); }
+.pi-stage { flex: none; width: 124px; height: 124px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.11), rgba(255,255,255,0) 68%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07); }
+.pi-id, .me-id { flex: 1; min-width: 0; display: grid; gap: 7px; align-content: center; }
+.pi-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pi-name strong, .me-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi-title { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; font-weight: 600;
+  padding: 3px 11px; border-radius: 999px; color: #ffdc94; background: rgba(255,209,102,0.13); border: 1px solid rgba(255,209,102,0.34); }
+.pi-level { font-weight: 700; font-size: 1.02rem; }
+.pi-desc { line-height: 1.45; }
+.badge.me { background: var(--accent); color: #062014; font-weight: 800; }
+
+  border: 1px solid rgba(63,182,139,0.38); background: linear-gradient(90deg, rgba(63,182,139,0.18), rgba(63,182,139,0.04)); }
+.pi-score span { font-size: 0.86rem; color: #b7c5d6; }
+.pi-score strong { font-size: 1.9rem; font-weight: 800; color: #7ee0b8; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.pi-keywords h3 { margin: 4px 0 8px; }
+.pi-keywords ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pi-keywords li { border: 1px solid var(--line); border-radius: 12px; background: #0f151f; transition: border-color 0.12s, background 0.12s; }
+.pi-keywords li:hover { border-color: #3a475c; }
+button.pi-kw { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 11px 30px 11px 12px; }
+.pi-kw-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi-rank { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 0.82rem; font-weight: 800; background: #1d2635; color: #cbd5e1; }
+.pi-rank.r1 { background: linear-gradient(135deg, #ffd166, #f2a33a); color: #3a2400; }
+.pi-rank.r2 { background: linear-gradient(135deg, #e2e8f0, #b6c2d3); color: #1e293b; }
+.pi-rank.r3 { background: linear-gradient(135deg, #e0a574, #c07a45); color: #2b1a0b; }
+.pi-empty { text-align: center; padding: 16px; border: 1px dashed var(--line); border-radius: 12px; }
+
+/* 내 정보 */
+.me-hero { flex-wrap: wrap; }
+.me-exp { display: grid; gap: 5px; margin-top: 2px; }
+.me-exp-bar { height: 9px; border-radius: 999px; background: rgba(255,255,255,0.09); overflow: hidden; }
+.me-exp-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #7ee0b8); transition: width 0.4s ease; }
+.me-exp-text { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.me-score { flex: none; display: grid; gap: 2px; text-align: right; padding-left: 4px; }
+.me-score span { font-size: 0.8rem; color: #b7c5d6; }
+.me-score strong { font-size: 1.9rem; font-weight: 800; color: #7ee0b8; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.me-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.me-group:nth-child(3) { grid-column: 1 / -1; }
+.me-group h3 { margin: 0 0 8px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; color: var(--muted); }
+.me-stats { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.me-stats > div { border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; background: #0f151f; min-width: 0; }
+.me-stats dt { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+.me-stats dd { margin: 3px 0 0; font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) {
+  .pi-hero, .me-hero { gap: 12px; padding: 14px; border-radius: 16px; }
+  .pi-stage { width: 96px; height: 96px; }
+  .pi-stage canvas { width: 96px !important; height: 96px !important; }
+  .pi-name strong, .me-name { font-size: 1.15rem; }
+  .me-score { flex-basis: 100%; display: flex; align-items: baseline; justify-content: space-between; padding: 10px 0 0; border-top: 1px solid rgba(255,255,255,0.1); text-align: left; }
+  .pi-score strong, .me-score strong { font-size: 1.6rem; }
+  .me-groups { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .pi-hero, .me-hero { padding: 10px 14px; gap: 12px; }
+  .pi-stage { width: 84px; height: 84px; }
+  .pi-stage canvas { width: 84px !important; height: 84px !important; }
+    .pi-score strong, .me-score strong { font-size: 1.45rem; }
+}
+
 /* 터치 조이스틱(4.2): 누른 자리에 생기는 판과 손잡이. 위치는 GameScreen이 직접 옮긴다 */
 .joystick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
   background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.28); box-shadow: 0 0 0 1px rgba(0,0,0,0.25);

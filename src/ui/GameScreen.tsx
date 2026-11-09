@@ -1087,7 +1087,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
       )}
       {panel === 'profile' && (
         <ProfileModal key={profileView} player={player} onChanged={setPlayer} onClose={closePanel} guest={guest}
-                      onLogout={onLogout} onWithdrawn={onWithdrawn} initialView={profileView} />
+                      onLogout={onLogout} onWithdrawn={onWithdrawn} initialView={profileView} look={arenaRef.current?.meLook() ?? null} />
       )}
 
     </div>

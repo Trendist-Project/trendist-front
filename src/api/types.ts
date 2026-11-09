@@ -94,6 +94,10 @@ export interface PlayerCard {
   playerId: number; popularity: number; myVote: number; createdAt: string;
   /** 내 카드(자기 자신은 신고·인기도를 줄 수 없다) */
   me: boolean;
+  /** 그 플레이어가 장착한 꾸미기 프로필의 원 모양(검색·채팅에서 열어 방에 그 원이 없어도 꾸민 모양을 보여 준다) */
+  look?: { bg: string | null; borderColor: string | null; borderWidth: number | null; art: string | null; borderEffect: string | null } | null;
+  /** 내 정보 창과 같은 구성으로 보이도록 함께 오는 기록(지금 레벨에서 모은 EXP·다음 레벨 필요량·활동·대결 횟수) */
+  stats?: { exp: number; nextLevelExp: number; holdCount: number; addCount: number; searchCount: number; stealCount: number; botWinCount: number; killCount: number; defeatCount: number; activeDays: number };
 }
 /** 플레이어 검색 결과(4.34). myVote: 오늘 내가 준 표(+1, -1, 없으면 0) */
 export interface PlayerHit { playerId: number; nickname: string; level: number; score: number; popularity: number; me: boolean; myVote: number }
