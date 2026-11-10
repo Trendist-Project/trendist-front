@@ -2,7 +2,7 @@ import { getCountry, getLang } from '../country';
 import { errorText } from '../i18n';
 import { getAdminCountry } from './adminCountry';
 import type {
-  Activity, ActivityRange, PlayerCard, PlayerHit, PopularityResult, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
+  WheelStatus, WheelSpinResult, Activity, ActivityRange, PlayerCard, PlayerHit, PopularityResult, ScoreHistory, ScoreRange, CommentItem, CommentPage, GuideArticle, GuideCategory, KeywordCard, Me, MyKeyword, Notice, PlayerSummary, 
   AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo, KeybindingsResponse } from './types';
 
 /** 관리자 스킬 설정(13.3) */
@@ -143,6 +143,8 @@ export const api = {
   createPlayer: (nickname: string) => request<PlayerSummary>('POST', '/api/players', { nickname, countryCode: getCountry() }),
   changeNickname: (nickname: string) => request<PlayerSummary>('PATCH', '/api/me/nickname', { nickname }),
   titles: () => request<TitleBox>('GET', '/api/me/titles'),
+  wheelStatus: () => request<WheelStatus>('GET', '/api/me/wheel'),
+  wheelSpin: () => request<WheelSpinResult>('POST', '/api/me/wheel/spin'),
   levelBadges: () => request<LevelBadge[]>('GET', '/api/levels/badges'),
   setTitle: (titleId: number | null) => request<TitleBox>('PUT', '/api/me/title', { titleId }),
   /** 꾸미기 프로필(4.9): 1~3번 칸 저장(equip이면 저장 후 장착)과 장착 */

@@ -7,7 +7,7 @@ export interface MonsterEndNote {
   key: number; kind: 'end'; result: 'KILLED' | 'TIMEOUT' | 'REMOVED'; name: string; en: string;
   top: { playerId: number; nickname: string; damage: number; hits: number }[];
 }
-export interface MonsterRewardNote { key: number; kind: 'reward'; name: string; en: string; cleared: boolean; rank: number; damage: number; exp: number; keywords: string[] }
+export interface MonsterRewardNote { key: number; kind: 'reward'; name: string; en: string; cleared: boolean; rank: number; damage: number; exp: number; levelPercent: number; keywords: string[] }
 export type MonsterNote = MonsterEndNote | MonsterRewardNote;
 
 const fmtTime = (ms: number) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };

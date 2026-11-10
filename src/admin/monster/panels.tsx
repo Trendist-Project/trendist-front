@@ -42,7 +42,7 @@ function tilesOf(m: SettingMap): Tile[] {
     m.rage_hp_percent !== undefined || m.rage_remaining_seconds !== undefined
       ? { icon: '😡', label: '분노', value: [m.rage_hp_percent ? `체력 ${m.rage_hp_percent}% 이하` : '', m.rage_remaining_seconds ? `남은 ${m.rage_remaining_seconds}초 이하` : ''].filter(Boolean).join(' · ') || '없음',
           sub: `쿨타임 ×${fmtVal(m.rage_cooldown_mult ?? 1)}${m.rage_speed_mult && m.rage_speed_mult !== 1 ? ` · 속도 ×${fmtVal(m.rage_speed_mult)}` : ''}${m.rage_flame ? ` · 불꽃 붙음${m.rage_flame_seconds ? `(${m.rage_flame_seconds}초)` : ''}` : ''}` } : null,
-    m.reward_exp !== undefined ? { icon: '🎁', label: '보상(처치)', value: `기본 EXP ${num(m.reward_exp)} · 🔥 ${m.reward_keywords ?? 0}개${m.reward_exp_pool !== undefined ? ` + 기여도 EXP ${num(m.reward_exp_pool)} · 🔥 ${m.reward_keyword_pool ?? 0}개(최대 ${m.reward_keywords_max ?? 0}개)` : ''}`, sub: `피해 1~3위 추가 EXP ${num(m.reward_top_exp ?? 0)} · 🔥 ${m.reward_top_keywords ?? 0}개 · 실패 시 EXP ${num(m.fail_exp ?? 0)}` } : null,
+    m.reward_exp !== undefined ? { icon: '🎁', label: '보상(처치)', value: `기본 EXP ${num(m.reward_exp)} · 🔥 ${m.reward_keywords ?? 0}개${m.reward_level_percent !== undefined ? ` + 기여도 레벨 진행 최대 ${fmtVal(m.reward_level_percent)}%` : ''}`, sub: `피해 1~3위 추가 EXP ${num(m.reward_top_exp ?? 0)} · 🔥 ${m.reward_top_keywords ?? 0}개 · 실패 시 EXP ${num(m.fail_exp ?? 0)}` } : null,
   ];
   return t.filter((x): x is Tile => x !== null);
 }

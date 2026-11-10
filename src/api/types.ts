@@ -121,6 +121,9 @@ export interface TitleItem {
 }
 /** 레벨 표시 옆 성장 아이콘의 바탕(4.9). color가 null이면 기본 거북이 색, alpha는 진하기 0~100(%), rainbow면 무지개 그라데이션 */
 export interface LevelBadge { level: number; color: string | null; alpha: number; rainbow: boolean }
+/** 돌림판(하루 한 번): slices는 칸에 쓰인 숫자(시계 방향, 0번이 맨 위), todayReward는 오늘 이미 돌렸다면 받은 개수, nextAt은 다음에 돌릴 수 있는 시각(epoch ms) */
+export interface WheelStatus { enabled: boolean; available: boolean; locked: boolean; requiredLevel: number; slices: number[]; todayReward: number | null; nextAt: number }
+export interface WheelSpinResult { index: number; reward: number; keywords: string[]; status: WheelStatus }
 export interface TitleBox { activeTitleId: number | null; titles: TitleItem[] }
 
 /**

@@ -90,7 +90,7 @@ export type MonsterMessage =
   | ({ type: 'monsterFx' } & import('./monsterFx').MonsterFxMsg)
   | ({ type: 'monsterHit' } & import('./monsterFx').MonsterHitMsg) // 누가 보스를 쳐서 입힌 피해
   | { type: 'monsterEnd'; id: number; name: string; en: string; result: 'KILLED' | 'TIMEOUT' | 'REMOVED'; max: number; hp: number; top: { playerId: number; nickname: string; damage: number; hits: number }[] }
-  | { type: 'monsterReward'; name: string; en: string; cleared: boolean; rank: number; damage: number; exp: number; keywords: string[] }; // 내 보상
+  | { type: 'monsterReward'; name: string; en: string; cleared: boolean; rank: number; damage: number; exp: number; levelPercent?: number; keywords: string[] }; // 내 보상(levelPercent: 기여도로 받은 레벨 진행 %)
 
 export type ServerMessage =
   | MonsterMessage

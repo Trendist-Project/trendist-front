@@ -23,6 +23,7 @@ import { useSkills } from './useSkills';
 import { actionOf, cacheSlotKeys, defaultSlotKeys, keysFromBindings, legacyChanges, loadSlotKeys, markLegacySynced, setCurrentSlots, SKILL_WINDOW_KEY, targetOfKey, type SlotKeys } from '../game/skillKeys';
 import { SkillWindow } from './SkillWindow';
 import { BottomBar } from './BottomBar';
+import { WheelModal } from './WheelModal';
 import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
 import { LayersProvider, useLayer } from './layers';
@@ -197,7 +198,8 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const setSide = useCallback((hidden: boolean) => { setSideHidden(hidden); saveSideHidden(hidden); }, []);
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
-  const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | 'skills' | null>(null);
+  const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | 'skills' | 'wheel' | null>(null);
+  const [wheelReady, setWheelReady] = useState(false); // 오늘 돌림판을 아직 안 돌렸다(메뉴에 빨간 점)
   const [orbReveal, setOrbReveal] = useState<{ result: RevealResult; key: number } | null>(null);
   // 키워드를 얻거나 잃은 결과 카드(구슬·빼앗기·빼앗김·봇)는 모두 이 한 곳으로 띄운다
   const showReveal = useCallback((result: RevealResult) => {
@@ -246,6 +248,12 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [noticePopup, setNoticePopup] = useState<Notice[] | null>(null);
   const [noticeDot, setNoticeDot] = useState(false);
   const noticesRef = useRef<Notice[]>([]);
+  useEffect(() => { // 오늘 돌림판을 아직 안 돌렸으면 메뉴에 점을 띄운다(5분마다 다시 확인: 자정이 지나면 다시 돌릴 수 있다)
+    const load = () => api.wheelStatus().then((s) => setWheelReady(s.enabled && s.available)).catch(() => {});
+    load();
+    const id = window.setInterval(load, 5 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   useEffect(() => {
     let first = true;
     const load = () => api.notices().then((ns) => {
@@ -345,7 +353,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'end' ? null : n)), 12000);
             break;
           case 'monsterReward':
-            setMonsterNote({ key: performance.now(), kind: 'reward', name: m.name, en: m.en, cleared: m.cleared, rank: m.rank, damage: m.damage, exp: m.exp, keywords: m.keywords });
+            setMonsterNote({ key: performance.now(), kind: 'reward', name: m.name, en: m.en, cleared: m.cleared, rank: m.rank, damage: m.damage, exp: m.exp, levelPercent: m.levelPercent ?? 0, keywords: m.keywords });
             window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'reward' ? null : n)), 15000);
             setRefreshKey((k) => k + 1);
             break;
@@ -1003,7 +1011,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             <button className="side-toggle" onClick={() => setSideRequest({ tab: 'search', key: Date.now() })} aria-label={t('side.tabSearch')} title={t('side.tabSearch')}>🔍</button>
             <button className="side-toggle" onClick={() => setSideRequest({ tab: 'mine', key: Date.now() })} aria-label={t('side.tabMine')} title={t('side.tabMine')}>📦</button>
             <button className="menu-toggle" aria-label={noticeDot ? t('gamescreen.menuAriaNew') : t('gamescreen.menu')} aria-expanded={menuOpen} aria-controls="mobile-menu"
-                    onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}{noticeDot && !menuOpen && <span className="dot-badge" aria-hidden="true" />}</button>
+                    onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? '✕' : '☰'}{(noticeDot || wheelReady) && !menuOpen && <span className="dot-badge" aria-hidden="true" />}</button>
           </div>
           {menuOpen && (
             <nav id="mobile-menu" className="mobile-menu" aria-label={t('gamescreen.menu')}>
@@ -1012,9 +1020,10 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                 ['⚔️', t('gamescreen.skills'), () => setPanel('skills')],
                 ['📢', t('gamescreen.notices'), () => setPanel('notice')],
                 ['📖', t('gamescreen.guide'), () => setPanel('guide')],
+                ['🎡', t('wheel.menu'), () => setPanel('wheel')],
               ] as const).map(([icon, label, act]) => (
                 <button key={label} onClick={() => { setMenuOpen(false); act(); }}>
-                  <span aria-hidden="true">{icon}</span>{label}{label === t('gamescreen.notices') && noticeDot && <span className="dot-badge inline" aria-hidden="true" />}
+                  <span aria-hidden="true">{icon}</span>{label}{((label === t('gamescreen.notices') && noticeDot) || (label === t('wheel.menu') && wheelReady)) && <span className="dot-badge inline" aria-hidden="true" />}
                 </button>
               ))}
               <div className="mobile-menu-sep" />
@@ -1134,6 +1143,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         }} />
       )}
       {panel === 'guide' && <GuideModal onClose={closePanel} />}
+      {panel === 'wheel' && <WheelModal onClose={closePanel} onChange={setWheelReady} onSpun={() => setRefreshKey((k) => k + 1)} />}
       {panel === 'skills' && (
         <SkillWindow skills={skills} slots={slots} keys={slotKeys} level={player.level} onClose={closePanel} onNotice={showToast}
                      onChangeSlots={(next) => sendLoadoutRef.current(next)} onSetKey={setKey} onResetKeys={resetKeys} />
