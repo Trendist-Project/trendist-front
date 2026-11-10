@@ -1,6 +1,7 @@
 import { t as tr } from '../i18n';
 import type { EntityState, MinimapEntry, RosterEntry, SkillFx, Snapshot, Tuning } from './protocol';
 import { SkillFxLayer } from './skillFx';
+import { MonsterLayer, type MonsterFxMsg, type MonsterHitMsg, type MonsterHud, type MonsterState } from './monsterFx';
 import { BOT_BASE, borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
 import { artImage, artPose, drawArt, turnArt } from './pixelArt';
 import { drawBorderEffect, drawComboFlames, drawNameTag, EMOTE_CHAR, type OrbLook } from './skin';
@@ -98,6 +99,7 @@ export class Arena {
   }>();
   /** 이 콤보부터 원 둘레에 불꽃을 그린다(4.25, 서버 설정 combo_flame_at) */
   private flameAt = 5;
+  private meScore = 0; // 마지막으로 그린 내 유행도(암흑 가림막에서 전투력 표시를 다시 그릴 때 쓴다)
   /** 미니맵 한 변(px). 바뀌면 부모에 CSS 변수 --minimap-size로 알려 이모트·도구 창이 피해 간다 */
   private minimapSize = 0;
   /** 이모트(4.26): 원 위에 2.5초 뜨는 이모지 */
@@ -135,6 +137,10 @@ export class Arena {
   /** 내 위치 예측이 계산된 시각(ms). 조작이 바뀌는 순간까지 먼저 움직여 두고 바꿔서, 프레임 경계로 반올림되지 않게 한다. */
   private predictedAt = performance.now();
   private floatTexts: { text: string; at: number; color: string }[] = [];
+  /** 체력바(4.36): 원 번호 → 남은 %, 맞기 전 %(잠깐 하얗게 남았다 줄어든다), 맞은 시각. 100%면 지운다(공개 설정이 아니면 내 것만 들어 있다) */
+  private hpBars = new Map<number, { pct: number; ghost: number; at: number }>();
+  /** 체력 피해·회복 숫자(원 위로 떠오른다) */
+  private hpPops: { e: number; text: string; at: number; color: string }[] = [];
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
   private shields = new Map<number, number>();
   private levelFxs: LevelFx[] = []; // 레벨업 빛기둥(4.30)
@@ -148,6 +154,13 @@ export class Arena {
   private dashLeft = 0; // 대시가 남은 시간(초)과 속도 배수(4.27). 서버가 대시를 시작했다고 알리면 예측도 같은 속도로 간다
   private dashMult = 1;
   private knock: { dx: number; dy: number; total: number; left: number } | null = null;
+  /** 몬스터(보스, 4.35): 몸·패턴 예고·충격고리·피해 숫자 */
+  private monsters = new MonsterLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  setMonster(m: MonsterState) { this.monsters.set(m); }
+  clearMonster() { this.monsters.clear(); }
+  monsterFx(m: MonsterFxMsg) { this.monsters.fx(m); }
+  monsterHit(m: MonsterHitMsg) { this.monsters.hit(m); }
+  monsterHud(): MonsterHud | null { return this.monsters.hud(); }
   /** 스킬 연출(4.33): 충격파·갈고리·먹물·은신 */
   private fx = new SkillFxLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   /** 갈고리에 맞아 끌려오는 중(4.33): 남은 시간(초)과 쓴 원 번호. 그동안 입력으로 움직이지 않고 서버처럼 쓴 원 쪽으로 당겨진다 */
@@ -194,6 +207,7 @@ export class Arena {
   setTuning(t: Tuning) { this.tuning = t; }
   /** 방에 (다시) 들어왔다. 서버의 새 멤버는 입력·목표가 없으므로 예측도 비우고 시작한다. */
   setMe(entityNo: number, x: number, y: number) {
+    this.monsters.setMe(entityNo);
     this.resetMe(entityNo, x, y);
     this.clearControl();
   }
@@ -257,7 +271,7 @@ export class Arena {
     const info = this.names.get(this.me.e);
     if (info) {
       const fs = Math.max(12, Math.min(this.me.r * this.zoom * 0.45, 40));
-      drawNameTag(ctx, info.nickname, cx, cy + this.me.r * this.zoom + 4, fs, info.bot ? null : info.nameColor, info.bot ? null : info.nameStyle, info.borderColor ?? '#11372a');
+      this.drawPlate(ctx, cx, cy + this.me.r * this.zoom + 5, fs, info, this.meScore, 1);
     }
   }
   private reducedMotionUi = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -311,6 +325,107 @@ export class Arena {
     const now = performance.now();
     this.eatenOrbs.push({ x: o.x, y: o.y, e, at: now, prize: o.prize });
     this.gulps.set(e, now);
+  }
+  setHp(e: number, pct: number) {
+    const now = performance.now(), b = this.hpBars.get(e);
+    if (pct >= 100) { this.hpBars.delete(e); return; }
+    if (!b) { this.hpBars.set(e, { pct, ghost: pct, at: now }); return; }
+    if (pct < b.pct) { b.ghost = Math.max(b.ghost, b.pct); b.at = now; }
+    b.pct = pct;
+  }
+  /** 체력바 공개(4.36): 모두의 체력 목록으로 맞춘다. 목록에 없는 원(내 것 제외)은 100%라 지운다 */
+  setHps(list: [number, number][]) {
+    const keep = new Set(list.map((l) => l[0]));
+    for (const e of [...this.hpBars.keys()]) if (e !== this.me.e && !keep.has(e)) this.hpBars.delete(e);
+    for (const [e, pct] of list) this.setHp(e, pct);
+  }
+  clearHp() { this.hpBars.clear(); }
+  /** 그 원 위로 숫자를 띄운다(피해는 빨강, 회복은 초록) */
+  hpPop(e: number, text: string, color: string) {
+    if (this.hpPops.length >= 24) this.hpPops.shift();
+    this.hpPops.push({ e, text, at: performance.now(), color });
+  }
+  /**
+   * 원 아래 이름표(글자만 세 줄, 상자 없음): ① 닉네임(꾸미기 색·모양 그대로) ② `⚔ 유행도` ③ 칭호(작은 금색).
+   * (x, top)은 첫 줄 윗가운데, fs는 닉네임 글자 크기, u는 이 좌표계에서 화면 1px의 길이.
+   */
+  private drawPlate(ctx: CanvasRenderingContext2D, x: number, top: number, fs: number,
+                    info: { nickname: string; bot: boolean; nameColor?: string | null; nameStyle?: string | null; borderColor?: string | null; combo: number; title?: string | null },
+                    score: number, u: number) {
+    drawNameTag(ctx, info.nickname, x, top, fs, info.bot ? null : info.nameColor, info.bot ? null : info.nameStyle, info.borderColor ?? '#11372a');
+    const ps = Math.max(fs * 0.72, 10 * u), color = '#5fe0ff'; // 바닥(#1f2a37)과의 명암비 약 9:1인 밝은 청록 하늘색. 체력의 빨강·칭호의 금색과 겹치지 않는다
+    const num = fmtPower(score), y2 = top + fs * 1.22;
+    ctx.save();
+    ctx.font = `800 ${ps}px "Noto Sans KR", system-ui, sans-serif`;
+    ctx.textBaseline = 'top'; ctx.lineJoin = 'round'; ctx.textAlign = 'left';
+    // 전투력 아이콘: 이모지(기기마다 흐리고 윤곽이 없다) 대신 직접 그린 교차 검(크기는 숫자 글자 크기와 같다). 은색 칼날·금색 손잡이에 진한 남색 윤곽이라 어떤 바탕에서도 또렷하다
+    const iw = ps, gap = ps * 0.2, nw = ctx.measureText(num).width;
+    const left = x - (iw + gap + nw) / 2;
+    this.drawSwords(ctx, left + iw / 2, y2 + ps * 0.52, iw, u);
+    ctx.lineWidth = ps / 3; ctx.strokeStyle = 'rgba(3,12,32,0.92)'; ctx.fillStyle = color; // 진한 남색 윤곽(명암비 약 12:1)이 다른 원·꾸미기 위에서도 숫자를 또렷하게 한다
+    ctx.strokeText(num, left + iw + gap, y2); ctx.fillText(num, left + iw + gap, y2);
+    ctx.textAlign = 'center';
+    // 칭호: 아래 줄, 작은 금색 글씨(너무 길면 줄임)
+    const title = !info.bot && info.title ? (info.title.length > 14 ? `${info.title.slice(0, 13)}…` : info.title) : null;
+    if (title) {
+      const ts = Math.max(fs * 0.58, 9 * u), ty = y2 + ps * 1.25;
+      ctx.font = `600 ${ts}px "Noto Sans KR", system-ui, sans-serif`;
+      ctx.lineWidth = ts / 4.5; ctx.fillStyle = 'rgba(255,214,120,0.95)';
+      ctx.strokeText(title, x, ty); ctx.fillText(title, x, ty);
+    }
+    ctx.restore();
+  }
+
+  /** 교차 검 아이콘(전투력): 중심 (cx, cy), 크기 size. 칼날 은색·손잡이 금색·진한 남색 두꺼운 윤곽 */
+  private drawSwords(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, u: number) {
+    const k = size, ol = Math.max(k * 0.13, 1.2 * u), OUT = 'rgba(3,12,32,0.95)';
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = ol; ctx.strokeStyle = OUT;
+    const part = (fill: string, draw: () => void) => { ctx.beginPath(); draw(); ctx.stroke(); ctx.fillStyle = fill; ctx.fill(); };
+    for (const a of [-Math.PI / 4, Math.PI / 4]) {
+      ctx.save();
+      ctx.rotate(a);
+      part('#eef3fa', () => { ctx.moveTo(0, -0.54 * k); ctx.lineTo(0.12 * k, -0.4 * k); ctx.lineTo(0.12 * k, 0.1 * k); ctx.lineTo(-0.12 * k, 0.1 * k); ctx.lineTo(-0.12 * k, -0.4 * k); ctx.closePath(); }); // 칼날
+      part('#ffcf4a', () => ctx.rect(-0.26 * k, 0.1 * k, 0.52 * k, 0.1 * k));                                                                                                       // 날밑
+      part('#b4662a', () => ctx.rect(-0.065 * k, 0.2 * k, 0.13 * k, 0.2 * k));                                                                                                      // 손잡이
+      part('#ffcf4a', () => ctx.arc(0, 0.45 * k, 0.085 * k, 0, Math.PI * 2));                                                                                                       // 꼭지
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  private drawHpBar(ctx: CanvasRenderingContext2D, e: EntityState, b: { pct: number; ghost: number; at: number }, now: number) {
+    const z = this.zoom, w = Math.max(48 / z, Math.min(e.r * 1.7, 150 / z)), h = 7 / z, pad = 1.5 / z;
+    const x = e.x - w / 2, y = e.y - e.r - 12 / z;
+    ctx.save();
+    ctx.fillStyle = 'rgba(8,12,20,0.8)';
+    ctx.beginPath(); roundRectPath(ctx, x - pad, y - pad, w + pad * 2, h + pad * 2, (h + pad * 2) / 2); ctx.fill();
+    const lag = Math.max(0, 1 - (now - b.at - 350) / 400); // 맞은 뒤 0.35초 동안 하얗게 남았다가 0.4초에 걸쳐 줄어든다
+    const ghost = b.pct + Math.max(0, b.ghost - b.pct) * Math.max(0, Math.min(1, lag));
+    if (ghost > b.pct) { ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); roundRectPath(ctx, x, y, w * ghost / 100, h, h / 2); ctx.fill(); }
+    const pulse = b.pct <= 25 && !this.reducedMotion ? 0.7 + 0.3 * Math.sin(now / 160) : 1;
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#f04a4a'; // 체력은 항상 빨강(경험치의 초록과 구별). 위급하면 깜빡인다
+    ctx.beginPath(); roundRectPath(ctx, x, y, Math.max(h, w * b.pct / 100), h, h / 2); ctx.fill();
+    ctx.restore();
+  }
+  private drawHpPops(ctx: CanvasRenderingContext2D, now: number) {
+    if (this.hpPops.length === 0) return;
+    this.hpPops = this.hpPops.filter((p) => now - p.at < 1100);
+    const z = this.zoom;
+    for (const p of this.hpPops) {
+      const pos = this.entityPos(p.e, now);
+      if (!pos || this.camouflaged(p.e, now)) continue;
+      const t = (now - p.at) / 1100;
+      ctx.save();
+      ctx.globalAlpha = 1 - t * t;
+      ctx.font = `800 ${Math.max(16 / z, Math.min(pos.r * 0.5, 34 / z))}px system-ui, sans-serif`;
+      ctx.textAlign = 'center'; ctx.lineWidth = 4 / z; ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.fillStyle = p.color;
+      const y = pos.y - pos.r - 26 / z - t * 46 / z;
+      ctx.strokeText(p.text, pos.x, y); ctx.fillText(p.text, pos.x, y);
+      ctx.restore();
+    }
   }
   floatText(text: string, color = '#ffd166') { this.floatTexts.push({ text, at: performance.now(), color }); }
 
@@ -732,6 +847,8 @@ export class Arena {
 
     this.drawRipples(ctx, now);
     this.drawOrbs(ctx, now, w, h);
+    this.monsters.update(dt);
+    this.monsters.drawBody(ctx, now, this.zoom); // 보스 몸과 패턴 예고는 모든 원 아래(4.35)
 
     // 작은 아이콘을 위에 그리려고 큰 것부터
     const list = [...this.entities.values()].map((i) => {
@@ -757,12 +874,14 @@ export class Arena {
     this.drawEatenOrbs(ctx, now);
     this.drawBubbles(ctx, now);
     this.drawEmotes(ctx, now);
+    this.drawHpPops(ctx, now);
     this.drawShields(ctx, now);
     this.drawStealthTimer(ctx, now);
     this.drawHiddenWarning(ctx, now);
     this.drawFollowMark(ctx, now);
     this.fx.drawActive(ctx, now, this.zoom, (e, t) => this.entityPos(e, t)); // 충격파·갈고리(4.33)
     this.drawLevelFxs(ctx, now);
+    this.monsters.drawOver(ctx, now, this.zoom); // 퍼지는 충격고리·피해 숫자(4.35)
     ctx.restore();
     const dark = this.isDark(now);
     if (dark) this.drawDarkness(ctx, w, h, now);
@@ -826,6 +945,7 @@ export class Arena {
       const zs = Math.max(2, z.size * s);
       ctx.fillRect(toX(z.x) - zs / 2, toY(z.y) - zs / 2, zs, zs);
     }
+    this.monsters.drawMinimap(ctx, toX, toY, s, big); // 보스 몸(4.35)
     // ? 구슬은 작은 금색 점, ! 구슬은 붉은 점으로
     for (const o of this.orbs.values()) {
       ctx.fillStyle = o.prize ? 'rgba(255,90,90,0.95)' : 'rgba(255,200,74,0.9)';
@@ -1094,6 +1214,7 @@ export class Arena {
 
   private drawEntityBody(ctx: CanvasRenderingContext2D, e: EntityState) {
     const lvl = Math.min(e.level, 10);
+    if (e.me) this.meScore = e.score;
     // 옅은 그림자는 shadowBlur 대신 살짝 큰 반투명 원으로 그린다(shadowBlur는 휴대폰에서 매우 느리다)
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath(); ctx.arc(e.x, e.y + e.r * 0.05 + 1 / this.zoom, e.r + 3 / this.zoom, 0, Math.PI * 2); ctx.fill();
@@ -1127,26 +1248,14 @@ export class Arena {
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4 / this.zoom, 0, Math.PI * 2); ctx.stroke();
     }
     this.drawDashFx(ctx, e, true); // 대시 시작할 때 튀어 오르는 ⚡(4.27)
+    const hpBar = this.hpBars.get(e.e);
+    if (hpBar) this.drawHpBar(ctx, e, hpBar, performance.now()); // 체력바(4.36): 100%면 없다
     const info = this.names.get(e.e);
     // 관전 중 멀리서는 이름이 겹쳐 지저분하니 화면에서 반지름 7px 이상이거나 따라가는 원만 보인다
     const showName = !this.spec || e.r * this.zoom >= 7 || this.spec.follow === e.e;
     if (info && showName) {
       const fs = Math.max(12 / this.zoom, Math.min(e.r * 0.45, 40));
-      const nameY = e.y + e.r + 4 / this.zoom;
-      // 닉네임은 항상 텍스트로만 그린다. 글자색·모양은 꾸미기(4.9)
-      drawNameTag(ctx, info.nickname, e.x, nameY, fs, info.bot ? null : info.nameColor, info.bot ? null : info.nameStyle,
-        info.borderColor ?? '#11372a');
-      const lineY = nameY + fs * 1.15;
-      if (info.title) {
-        // 활성 칭호는 닉네임 바로 아래 작은 글씨(4.10)
-        const ts = fs * 0.72;
-        ctx.font = `600 ${ts}px "Noto Sans KR", system-ui, sans-serif`;
-        ctx.lineWidth = ts / 5;
-        ctx.fillStyle = '#ffd166';
-        const ty = lineY;
-        ctx.strokeText(info.title, e.x, ty);
-        ctx.fillText(info.title, e.x, ty);
-      }
+      this.drawPlate(ctx, e.x, e.y + e.r + 5 / this.zoom, fs, info, e.score, 1 / this.zoom);
     }
   }
 
@@ -1522,6 +1631,12 @@ export class Arena {
       ctx.globalAlpha = 1;
     }
   }
+}
+
+/** 전투력 표시용 숫자: 1000 이상은 1000으로 나눠 소수점 셋째 자리까지 K를 붙이고 소수 끝의 0은 뺀다(1234 → 1.234K, 15230 → 15.23K, 2000 → 2K) */
+function fmtPower(n: number): string {
+  const v = Math.max(0, Math.round(n));
+  return v >= 1000 ? `${Number((v / 1000).toFixed(3))}K` : String(v);
 }
 
 /** 모서리가 둥근 사각형 경로(ctx.roundRect가 없는 브라우저에서도 같게). */

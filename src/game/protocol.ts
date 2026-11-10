@@ -81,11 +81,25 @@ export type SkillFx =
   | { id: 'darkness'; t: number; ms: number } // 원(t)이 암흑에 걸렸다(모두에게 표시. 정화는 cleanse 신호로 지운다)
   | { id: 'cleanse'; e: number } // 정화를 썼다(초록 고리)
 
+/** 몬스터(보스, 4.35) 메시지. 상태는 5Hz, 나머지는 사건이 있을 때 온다 */
+export type MonsterMessage =
+  | ({ type: 'monster' } & import('./monsterFx').MonsterState)
+  | { type: 'monsterAlert'; name: string; en: string; seconds: number } // 곧 나온다(나오기 전 예고)
+  | { type: 'monsterSpawn'; id: number; name: string; en: string; max: number; durationMs: number }
+  | ({ type: 'monsterFx' } & import('./monsterFx').MonsterFxMsg)
+  | ({ type: 'monsterHit' } & import('./monsterFx').MonsterHitMsg) // 누가 보스를 쳐서 입힌 피해
+  | { type: 'monsterEnd'; id: number; name: string; en: string; result: 'KILLED' | 'TIMEOUT' | 'REMOVED'; max: number; hp: number; top: { playerId: number; nickname: string; damage: number; hits: number }[] }
+  | { type: 'monsterReward'; name: string; en: string; cleared: boolean; rank: number; damage: number; exp: number; keywords: string[] }; // 내 보상
+
 export type ServerMessage =
+  | MonsterMessage
   | { type: 'spectating'; country: string; spectators: number } // 관전 접속이 받아들여짐(관리자 관전, 13.13)
   | { type: 'welcome'; entityNo: number; playerId: number; x: number; y: number; score: number; level: number }
   | ({ type: 'tuning' } & Tuning)
-  | { type: 'died'; by: string; byE: number } // 죽음(4.31): 키워드가 없는 채로 져서 죽었다. 죽인 쪽 이름
+  | { type: 'died'; by: string; byE: number; cause?: 'hp' } // 죽음(4.31): 키워드가 없는 채로 져서 죽었다(cause: hp면 체력이 모두 닳았다, 4.36). 죽인 쪽 이름
+  | { type: 'hp'; e: number; hp: number; max: number; pct: number; heal?: number } // 내 체력(4.36): 바뀔 때마다. pct는 올림한 %, heal은 방금 회복한 %
+  | { type: 'hps'; list: [number, number][] } // 체력바 공개(설정 hp_public)일 때 모두의 체력: [원 번호, %]. 목록에 없는 원은 100%
+  | { type: 'hpHit'; e: number; by: number; dmg: number; pct: number } // 맞았다: 맞은 원, 때린 원, 깎인 %(최대 체력 기준), 남은 %
   | { type: 'kill'; target: string } // 내가 상대를 죽였다(4.31)
   | { type: 'levelFx'; e: number; level: number } // 레벨업 이펙트(4.30): 그 원에서 빛기둥이 솟는다
   | { type: 'dashFx'; e: number; ms: number } // 누군가 대시를 시작했다(4.27): 그 원에 강조 효과를 그린다
@@ -107,11 +121,11 @@ export type ServerMessage =
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
   | { type: 'score'; score: number; exp: number; nextExp: number; level: number; holdCount: number } // exp = 지금 레벨에서 모은 EXP, nextExp = 다음 레벨에 필요한 EXP(최고 레벨이면 -1)
-  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number; poison?: boolean; count?: number } // 내가 잃음: 잃은 키워드와 점수(4.3). 독 스택으로 한 틱에 여러 개를 잃으면 count에 개수가 온다(키워드 이름은 오지 않고 score는 합계). stolen이면 상대가 빼앗아 감
+  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number; partial?: boolean; death?: boolean; poison?: boolean; monster?: boolean; count?: number } // 내가 잃음: 잃은 키워드와 점수(4.3). 독 스택으로 한 틱에 여러 개를 잃으면 count에 개수가 온다(키워드 이름은 오지 않고 score는 합계). stolen이면 상대가 빼앗아 감
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로.
   // BOT = 봇을 이겨 🔥 키워드를 새로 얻음, BOT_RENEWED = 봇을 이겼는데 이미 가진 키워드라 남은 시간만 24시간으로
-  | { type: 'hit'; target: string; keyword?: string; score: number; wiped?: number; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number }
+  | { type: 'hit'; target: string; keyword?: string; score: number; wiped?: number; partial?: boolean; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number }
   | { type: 'shield'; e: number; ms: number }                         // 키워드를 잃은 원의 무적 시간(카운트다운)
   | { type: 'knock'; dx: number; dy: number; ms: number }             // 내 원이 튕김: 전체 밀려날 거리와 시간
   | { type: 'pong'; t: number }

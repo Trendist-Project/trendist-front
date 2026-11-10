@@ -8,6 +8,26 @@ import type {
 /** 관리자 스킬 설정(13.3) */
 export interface AdminSkill { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; enabled: boolean; defaultCooldown: number; updatedAt: string }
 
+/** 관리자 몬스터(4.35, 13.16) */
+export interface AdminMonsterSetting { name: string; value: number; min: number; max: number; description: string; unit: string | null; group: string }
+export interface AdminMonsterType { code: string; name: string; nameEn: string | null; kind: string; behavior: string; image: string | null; enabled: boolean; settings: AdminMonsterSetting[] }
+export interface AdminMonsterLive {
+  id: number; spawnId: number; code: string; name: string; country: string; hp: number; maxHp: number; leftSeconds: number; phase: string; rage: boolean; flame: boolean;
+  x: number; y: number; humans: number; avgScore: number; topScore: number; participants: number; target: string | null; roomHumans: number;
+  dashReadyIn: number; ringReadyIn: number; top: { playerId: number; nickname: string; damage: number; hits: number }[];
+}
+export interface AdminMonsterSpawn {
+  id: number; code: string; name: string; country: string; source: string; status: string; startedAt: string; endedAt: string | null;
+  maxHp: number; finalHp: number; humans: number; avgScore: number; topScore: number; participants: number; topDamage: number;
+}
+
+/** 설정 변경 이력(13.17) */
+export interface AdminConfigChange {
+  id: number; scope: 'SETTING' | 'MONSTER' | 'SKILL'; target: string; field: string; label: string | null;
+  oldValue: string | null; newValue: string | null; currentValue: string | null;
+  adminUserId: number; adminName: string | null; memo: string | null; revertedFromId: number | null; createdAt: string;
+}
+
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string) {
     super(message);
@@ -316,5 +336,17 @@ export const adminApi = {
   skills: () => request<AdminSkill[]>('GET', '/api/admin/skills'),
   updateSkill: (code: string, patch: { cooldownSeconds?: number; requiredLevel?: number; enabled?: boolean }) =>
     request<AdminSkill>('PATCH', `/api/admin/skills/${code}`, patch),
+  configChanges: (scope: string, q: string, beforeId = 0, limit = 50) =>
+    request<AdminConfigChange[]>('GET', `/api/admin/config-changes?scope=${encodeURIComponent(scope)}&q=${encodeURIComponent(q)}&beforeId=${beforeId}&limit=${limit}`),
+  rollbackConfigChange: (id: number) => request<{ ok: boolean }>('POST', `/api/admin/config-changes/${id}/rollback`),
+  setConfigChangeMemo: (id: number, memo: string) => request<{ ok: boolean }>('PATCH', `/api/admin/config-changes/${id}/memo`, { memo }),
+  monsterTypes: () => request<AdminMonsterType[]>('GET', '/api/admin/monsters/types'),
+  setMonsterEnabled: (code: string, enabled: boolean) => request<AdminMonsterType>('PATCH', `/api/admin/monsters/types/${code}`, { enabled }),
+  setMonsterSetting: (code: string, name: string, value: number) => request<AdminMonsterSetting>('PATCH', `/api/admin/monsters/types/${code}/settings/${name}`, { value }),
+  monsterLive: () => request<AdminMonsterLive[]>('GET', '/api/admin/monsters/live'),
+  monsterRooms: () => request<{ country: string; humans: number }[]>('GET', '/api/admin/monsters/rooms'),
+  spawnMonster: (code: string, country: string) => request<{ ok: boolean }>('POST', `/api/admin/monsters/types/${code}/spawn?country=${country}`),
+  endMonster: (id: number, country: string, reward: boolean) => request<{ ok: boolean }>('POST', `/api/admin/monsters/${id}/end?country=${country}&reward=${reward}`),
+  monsterSpawns: (limit = 30) => request<AdminMonsterSpawn[]>('GET', `/api/admin/monsters/spawns?limit=${limit}`),
   updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),
 };

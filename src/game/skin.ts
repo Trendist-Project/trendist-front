@@ -119,8 +119,9 @@ export function drawNameTag(ctx: CanvasRenderingContext2D, label: string, x: num
       ctx.strokeText(label, x, y);
     }
   }
-  ctx.lineWidth = fs / 5;
-  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = fs / 6.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
   ctx.fillStyle = color ?? '#ffffff';
   ctx.strokeText(label, x, y);
   ctx.fillText(label, x, y);

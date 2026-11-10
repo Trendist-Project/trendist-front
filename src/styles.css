@@ -1043,13 +1043,27 @@ button.link-back:hover { color: var(--text); }
   background: linear-gradient(180deg, rgba(27,36,52,0.95), rgba(10,14,22,0.97)); border: 1px solid rgba(255,255,255,0.16);
   box-shadow: 0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.09); }
 .bb-me { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; background: transparent; cursor: pointer; display: block; }
+.bb-ring { position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 0deg, rgba(122,170,220,0.85) calc(var(--exp, 0) * 1%), rgba(255,255,255,0.1) 0); /* 경험치: 차분한 청회색 고리(체력의 빨강·초록 원과 겹치지 않는 색, 가늘고 낮은 채도) */
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
+.bb-me .exp-tip { position: absolute; left: -8px; bottom: calc(100% + 16px); width: 210px; padding: 10px 12px 9px; border-radius: 12px; z-index: 30; display: grid; gap: 6px; text-align: left; font-weight: 400;
+  background: linear-gradient(180deg, rgba(27,36,52,0.98), rgba(11,15,23,0.99)); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 10px 28px rgba(0,0,0,0.6);
+  opacity: 0; visibility: hidden; transform: translateY(6px); pointer-events: none; transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s; }
+.bb-me .exp-tip::after { content: ''; position: absolute; left: 34px; bottom: -6px; width: 10px; height: 10px; transform: rotate(45deg); background: #0d121b; border-right: 1px solid rgba(255,255,255,0.18); border-bottom: 1px solid rgba(255,255,255,0.18); }
+.bb-me:hover .exp-tip, .bb-me:focus-visible .exp-tip { opacity: 1; visibility: visible; transform: none; }
+.exp-tip .et-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.exp-tip .et-head strong { font-size: 1rem; color: var(--text); }
+.exp-tip .et-pct { font-size: 0.82rem; font-weight: 800; color: #8fb8e6; font-variant-numeric: tabular-nums; }
+.exp-tip .et-bar { display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; } /* 경험치 고리와 같은 청회색 */
+.exp-tip .et-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #5d93cc, #8fb8e6); }
+.exp-tip .et-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.76rem; color: #d7e0ee; font-variant-numeric: tabular-nums; }
+.exp-tip .et-remain { color: var(--muted); }
+.exp-tip .et-hint { margin-top: 2px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.7rem; color: var(--muted); }
+@media (hover: none) { .bb-me .exp-tip { display: none; } }
 .bb-lv { position: absolute; right: -4px; bottom: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: #0b0f17; border: 2px solid #3fb68b; color: #d8fff0; font-size: 0.72rem; font-weight: 800; display: grid; place-items: center; line-height: 1; }
 .bb-info { display: grid; gap: 5px; min-width: 150px; max-width: 190px; align-content: center; }
 .bb-name { padding: 0; border: 0; background: transparent; color: var(--text); font-weight: 800; font-size: 0.95rem; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bb-name:hover { color: #9be8c8; }
-.bb-exp { position: relative; height: 18px; border-radius: 9px; background: #070a10; border: 1px solid rgba(255,255,255,0.14); overflow: hidden; }
-.bb-exp i { display: block; height: 100%; background: linear-gradient(90deg, #2a9d73, #7ee0b4); box-shadow: 0 0 8px rgba(126,224,180,0.5); transition: width 0.4s ease; }
-.bb-exp span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; line-height: 1; padding-bottom: 1px; font-size: 0.66rem; font-weight: 700; color: #e9fff6; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
 .bb-stats { display: flex; gap: 12px; font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
 .bb-stats span:first-child { color: #ffd29a; font-weight: 700; }
 .bb-skills { display: flex; align-items: center; gap: 10px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); }
@@ -1084,8 +1098,6 @@ button.link-back:hover { color: var(--text); }
   .bb-lv { min-width: 24px; height: 24px; font-size: 0.8rem; right: -5px; bottom: -5px; border-width: 1.5px; }
   .bb-info { min-width: 0; flex: 1 1 auto; max-width: none; gap: 5px; padding-left: 14px; }
   .bb-name { font-size: 1rem; }
-  .bb-exp { height: 20px; }
-  .bb-exp span { font-size: 0.75rem; }
   .bb-stats { display: flex; gap: 12px; font-size: 0.8rem; line-height: 1; overflow: hidden; } /* 경험치 막대 밑: 유행도 · 키워드 수 (초상화와 간격을 두려고 왼쪽 여백을 늘렸다) */
   /* 세로 모드: 이모트는 윗줄 오른쪽으로, 스킬 5개는 아래 줄 폭 전체에 크게 펼쳐 엄지로 누르기 쉽게 한다 */
   .bb-skills { display: contents; }
@@ -1123,8 +1135,6 @@ button.link-back:hover { color: var(--text); }
   .bb-lv { min-width: 22px; height: 22px; font-size: 0.74rem; right: -4px; bottom: -4px; }
   .bb-info { min-width: 0; max-width: 140px; gap: 4px; }
   .bb-name { font-size: 0.95rem; }
-  .bb-exp { height: 19px; }
-  .bb-exp span { font-size: 0.7rem; }
   .bb-stats { display: flex; gap: 10px; font-size: 0.76rem; line-height: 1; } /* 가로 모드도 경험치 밑에 유행도 · 키워드 수 */
   .bb-skills { gap: 10px; padding-left: 10px; }
   .bottom-bar .skill-row { gap: 6px; }
@@ -1249,8 +1259,6 @@ button.link-back:hover { color: var(--text); }
   .bb-me { flex: none; }
   .bb-info { flex: 0 1 160px; min-width: 70px; max-width: 160px; gap: 4px; padding-left: 4px; }
   .bb-name { font-size: 0.95rem; }
-  .bb-exp { height: 20px; }
-  .bb-exp span { font-size: 0.72rem; }
   .bb-stats { font-size: 0.78rem; }
   .bb-skills { flex: 1 1 0; min-width: 0; gap: 10px; padding-left: 10px; }
   .bb-skills .skill-row { flex: 1 1 0; min-width: 0; gap: 8px; justify-content: space-between; }
@@ -1273,8 +1281,6 @@ button.link-back:hover { color: var(--text); }
   .bb-me, .bb-me canvas { width: 42px !important; height: 42px !important; }
   .bb-info { flex-basis: 96px; max-width: 96px; min-width: 56px; }
   .bb-name { font-size: 0.78rem; }
-  .bb-exp { height: 16px; }
-  .bb-exp span { font-size: 0.6rem; }
   .bb-stats { font-size: 0.62rem; gap: 6px; }
   .bb-skills { gap: 6px; padding-left: 6px; }
   .bb-skills .skill-row { gap: 4px; }
@@ -1606,4 +1612,59 @@ button.link-back:hover { color: var(--text); }
   .sw-keycap { min-width: 28px; padding: 0 4px; }
   .sw-bar-slots { gap: 3px; }
   .sw-tile { max-width: 44px; }
+}
+
+/* ---------- 몬스터(보스, 4.35) ---------- */
+.monster-hud { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.82); border: 1px solid rgba(255, 190, 90, 0.5); border-radius: 12px; padding: 8px 12px 9px; pointer-events: none; z-index: 5; box-shadow: 0 4px 18px rgba(0,0,0,0.4); }
+.monster-hud.rage { border-color: rgba(255, 80, 60, 0.85); box-shadow: 0 0 18px rgba(255, 70, 50, 0.45); }
+.monster-hud .mh-top { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.monster-hud .mh-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.monster-hud .mh-time { font-variant-numeric: tabular-nums; font-weight: 700; }
+.monster-hud .mh-badge { font-size: 0.72rem; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+.monster-hud .mh-badge.rage { background: #ff4d3a; color: #fff; }
+.monster-hud .mh-badge.flame { background: #ff9f1c; color: #2b1500; }
+.monster-hud .mh-bar { margin-top: 6px; height: 14px; background: rgba(255,255,255,0.12); border-radius: 999px; overflow: hidden; }
+.monster-hud .mh-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff8a3d, #ffd166); border-radius: 999px; transition: width 0.25s ease-out; }
+.monster-hud.rage .mh-bar i { background: linear-gradient(90deg, #ff3b30, #ff8a3d); }
+.monster-hud .mh-bottom { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: 0.78rem; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); }
+.monster-hud .mh-mine { color: #ffd166; font-weight: 700; }
+.monster-hud .mh-warn { margin-top: 5px; text-align: center; font-size: 0.78rem; font-weight: 700; color: #ffb347; }
+.monster-note { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.92); border: 1px solid rgba(255, 190, 90, 0.55); border-radius: 14px; padding: 14px 16px 14px; z-index: 6; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+.monster-note.reward { border-color: rgba(120, 220, 160, 0.6); top: 96px; }
+.monster-note .mn-close { position: absolute; top: 6px; right: 8px; background: none; border: 0; color: rgba(255,255,255,0.7); font-size: 1rem; cursor: pointer; }
+.monster-note .mn-title { margin: 0 0 6px; font-weight: 800; font-size: 1.02rem; padding-right: 22px; }
+.monster-note .mn-sub { margin: 0 0 6px; font-size: 0.82rem; color: rgba(255,255,255,0.65); }
+.monster-note .mn-line { margin: 4px 0 0; font-size: 0.92rem; }
+.monster-note .mn-rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.monster-note .mn-rank li { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 8px; align-items: baseline; font-size: 0.9rem; }
+.monster-note .mn-pos { font-weight: 800; color: #ffd166; }
+.monster-note .mn-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.monster-note .mn-dmg { font-variant-numeric: tabular-nums; font-weight: 700; }
+@media (max-width: 760px) { .monster-hud { top: 48px; } .monster-note { top: 120px; } }
+
+/* 체력(4.36): 명령 줄 안, 스킬 버튼 줄 바로 아래 한 줄(롤·메이플의 게이지처럼 스킬 가까이). 폭은 명령 줄 전체, 숫자는 막대 안 가운데(색과 숫자를 함께 쓴다).
+   맞으면 하얀 조각이 잠깐 남았다 줄고 붉게 번쩍, 25% 이하는 붉게 깜빡, 회복하면 초록 빛이 번쩍한다 */
+.bottom-bar.has-hp { padding-bottom: 40px; } /* 스킬 키 표시(버튼 아래로 9px 나온다)와 체력 줄이 겹치지 않게 아래를 넓힌다 */
+.bottom-bar .hp-hud { position: absolute; left: 14px; right: 14px; bottom: 9px; z-index: 1; display: flex; align-items: center; gap: 7px; pointer-events: none; }
+.hp-hud .hp-icon { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 0.8rem; line-height: 1; color: #fff; background: #c53030; border: 2px solid #0b0f17; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+.hp-hud .hp-track { position: relative; flex: 1; height: 18px; border-radius: 9px; background: #070a10; border: 1px solid rgba(255,255,255,0.2); overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.6); }
+.hp-hud .hp-track i { position: absolute; left: 0; top: 0; bottom: 0; }
+.hp-hud .hp-fill { background: linear-gradient(180deg, #ff7a7a, #d12f2f); transition: width 0.18s ease-out; } /* 체력은 항상 빨강(초록인 경험치 막대와 헷갈리지 않게). 남은 양은 숫자와 길이로, 위급함은 깜빡임으로 */
+.hp-hud.low .hp-fill { animation: hp-pulse 0.7s ease-in-out infinite alternate; }
+.hp-hud .hp-ghost { background: rgba(255,255,255,0.85); transition: width 0.5s ease-out 0.35s; }
+.hp-hud .hp-fill.heal { animation: hp-heal 0.6s ease-out; }
+.hp-hud .hp-hitflash { left: 0; right: 0; background: rgba(255, 70, 70, 0.6); animation: hp-hit 0.35s ease-out forwards; }
+.hp-hud .hp-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; line-height: 1; padding-bottom: 1px; font-size: 0.74rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,0.7); font-variant-numeric: tabular-nums; }
+.hp-hud .hp-pct b { font-size: 0.64rem; letter-spacing: 0.06em; opacity: 0.85; }
+@keyframes hp-pulse { from { opacity: 0.7; } to { opacity: 1; } }
+@keyframes hp-heal { 0% { filter: brightness(2.2) saturate(1.4); } 100% { filter: none; } }
+@keyframes hp-hit { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .hp-hud .hp-fill.heal, .hp-hud.low .hp-fill, .hp-hud .hp-hitflash { animation: none; }
+}
+/* 모바일: 키 표시가 없어 아래 여백을 줄이고, 막대는 명령 줄 가장자리까지 */
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .bottom-bar.has-hp { padding-bottom: 34px; }
+  .bottom-bar .hp-hud { left: 10px; right: 10px; bottom: 8px; }
+  .hp-hud .hp-track { height: 17px; }
 }

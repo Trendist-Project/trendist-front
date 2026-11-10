@@ -31,6 +31,8 @@ import { FullscreenIcon } from './FullscreenIcon';
 import { canFullscreen as canFullscreenSupported, enterFullscreen, setAutoFullscreenPref } from '../fullscreen';
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
+import { MonsterHud, MonsterNoteCard, type MonsterNote } from './MonsterHud';
+import { getLang } from '../country';
 
 interface Props {
   initialPlayer: PlayerSummary;
@@ -124,12 +126,15 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const connRef = useRef<GameConnection | null>(null);
   const [player, setPlayer] = useState(initialPlayer);
   const [online, setOnline] = useState(0);
+  const [monsterNote, setMonsterNote] = useState<MonsterNote | null>(null); // 보스가 끝났을 때 순위·내 보상 카드(4.35)
+  const [myBossDmg, setMyBossDmg] = useState({ dmg: 0, hits: 0 }); // 이번 보스에 내가 입힌 피해(4.35)
   const { notice: emergency, apply: applyEmergency } = useEmergency(); // 긴급 안내(4.29): 맨 위 한 줄. 서버 알림은 apply로 바로 반영
   const [bots, setBots] = useState(0);
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
-  const [dead, setDead] = useState<{ by: string; waiting: boolean } | null>(null); // 죽음(4.31): 흑백 화면에 머물며 리스폰을 기다린다
+  const [myHp, setMyHp] = useState<{ pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null }>({ pct: 100, flash: null }); // 내 체력(4.36)
+  const [dead, setDead] = useState<{ by: string; waiting: boolean; hp?: boolean } | null>(null); // 죽음(4.31): 흑백 화면에 머물며 리스폰을 기다린다
   const myEntityRef = useRef(-1); // 내 원 번호(콤보 시간이 끝났을 때 불꽃을 지우는 데 쓴다)
   const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number; until: number | null }>({ combo: 0, flameAt: 5, key: 0, until: null }); // 4.25. until: 콤보가 사라질 시각(performance.now 기준 ms, 제한 없으면 null)
   const [emoteOpen, setEmoteOpen] = useState(false); // 이모트 고르기(4.26)
@@ -320,6 +325,30 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             resyncDir(); // 다시 연결됐을 때 아직 누르고 있는 방향키가 있으면 서버와 예측에 함께 다시 넣는다
             conn.send({ type: 'ping', t: performance.now() });
             break;
+          case 'monster': arena.setMonster(m); break; // 보스 상태(5Hz, 4.35)
+          case 'monsterFx': arena.monsterFx(m); break;
+          case 'monsterAlert': showToast(t('monster.alert', { name: getLang() === 'en' && m.en ? m.en : m.name, sec: Math.max(1, Math.round(m.seconds)) })); break;
+          case 'monsterSpawn':
+            setMyBossDmg({ dmg: 0, hits: 0 }); setMonsterNote(null);
+            showToast(t('monster.spawn', { name: getLang() === 'en' && m.en ? m.en : m.name, min: Math.max(1, Math.round(m.durationMs / 60000)) }));
+            break;
+          case 'monsterHit':
+            arena.monsterHit(m);
+            if (m.e === myEntity) { // 내가 입힌 피해를 내 원 위에 크게 보여 준다
+              arena.floatText(`${m.flame ? '🔥' : '💥'} ${fmtNumber(m.dmg)}`, m.flame ? '#ffb347' : '#ffffff');
+              setMyBossDmg((d) => ({ dmg: d.dmg + m.dmg, hits: d.hits + 1 }));
+            }
+            break;
+          case 'monsterEnd':
+            arena.clearMonster();
+            setMonsterNote({ key: performance.now(), kind: 'end', result: m.result, name: m.name, en: m.en, top: m.top });
+            window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'end' ? null : n)), 12000);
+            break;
+          case 'monsterReward':
+            setMonsterNote({ key: performance.now(), kind: 'reward', name: m.name, en: m.en, cleared: m.cleared, rank: m.rank, damage: m.damage, exp: m.exp, keywords: m.keywords });
+            window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'reward' ? null : n)), 15000);
+            setRefreshKey((k) => k + 1);
+            break;
           case 'tuning': arena.setTuning(m); break;
           case 'emergency': applyEmergency(m.notice); break;
           case 'titleGranted': showTitleAlert(m.titleId, m.name, m.description); break;
@@ -380,8 +409,9 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           }
           case 'lost':
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
-            if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
-            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison ? 'LOSE' : 'STOLEN', who: m.by || undefined, lostCount: m.count }); // 독으로 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
+            if (m.wiped && m.partial) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined, lostLabel: t(m.death ? 'gamescreen.lostPartDeath' : 'gamescreen.lostPartFlame') }); // 일부만 잃었다(4.36)
+            else if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
+            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison || m.monster ? 'LOSE' : 'STOLEN', who: m.by || undefined, lostCount: m.count, lostLabel: m.monster ? t('monster.lostBy', { by: m.by, n: m.count ?? 1 }) : undefined }); // 독·보스로 여러 개를 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
@@ -396,13 +426,13 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
               showReveal({ type: 'orbResult', status: m.stolen === 'ADDED' || m.stolen === 'BOT' ? 'GAINED' : 'RENEWED', text: m.keyword ?? '', gained: m.gained,
                            kind: 'STEAL', who: m.target || undefined });
             }
-            const text = m.wiped ? t('gamescreen.hitWiped', hp)
+            const text = m.wiped && m.partial ? t('gamescreen.hitPart', hp) : m.wiped ? t('gamescreen.hitWiped', hp)
               : m.stolen === 'BOT' ? t('gamescreen.hitBot', hp)
               : m.stolen === 'BOT_RENEWED' ? t('gamescreen.hitBotRenewed', hp)
               : m.stolen === 'ADDED' ? t('gamescreen.hitAdded', hp)
               : m.stolen === 'RENEWED' ? t('gamescreen.hitRenewed', hp)
               : m.keyword ? t('gamescreen.hitDropped', hp) : t('gamescreen.hitWon', hp);
-            if (m.wiped) showReveal({ type: 'orbResult', status: 'GAINED', wipe: m.wiped, who: m.target || undefined });
+            if (m.wiped) showReveal({ type: 'orbResult', status: 'GAINED', wipe: m.wiped, who: m.target || undefined, lostLabel: m.partial ? t('gamescreen.hitPartTitle') : undefined });
             else if (!gainedBy) setHit({ text, key });
             if (m.stolen) {
               if (m.gained) arena.floatText(`+${m.gained}`);
@@ -414,8 +444,25 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           case 'died':
             // 죽음(4.31): 입력을 끊고 마지막 장면을 흑백으로 두며, 누가 죽였는지 알려 준다
             ready = false; arena.clearControl();
-            setDead({ by: m.by, waiting: false }); arena.setDead(true);
+            setDead({ by: m.by, waiting: false, hp: m.cause === 'hp' }); arena.setDead(true);
+            arena.clearHp(); setMyHp({ pct: 100, flash: null }); // 다시 들어오면 체력은 가득이다(4.36)
             break;
+          case 'hp': { // 내 체력(4.36)
+            if (m.e !== myEntity) break;
+            arena.setHp(m.e, m.pct);
+            setMyHp((h) => ({ pct: m.pct, flash: m.heal ? { kind: 'heal', key: performance.now() } : h.flash }));
+            if (m.heal) arena.hpPop(m.e, `+${Math.max(1, Math.round(m.heal))}%`, '#7be0a0');
+            break;
+          }
+          case 'hps': arena.setHps(m.list); break; // 체력바 공개 설정일 때 모두의 체력
+          case 'hpHit': { // 누가 맞았다: 그 원 위에 깎인 %를 띄운다. 내 체력바는 바로 줄인다
+            arena.hpPop(m.e, `-${Math.max(1, Math.round(m.dmg))}%`, '#ff6b6b');
+            if (m.e === myEntity) {
+              arena.setHp(m.e, m.pct);
+              setMyHp({ pct: m.pct, flash: { kind: 'hit', key: performance.now() } });
+            }
+            break;
+          }
           case 'kill': { // 내가 죽였다(4.31)
             showReveal({ type: 'orbResult', status: 'GAINED', kill: m.target });
             break;
@@ -825,6 +872,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     const id = window.setTimeout(() => setUnlockAlert((a) => (a?.key === unlockAlert.key ? null : a)), 9000);
     return () => window.clearTimeout(id);
   }, [unlockAlert]);
+  const readMonster = useCallback(() => arenaRef.current?.monsterHud() ?? null, []);
   const readMeLook = useCallback(() => arenaRef.current?.meLook() ?? null, []);
   const readTarget = useCallback((e: number) => arenaRef.current?.entityInfo(e) ?? null, []);
   const closeTargetCard = useCallback(() => setTargetCard(null), []);
@@ -881,7 +929,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           <div className="death-overlay" role="alertdialog" aria-labelledby="death-title">
             <div className="death-box">
               <h2 id="death-title">💀 {t('gamescreen.diedTitle')}</h2>
-              <p>{t('gamescreen.diedBy', { by: dead.by })}</p>
+              <p>{t(dead.hp ? 'gamescreen.diedByHp' : 'gamescreen.diedBy', { by: dead.by })}</p>
               <button className="primary" autoFocus disabled={dead.waiting || status !== 'open'}
                       onClick={() => { setDead({ by: dead.by, waiting: true }); connRef.current?.send({ type: 'respawn' }); }}>
                 {dead.waiting ? t('gamescreen.respawning') : t('gamescreen.respawn')}
@@ -889,6 +937,8 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             </div>
           </div>
         )}
+        <MonsterHud read={readMonster} mine={myBossDmg} />
+        {monsterNote && <MonsterNoteCard note={monsterNote} onClose={() => setMonsterNote(null)} />}
         <div className="hud">
           {/* 모바일은 짧게(👥 3 · 🤖 7), PC는 글자로 */}
           <span className="hud-online" aria-label={bots > 0 ? t('gamescreen.onlineAriaBots', { online, bots }) : t('gamescreen.onlineAria', { online })}>
@@ -907,7 +957,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                       onDetail={() => { const e = targetCard; setInfoBot(arenaRef.current?.botInfo(e) ?? null); setInfoLook(arenaRef.current?.entityInfo(e)?.look ?? null); setInfoEntity(e); }}
                       onOpenKeyword={setOpenKeyword} />
         )}
-        <BottomBar me={player} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
+        <BottomBar me={player} hp={!dead && status === 'open' ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
                    onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
                    emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
                    onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />
