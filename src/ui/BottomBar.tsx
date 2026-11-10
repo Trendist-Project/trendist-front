@@ -6,6 +6,7 @@ import { fmtNumber, t } from '../i18n';
 import { PlayerOrb } from './PlayerOrb';
 import { useLayer } from './layers';
 import { SkillBar, type DashState, type SkillCooldowns } from './SkillBar';
+import { HpHud, type HpFlash } from './HpHud';
 
 export interface MeSummary { nickname: string; level: number; currentScore: number | string; exp: number; nextLevelExp: number; holdCount: number }
 
@@ -14,8 +15,10 @@ export interface MeSummary { nickname: string; level: number; currentScore: numb
  * 채팅은 왼쪽 아래 끝, 미니맵은 오른쪽 아래에 있어서 서로 겹치지 않는다. 작은 화면(모바일)에서는 초상화·정보는 빼고(왼쪽 위 줄에 레벨·유행도를 둔다)
  * 스킬·이모트를 오른쪽 아래에 2줄로 모아, 왼쪽 엄지가 쓰는 조이스틱 자리를 비운다(CSS).
  */
-export function BottomBar({ me, skills, slots, keys, onOpenSkills, readLook, cooldowns, dash, lockedUntil, onUse, onDash, onProfile, emoteOpen, onToggleEmote, onEmote }: {
+export function BottomBar({ me, hp, skills, slots, keys, onOpenSkills, readLook, cooldowns, dash, lockedUntil, onUse, onDash, onProfile, emoteOpen, onToggleEmote, onEmote }: {
   me: MeSummary;
+  /** 내 체력(%)과 맞음·회복 번쩍임(4.36). 스킬 줄 바로 아래 한 줄로 그린다. 죽었거나 연결 전이면 null(막대를 숨긴다) */
+  hp: { pct: number; flash: HpFlash } | null;
   skills: SkillInfo[];
   slots: (string | null)[];
   keys: import('../game/skillKeys').SlotKeys;
@@ -60,20 +63,33 @@ export function BottomBar({ me, skills, slots, keys, onOpenSkills, readLook, coo
   const pct = me.nextLevelExp > 0 ? Math.min(100, Math.round((me.exp / me.nextLevelExp) * 100)) : 100;
   const fallback: OrbLook = { bg: '#3fb68b', borderColor: null, borderWidth: null, art: null, borderEffect: null, bot: false };
   return (
-    <div className={folded ? 'bottom-bar folded' : 'bottom-bar'} ref={barRef} {...layer.props}>
+    <div className={`bottom-bar${folded ? ' folded' : ''}${hp ? ' has-hp' : ''}`} ref={barRef} {...layer.props}>
+      {hp && <HpHud pct={hp.pct} flash={hp.flash} />}
       <button type="button" className="bb-fold" onClick={toggleFold} aria-expanded={!folded}
               aria-label={folded ? t('gamescreen.barUnfold') : t('gamescreen.barFold')} title={folded ? t('gamescreen.barUnfold') : t('gamescreen.barFold')}>{folded ? '▴' : '▾'}</button>
-      <button className="bb-me" onClick={onProfile} title={t('gamescreen.myInfo')} aria-label={t('gamescreen.myInfo')}>
+      <button className="bb-me" onClick={onProfile} style={{ '--exp': pct } as React.CSSProperties}
+              aria-label={`${t('gamescreen.myInfo')}. ${t('gamescreen.expLevel', { n: me.level })}, ${me.nextLevelExp > 0 ? t('gamescreen.expProgress', { cur: fmtNumber(me.exp), max: fmtNumber(me.nextLevelExp) }) : t('gamescreen.expMax')}`}>
+        {/* 경험치는 초상화를 두른 가는 고리(롤처럼): 체력보다 눈에 띄지 않게 하고, 자세한 값은 마우스를 올리면 보인다 */}
+        <span className="bb-ring" role="progressbar" aria-label="EXP" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} />
         <PlayerOrb look={look ?? fallback} level={me.level} size={52} />
         <span className="bb-lv">{me.level}</span>
+        {/* 경험치 툴팁: 마우스를 올리거나 포커스하면 초상화 위에 카드가 뜬다(스킬 툴팁과 같은 모양). 터치 화면에는 없다 */}
+        <span className="exp-tip" role="tooltip">
+          <span className="et-head"><strong>{t('gamescreen.expLevel', { n: me.level })}</strong><span className="et-pct">{me.nextLevelExp > 0 ? `${pct}%` : 'MAX'}</span></span>
+          <span className="et-bar" aria-hidden="true"><i style={{ width: `${pct}%` }} /></span>
+          <span className="et-meta">
+            {me.nextLevelExp > 0 ? (
+              <>
+                <span>{t('gamescreen.expProgress', { cur: fmtNumber(me.exp), max: fmtNumber(me.nextLevelExp) })}</span>
+                <span className="et-remain">{t('gamescreen.expRemain', { n: fmtNumber(Math.max(0, me.nextLevelExp - me.exp)) })}</span>
+              </>
+            ) : <span>{t('gamescreen.expMax')}</span>}
+          </span>
+          <span className="et-hint">{t('gamescreen.expOpen')}</span>
+        </span>
       </button>
       <div className="bb-info">
         <button className="bb-name" onClick={onProfile} title={t('gamescreen.myInfo')}>{me.nickname}</button>
-        <div className="bb-exp" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
-             title={`EXP ${me.exp}${me.nextLevelExp > 0 ? ` / ${me.nextLevelExp}` : ''}`}>
-          <i style={{ width: `${pct}%` }} />
-          <span>EXP {me.exp}{me.nextLevelExp > 0 ? ` / ${me.nextLevelExp}` : ''}</span>
-        </div>
         <div className="bb-stats">
           <span>{t('gamescreen.score', { n: fmtNumber(Number(me.currentScore)) })}</span>
           <span>{t('gamescreen.keywordCount', { n: me.holdCount })}</span>

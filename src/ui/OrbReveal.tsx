@@ -9,7 +9,7 @@ export const ORB_REVEAL_MS = 3000;
 export type RevealKind = 'GAIN' | 'LOSE' | 'STEAL' | 'STOLEN';
 /** wipe는 🔥 불꽃으로 키워드를 모두 날린(GAINED) 또는 모두 잃은(LOST) 개수. 키워드를 빼앗거나 빼앗긴 것이 아니라 표시(kind)는 없다 */
 /** lostCount는 독 스택으로 한 번에 여러 개를 잃었을 때의 개수(2개 이상이면 개수만 크게 보여 주고 어떤 키워드인지는 보여 주지 않는다) */
-export type RevealResult = OrbResult & { kind?: RevealKind; who?: string; wipe?: number; kill?: string; lostCount?: number };
+export type RevealResult = OrbResult & { kind?: RevealKind; who?: string; wipe?: number; kill?: string; lostCount?: number; lostLabel?: string };
 const TAG_KEY: Record<RevealKind, string> = { GAIN: 'gamescreen.tagGain', LOSE: 'gamescreen.tagLose', STEAL: 'gamescreen.tagSteal', STOLEN: 'gamescreen.tagStolen' };
 
 function Tag({ kind }: { kind?: RevealKind }) {
@@ -31,7 +31,7 @@ export function OrbReveal({ result }: { result: RevealResult }) {
     const mine = result.status === 'GAINED'; // 내 불꽃이 상대의 키워드를 모두 날렸다 / 상대 불꽃에 내 키워드를 모두 잃었다
     return (
       <div className={mine ? 'orb-reveal' : 'orb-reveal muted-reveal miss-reveal'} role="status" aria-live="polite">
-        <p className="orb-title">{t(mine ? 'gamescreen.wipeHitTitle' : 'gamescreen.wipeLostTitle')}</p>
+        <p className="orb-title">{result.lostLabel ?? t(mine ? 'gamescreen.wipeHitTitle' : 'gamescreen.wipeLostTitle')}</p>
         <p className="orb-keyword"><strong>{t('gamescreen.wipeCount', { n: result.wipe })}</strong></p>
         {result.who && <p className="orb-meta"><span className="orb-who">👤 {result.who}</span></p>}
         <span className="orb-timer" style={{ animationDuration: `${ORB_REVEAL_MS}ms` }} />
@@ -58,7 +58,7 @@ export function OrbReveal({ result }: { result: RevealResult }) {
   if (result.status === 'LOST' && (result.lostCount ?? 0) > 1) { // 독 스택으로 한 번에 여러 개를 잃었다: 개수만 크게 보여 준다(어떤 키워드인지는 보여 주지 않는다)
     return (
       <div className="orb-reveal muted-reveal miss-reveal" role="status" aria-live="polite">
-        <p className="orb-title"><Tag kind={result.kind} />{t('gamescreen.poisonLostTitle')}</p>
+        <p className="orb-title"><Tag kind={result.kind} />{result.lostLabel ?? t('gamescreen.poisonLostTitle')}</p>
         <p className="orb-keyword"><strong>{t('gamescreen.wipeCount', { n: result.lostCount ?? 0 })}</strong></p>
         <p className="orb-meta">
           {result.who && <span className="orb-who">👤 {result.who}</span>}
