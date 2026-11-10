@@ -4,6 +4,8 @@ import { fmt } from '../format';
 import { PatternDiagram, SizeCompare, Timeline } from './MonsterVisuals';
 import { derivePatterns, fmtVal, mmss, num, previewHp, settingMap, timelineOf, type Pattern, type SettingMap } from './meta';
 import type { SettingsEditor } from './useSettingsEditor';
+import { successToast } from '../../ui/toast';
+import { ScheduleSwitch } from './ScheduleSwitch';
 
 const STATUS: Record<string, string> = { ACTIVE: '진행 중', KILLED: '처치', TIMEOUT: '시간 초과', REMOVED: '제거', SKIPPED: '건너뜀(사람 적음)' };
 
@@ -36,11 +38,11 @@ function tilesOf(m: SettingMap): Tile[] {
     m.interval_minutes !== undefined ? { icon: '🗓️', label: '등장', value: `${num(m.interval_minutes)}분마다`, sub: `정각 +${m.offset_minutes ?? 0}분${m.announce_seconds ? ` · ${m.announce_seconds}초 전 예고` : ''}` } : null,
     m.duration_seconds !== undefined ? { icon: '⏱️', label: '제한 시간', value: mmss(m.duration_seconds), sub: m.min_players !== undefined ? `접속 ${m.min_players}명 이상일 때만 등장` : undefined } : null,
     m.speed_ratio !== undefined ? { icon: '🏃', label: '이동 속도', value: `사용자의 ${fmtVal(m.speed_ratio)}배`, sub: m.retarget_seconds !== undefined ? `${m.retarget_seconds}초마다 가장 가까운 사람으로 대상 변경` : undefined } : null,
-    m.hit_lose_keywords !== undefined ? { icon: '💥', label: '부딪히면', value: `키워드 ${m.hit_lose_keywords}개 잃음`, sub: `무적 ${m.hit_protect_seconds ?? 0}초${m.flame_damage_mult ? ` · 불꽃은 잃지 않고 피해 ×${fmtVal(m.flame_damage_mult)}` : ''}` } : null,
+    m.hit_interval_seconds !== undefined ? { icon: '💥', label: '부딪히면', value: '튕겨 나감(키워드·불꽃 그대로)', sub: `같은 사람은 ${fmtVal(m.hit_interval_seconds)}초에 한 번${m.flame_damage_mult ? ` · 불꽃이면 피해 ×${fmtVal(m.flame_damage_mult)}(불꽃 보스에게는 ×1)` : ''}` } : null,
     m.rage_hp_percent !== undefined || m.rage_remaining_seconds !== undefined
       ? { icon: '😡', label: '분노', value: [m.rage_hp_percent ? `체력 ${m.rage_hp_percent}% 이하` : '', m.rage_remaining_seconds ? `남은 ${m.rage_remaining_seconds}초 이하` : ''].filter(Boolean).join(' · ') || '없음',
-          sub: `쿨타임 ×${fmtVal(m.rage_cooldown_mult ?? 1)}${m.rage_speed_mult && m.rage_speed_mult !== 1 ? ` · 속도 ×${fmtVal(m.rage_speed_mult)}` : ''}${m.rage_flame ? ' · 불꽃 붙음' : ''}` } : null,
-    m.reward_exp !== undefined ? { icon: '🎁', label: '보상(처치)', value: `EXP ${num(m.reward_exp)} · 🔥 ${m.reward_keywords ?? 0}개`, sub: `피해 1~3위 추가 EXP ${num(m.reward_top_exp ?? 0)} · 🔥 ${m.reward_top_keywords ?? 0}개 · 실패 시 EXP ${num(m.fail_exp ?? 0)}` } : null,
+          sub: `쿨타임 ×${fmtVal(m.rage_cooldown_mult ?? 1)}${m.rage_speed_mult && m.rage_speed_mult !== 1 ? ` · 속도 ×${fmtVal(m.rage_speed_mult)}` : ''}${m.rage_flame ? ` · 불꽃 붙음${m.rage_flame_seconds ? `(${m.rage_flame_seconds}초)` : ''}` : ''}` } : null,
+    m.reward_exp !== undefined ? { icon: '🎁', label: '보상(처치)', value: `기본 EXP ${num(m.reward_exp)} · 🔥 ${m.reward_keywords ?? 0}개${m.reward_exp_pool !== undefined ? ` + 기여도 EXP ${num(m.reward_exp_pool)} · 🔥 ${m.reward_keyword_pool ?? 0}개(최대 ${m.reward_keywords_max ?? 0}개)` : ''}`, sub: `피해 1~3위 추가 EXP ${num(m.reward_top_exp ?? 0)} · 🔥 ${m.reward_top_keywords ?? 0}개 · 실패 시 EXP ${num(m.fail_exp ?? 0)}` } : null,
   ];
   return t.filter((x): x is Tile => x !== null);
 }
@@ -83,13 +85,17 @@ function PatternCard({ p, share, ed }: { p: Pattern; share: number; ed: Settings
   const rage = m.rage_cooldown_mult;
   const cd = m[`${p.code}_cooldown`];
   const anyDirty = p.settings.some((s) => ed.isChanged(s));
-  const off = (m[`${p.code}_weight`] ?? 0) === 0;
+  const hasSwitch = m[`${p.code}_enabled`] !== undefined;
+  const enabled = !hasSwitch || m[`${p.code}_enabled`] >= 1;
+  const off = !enabled || (m[`${p.code}_weight`] ?? 0) === 0;
+  const toggle = async (on: boolean) => { if (await ed.saveNow([{ name: `${p.code}_enabled`, value: on ? 1 : 0 }]) > 0) successToast(`${p.name}을(를) ${on ? '켰어요' : '껐어요'}(1초 안에 반영)`); };
   return (
     <article className={`mn-pattern${off ? ' off' : ''}`}>
       <header>
         <span className="mn-pattern-icon" aria-hidden="true">{p.icon}</span>
         <div><h4>{p.name}</h4>{p.hint && <p>{p.hint}</p>}</div>
         <span className={`mn-share${off ? ' off' : ''}`} title="쓸 수 있는 패턴 중 이 패턴이 뽑힐 비중">{off ? '사용 안 함' : `선택 ${share}%`}</span>
+        {hasSwitch && <ScheduleSwitch compact enabled={enabled} onChange={toggle} label="사용" />}
       </header>
       <div className="mn-pattern-body">
         <PatternDiagram pattern={p} />
@@ -97,8 +103,8 @@ function PatternCard({ p, share, ed }: { p: Pattern; share: number; ed: Settings
           <dl>
             <div><dt>쿨타임</dt><dd>{cd !== undefined ? `${fmtVal(cd)}초` : '-'}</dd></div>
             {rage !== undefined && cd !== undefined && <div><dt>분노 때</dt><dd>{fmtVal(cd * rage)}초</dd></div>}
-            {m[`${p.code}_min_distance`] !== undefined && <div><dt>쓰는 조건</dt><dd>{num(m[`${p.code}_min_distance`])}px 이상 떨어져 있을 때</dd></div>}
-            {m[`${p.code}_max_keywords`] !== undefined && <div><dt>잃는 키워드</dt><dd>{m[`${p.code}_max_keywords`]}개 → {m[`${p.code}_min_keywords`] ?? 0}개(멀수록 적게)</dd></div>}
+            {m[`${p.code}_hp_percent`] !== undefined && <div><dt>맞으면</dt><dd>체력 {fmtVal(m[`${p.code}_hp_percent`])}% 감소</dd></div>}
+            {m[`${p.code}_max_hp_percent`] !== undefined && <div><dt>맞으면</dt><dd>체력 {fmtVal(m[`${p.code}_max_hp_percent`])}% → {fmtVal(m[`${p.code}_min_hp_percent`] ?? 0)}% 감소(멀수록 적게)</dd></div>}
           </dl>
           <Timeline segs={timelineOf(p.code, m)} />
         </div>
@@ -115,14 +121,30 @@ function PatternCard({ p, share, ed }: { p: Pattern; share: number; ed: Settings
 export function PatternsPanel({ ed }: { ed: SettingsEditor }) {
   const patterns = useMemo(() => derivePatterns(ed.items), [ed.items]);
   const m = settingMap(ed.items);
-  const total = patterns.reduce((a, p) => a + (m[`${p.code}_weight`] ?? 0), 0);
+  const isOn = (code: string) => m[`${code}_enabled`] === undefined || m[`${code}_enabled`] >= 1;
+  const total = patterns.reduce((a, p) => a + (isOn(p.code) ? (m[`${p.code}_weight`] ?? 0) : 0), 0);
+  const switchable = patterns.filter((p) => m[`${p.code}_enabled`] !== undefined);
+  const onCount = switchable.filter((p) => isOn(p.code)).length;
+  const setAll = async (on: boolean) => {
+    const changes = switchable.filter((p) => isOn(p.code) !== on).map((p) => ({ name: `${p.code}_enabled`, value: on ? 1 : 0 }));
+    if (changes.length === 0) return;
+    const ok = await ed.saveNow(changes);
+    if (ok > 0) successToast(`패턴 ${ok}개를 ${on ? '켰어요' : '껐어요'}(1초 안에 반영)`);
+  };
   const common = ed.items.filter((s) => s.group === '패턴 공통');
   if (patterns.length === 0) return <p className="muted">이 몬스터는 정해진 패턴이 없어요(설정 탭에서 모든 값을 볼 수 있어요).</p>;
   return (
     <div className="mn-patterns">
       <p className="muted small">보스는 쓸 수 있는 패턴 중에서 <b>비중대로 무작위</b>로 고르고(방금 쓴 패턴은 건너뜀), 쓴 뒤에는 공통 대기 시간이 지나야 다음 패턴을 써요.</p>
+      {switchable.length > 0 && (
+        <div className="mn-pattern-bulk" role="group" aria-label="패턴 전체 켜기·끄기">
+          <span>패턴 <b>{onCount}</b> / {switchable.length}개 켜짐{onCount === 0 && <em> · 모두 꺼서 보스는 쫓아다니기만 해요</em>}</span>
+          <button type="button" disabled={ed.busy || onCount === switchable.length} onClick={() => setAll(true)}>전체 켜기</button>
+          <button type="button" disabled={ed.busy || onCount === 0} onClick={() => setAll(false)}>전체 끄기</button>
+        </div>
+      )}
       <div className="mn-pattern-grid">
-        {patterns.map((p) => <PatternCard key={p.code} p={p} share={total > 0 ? Math.round(((m[`${p.code}_weight`] ?? 0) / total) * 100) : 0} ed={ed} />)}
+        {patterns.map((p) => <PatternCard key={p.code} p={p} share={total > 0 && isOn(p.code) ? Math.round(((m[`${p.code}_weight`] ?? 0) / total) * 100) : 0} ed={ed} />)}
       </div>
       {common.length > 0 && (
         <details className="mn-common" open={common.some((s) => ed.isChanged(s)) ? true : undefined}>

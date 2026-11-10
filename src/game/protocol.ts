@@ -80,6 +80,7 @@ export type SkillFx =
   | { id: 'poisonEnd'; t: number }
   | { id: 'darkness'; t: number; ms: number } // 원(t)이 암흑에 걸렸다(모두에게 표시. 정화는 cleanse 신호로 지운다)
   | { id: 'cleanse'; e: number } // 정화를 썼다(초록 고리)
+  | { id: 'heal'; e: number } // 회복을 썼다(그 원에 초록 + 표시. 내 것은 hp 메시지가 따로 띄우니 남의 것만 그린다)
 
 /** 몬스터(보스, 4.35) 메시지. 상태는 5Hz, 나머지는 사건이 있을 때 온다 */
 export type MonsterMessage =
@@ -106,7 +107,7 @@ export type ServerMessage =
   | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
   | { type: 'skill'; id: SkillId; cooldownMs: number } // 내가 스킬을 썼다(4.33): 다시 쓸 수 있을 때까지
   | { type: 'cooldowns'; skills: Record<string, number>; dashActiveMs: number; dashReadyMs: number; dashMult: number } // 다시 들어왔을 때 서버가 알려 주는 지금 쿨타임(남은 ms, 4.33)
-  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level' | 'unequipped'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
+  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level' | 'unequipped' | 'hpFull'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
   | { type: 'skillFx' } & SkillFx // 누군가 스킬을 썼다(4.33): 그 연출을 그린다
   | { type: 'loadout'; slots: (string | null)[] } // 장착한 스킬 4칸(4.33). 입장할 때와 바뀔 때마다 온다. 빈 칸은 null
   | { type: 'dark'; ms: number } // 내가 암흑에 맞았다(4.33): ms 동안 화면이 어두워진다

@@ -1,6 +1,7 @@
 import { t as tr } from '../i18n';
 import type { EntityState, MinimapEntry, RosterEntry, SkillFx, Snapshot, Tuning } from './protocol';
 import { SkillFxLayer } from './skillFx';
+import { drawDamage, type DmgKind } from './damageText';
 import { MonsterLayer, type MonsterFxMsg, type MonsterHitMsg, type MonsterHud, type MonsterState } from './monsterFx';
 import { BOT_BASE, borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
 import { artImage, artPose, drawArt, turnArt } from './pixelArt';
@@ -140,7 +141,7 @@ export class Arena {
   /** 체력바(4.36): 원 번호 → 남은 %, 맞기 전 %(잠깐 하얗게 남았다 줄어든다), 맞은 시각. 100%면 지운다(공개 설정이 아니면 내 것만 들어 있다) */
   private hpBars = new Map<number, { pct: number; ghost: number; at: number }>();
   /** 체력 피해·회복 숫자(원 위로 떠오른다) */
-  private hpPops: { e: number; text: string; at: number; color: string }[] = [];
+  private hpPops: { e: number; text: string; at: number; kind?: DmgKind; heal?: { ox: number; oy: number; k: number } }[] = [];
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
   private shields = new Map<number, number>();
   private levelFxs: LevelFx[] = []; // 레벨업 빛기둥(4.30)
@@ -158,6 +159,8 @@ export class Arena {
   private monsters = new MonsterLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   setMonster(m: MonsterState) { this.monsters.set(m); }
   clearMonster() { this.monsters.clear(); }
+  /** 보스를 처치했다: 그 자리에서 흐려지며 증발한다 */
+  vanishMonster() { this.monsters.vanish(); }
   monsterFx(m: MonsterFxMsg) { this.monsters.fx(m); }
   monsterHit(m: MonsterHitMsg) { this.monsters.hit(m); }
   monsterHud(): MonsterHud | null { return this.monsters.hud(); }
@@ -232,7 +235,10 @@ export class Arena {
     if (dx || dy) this.target = null;
   }
   /** 누군가 스킬을 썼다(4.33): 그 연출을 그린다. */
-  showSkillFx(fx: SkillFx) { this.fx.show(fx, performance.now()); }
+  showSkillFx(fx: SkillFx) {
+    if (fx.id === 'heal') { if (fx.e !== this.me.e) this.healPop(fx.e); return; } // 남의 회복은 그 원에 + 표시(내 것은 hp 메시지가 띄운다)
+    this.fx.show(fx, performance.now());
+  }
   /** 내가 갈고리에 맞았다(4.33): ms 동안 byE에게 끌려온다. 서버처럼 목표와 튕김을 지우고 예측도 같이 끌려간다. */
   startPull(ms: number, byE: number) {
     this.predictUntil(performance.now());
@@ -340,10 +346,21 @@ export class Arena {
     for (const [e, pct] of list) this.setHp(e, pct);
   }
   clearHp() { this.hpBars.clear(); }
-  /** 그 원 위로 숫자를 띄운다(피해는 빨강, 회복은 초록) */
-  hpPop(e: number, text: string, color: string) {
+  /** 그 원이 지금 불꽃(콤보 불꽃 단계)인가 */
+  isFlaming(e: number) { return (this.names.get(e)?.combo ?? 0) >= this.flameAt; }
+  /** 그 원 위로 피해 숫자를 띄운다(내가 입은 피해는 보라 'taken', 다른 사람이 입은 피해는 주황 'other') */
+  hpPop(e: number, text: string, kind: DmgKind) {
     if (this.hpPops.length >= 24) this.hpPops.shift();
-    this.hpPops.push({ e, text, at: performance.now(), color });
+    this.hpPops.push({ e, text, at: performance.now(), kind });
+  }
+  /** 회복: 숫자 대신 원 안 여기저기(서로 겹치지 않는 자리)에서 작은 초록 + 가 시차를 두고 떠올랐다 사라진다 */
+  healPop(e: number) {
+    const now = performance.now(), n = 4, a0 = Math.random() * Math.PI * 2;
+    for (let i = 0; i < n; i++) {
+      if (this.hpPops.length >= 24) this.hpPops.shift();
+      const ang = a0 + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.9, d = 0.28 + Math.random() * 0.4; // 중심에서 반지름의 28~68%
+      this.hpPops.push({ e, text: '', at: now + i * 130 + Math.random() * 90, heal: { ox: Math.cos(ang) * d, oy: Math.sin(ang) * d, k: 0.7 + Math.random() * 0.5 } });
+    }
   }
   /**
    * 원 아래 이름표(글자만 세 줄, 상자 없음): ① 닉네임(꾸미기 색·모양 그대로) ② `⚔ 유행도` ③ 칭호(작은 금색).
@@ -418,13 +435,24 @@ export class Arena {
       const pos = this.entityPos(p.e, now);
       if (!pos || this.camouflaged(p.e, now)) continue;
       const t = (now - p.at) / 1100;
+      if (t < 0) continue; // 시차를 둔 + 는 차례가 오기 전에는 그리지 않는다
       ctx.save();
       ctx.globalAlpha = 1 - t * t;
-      ctx.font = `800 ${Math.max(16 / z, Math.min(pos.r * 0.5, 34 / z))}px system-ui, sans-serif`;
-      ctx.textAlign = 'center'; ctx.lineWidth = 4 / z; ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.fillStyle = p.color;
-      const y = pos.y - pos.r - 26 / z - t * 46 / z;
-      ctx.strokeText(p.text, pos.x, y); ctx.fillText(p.text, pos.x, y);
+      if (p.heal) {
+        // 힐 표시: 둥근 십자(+). 원 안의 정해진 자리에서 살짝 떠오른다(모션 줄이기면 제자리)
+        const a = Math.max(9 / z, Math.min(pos.r * 0.17, 20 / z)) * p.heal.k, w = a * 0.62; // 팔 길이, 팔 굵기
+        const cx = pos.x + p.heal.ox * pos.r, cy = pos.y + p.heal.oy * pos.r - (this.reducedMotion ? 0 : t * 22 / z);
+        ctx.beginPath();
+        roundRectPath(ctx, cx - a, cy - w / 2, a * 2, w, w / 2);
+        roundRectPath(ctx, cx - w / 2, cy - a, w, a * 2, w / 2);
+        ctx.lineWidth = 2.5 / z; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.stroke();
+        ctx.fillStyle = '#4ade80'; ctx.fill();
+        ctx.restore();
+        continue;
+      }
       ctx.restore();
+      const size = Math.max(18 / z, Math.min(pos.r * 0.55, 40 / z)) * (p.kind === 'taken' ? 1.15 : 1);
+      drawDamage(ctx, p.text, pos.x, pos.y - pos.r - 14 / z, t, p.kind ?? 'other', size, this.reducedMotion);
     }
   }
   floatText(text: string, color = '#ffd166') { this.floatTexts.push({ text, at: performance.now(), color }); }

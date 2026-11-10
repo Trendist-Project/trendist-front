@@ -37,7 +37,7 @@ export function ProfileHero({ orb, name, badge, title, level, exp, nextExp, scor
 
 export interface StatValues {
   holdCount: number; addCount: number; searchCount: number; activeDays: number;
-  stealCount: number; botWinCount: number; killCount: number; defeatCount: number;
+  stealCount: number; botWinCount: number; killCount: number; deathCount: number;
   /** 인기도 칸의 내용: 내 정보는 숫자, 다른 플레이어는 올리기·내리기 버튼이 붙은 조각 */
   popularity: ReactNode; createdAt: string | null | undefined;
 }
@@ -60,7 +60,7 @@ export function StatGroups({ s }: { s: StatValues }) {
           <div><dt><span aria-hidden="true">⚔️</span>{t('profile.steals')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(s.stealCount) })}</dd></div>
           <div><dt><span aria-hidden="true">🤖</span>{t('profile.botHunts')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(s.botWinCount) })}</dd></div>
           <div><dt><span aria-hidden="true">💥</span>{t('profile.kills')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(s.killCount) })}</dd></div>
-          <div><dt><span aria-hidden="true">🏳️</span>{t('profile.defeats')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(s.defeatCount) })}</dd></div>
+          <div><dt><span aria-hidden="true">🏳️</span>{t('profile.defeats')}</dt><dd>{t('profile.countTimes', { n: fmtNumber(s.deathCount) })}</dd></div>
         </dl>
       </section>
       <section className="me-group" aria-label={t('profile.groupRecord')}>

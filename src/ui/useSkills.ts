@@ -14,6 +14,7 @@ const FALLBACK: SkillInfo[] = [
   { code: 'stealth', icon: '👻', category: 'STEALTH', defaultKey: 'Digit4', cooldownSeconds: 30, requiredLevel: 25 },
   { code: 'darkness', icon: '🕶️', category: 'ATTACK', defaultKey: 'Digit5', cooldownSeconds: 30, requiredLevel: 30 },
   { code: 'cleanse', icon: '✨', category: 'DEFENSE', defaultKey: 'Digit6', cooldownSeconds: 30, requiredLevel: 35 },
+  { code: 'heal', icon: '➕', category: 'DEFENSE', defaultKey: 'Digit8', cooldownSeconds: 60, requiredLevel: 40 },
   { code: 'poison', icon: '☠️', category: 'ATTACK', defaultKey: 'Digit7', cooldownSeconds: 30, requiredLevel: 40 },
 ];
 let cache: SkillInfo[] | null = null;

@@ -810,7 +810,7 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .mn-chips button { padding: 5px 12px; border-radius: 999px; font-size: 0.82rem; }
 .mn-chips button.on { background: var(--accent); border-color: var(--accent); color: #062014; font-weight: 700; }
 
-/* 정기 등장 스위치: 트랙+손잡이, 켜짐은 초록·꺼짐은 회색, 글자(켜짐/꺼짐)도 같이 보여 색에만 기대지 않는다 */
+/* 정기 등장 스위치: 트랙+손잡이, 켜짐은 초록·꺼짐은 회색, 손잡이 위치로도 구분한다 */
 .mn-switch { display: inline-flex; align-items: center; gap: 10px; padding: 4px 6px 4px 4px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; border-radius: 999px; }
 .mn-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mn-switch-track { position: relative; flex: none; width: 46px; height: 26px; border-radius: 999px; background: #3a4558; border: 1px solid rgba(255,255,255,0.18); transition: background 0.18s, border-color 0.18s; }
@@ -819,8 +819,6 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .mn-switch.on .mn-switch-track i { transform: translateX(20px); background: #fff; }
 .mn-switch-text { display: grid; line-height: 1.15; text-align: left; white-space: nowrap; }
 .mn-switch-text b { font-size: 0.86rem; }
-.mn-switch-text small { font-size: 0.72rem; font-weight: 700; color: #9fb3c8; }
-.mn-switch.on .mn-switch-text small { color: #8fe0b8; }
 .mn-switch.compact .mn-switch-track { width: 38px; height: 22px; }
 .mn-switch.compact .mn-switch-track i { width: 16px; height: 16px; }
 .mn-switch.compact.on .mn-switch-track i { transform: translateX(16px); }
@@ -857,3 +855,10 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .cc-memo { max-width: 260px; white-space: normal; }
 .cc-memo-edit { display: flex; gap: 6px; }
 .cc-memo-edit input { min-width: 160px; }
+
+/* 보스 패턴: 전체 켜기·끄기 줄, 카드 머리의 사용 스위치 */
+.mn-pattern-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,0.03); margin: 8px 0; }
+.mn-pattern-bulk > span { flex: 1; min-width: 160px; }
+.mn-pattern-bulk em { font-style: normal; color: #ffb347; }
+.mn-pattern-bulk button { padding: 5px 12px; font-size: 0.85rem; }
+.mn-pattern > header .mn-switch { margin-left: auto; }

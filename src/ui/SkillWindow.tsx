@@ -3,6 +3,7 @@ import { Modal } from './Modal';
 import { t, tOr } from '../i18n';
 import type { SkillInfo } from '../api/types';
 import { conflictOf, keyLabel, SLOT_COUNT, type SlotKeys } from '../game/skillKeys';
+import { SkillIcon } from './SkillIcon';
 
 const CATEGORY_KEY: Record<string, string> = { MOVE: 'move', ATTACK: 'attack', DEFENSE: 'defense', STEALTH: 'stealth' };
 const DRAG_TYPE = 'application/x-trendist-skill';
@@ -158,7 +159,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
                           onDragStart={(e) => { if (sk) { e.dataTransfer.setData(DRAG_TYPE, sk.code); e.dataTransfer.effectAllowed = 'move'; } }}
                           aria-label={sk ? `${i + 1}. ${nameOf(sk)}` : `${i + 1}. ${t('gamescreen.skillEmptySlot')}`}>
                     <span className="sw-no" aria-hidden="true">{i + 1}</span>
-                    <span className="sw-ico">{sk ? sk.icon : '＋'}</span>
+                    <span className="sw-ico">{sk ? <SkillIcon code={sk.code} icon={sk.icon} /> : '＋'}</span>
                   </button>
                   {keycap(i, keys.slots[i])}
                 </div>
@@ -186,7 +187,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
                           onClick={() => { setPicked(sk.code); setReplacing(false); setMoving(null); setArmed(locked ? null : sk.code); }} aria-pressed={sk.code === picked} draggable={!locked} title={nameOf(sk)}
                           onDragStart={(e) => { if (!locked) { e.dataTransfer.setData(DRAG_TYPE, sk.code); e.dataTransfer.effectAllowed = 'move'; } }}
                           aria-label={`${nameOf(sk)}${locked ? `, ${t('gamescreen.skillLockedAria', { n: sk.requiredLevel })}` : slot >= 0 ? `, ${t('gamescreen.skillEquipped')} ${slot + 1}` : ''}`}>
-                    <span className="sw-ico">{sk.icon}</span>
+                    <span className="sw-ico"><SkillIcon code={sk.code} icon={sk.icon} /></span>
                     {slot >= 0 && <span className="sw-badge">{slot + 1}</span>}
                     {locked && <span className="sw-locked"><span aria-hidden="true">🔒</span><b>Lv.{sk.requiredLevel}</b></span>}
                   </button>
@@ -199,7 +200,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
           <section className={`sw-detail${sel ? '' : ' empty'}`} aria-label={t('gamescreen.skillDetail')}>
             {sel && (<>
               <div className="sw-d-head">
-                <span className={`sw-d-ico cat-${catOf(sel)}`}>{sel.icon}</span>
+                <span className={`sw-d-ico cat-${catOf(sel)}`}><SkillIcon code={sel.code} icon={sel.icon} /></span>
                 <div className="sw-d-title">
                   <strong>{nameOf(sel)}</strong>
                   <div className="sw-d-chips">

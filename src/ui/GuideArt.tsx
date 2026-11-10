@@ -4,6 +4,7 @@ import { effectiveKey, keyLabel } from '../game/skillKeys';
 import { fmtNumber, t, tOr } from '../i18n';
 import { TurtleIcon } from './GrowthIcons';
 import { useSkills } from './useSkills';
+import { SkillIcon } from './SkillIcon';
 
 /** 가이드 그림(4.17): 본문에 `[[이름]]` 한 줄로 넣는다. 글로 설명하기 어려운 것을 게임과 같은 모양으로 보여 준다. */
 
@@ -100,7 +101,7 @@ export function SkillUnlockTable() {
             const kk = effectiveKey(k);
             return (
               <tr key={k.code}>
-                <td><span aria-hidden="true">{k.icon}</span> <strong>{tOr(`skills.${k.code}_name`, k.code)}</strong></td>
+                <td><span aria-hidden="true"><SkillIcon code={k.code} icon={k.icon} /></span> <strong>{tOr(`skills.${k.code}_name`, k.code)}</strong></td>
                 <td>{k.requiredLevel > 1 ? t('guideArt.unlockLv', { n: k.requiredLevel }) : t('guideArt.unlockBasic')}</td>
                 <td>{k.requiredLevel > 1 ? (exp[String(k.requiredLevel)] !== undefined ? `${fmtNumber(exp[String(k.requiredLevel)])} EXP` : '…') : '–'}</td>
                 <td>{kk ? <kbd>{keyLabel(kk)}</kbd> : '–'}</td>

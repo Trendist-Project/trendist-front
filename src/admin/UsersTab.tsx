@@ -192,7 +192,7 @@ function UserDetail({ userId, onChanged, onClose }: { userId: number; onChanged(
   const facts: [string, string | number][] = [
     ['레벨', `${s.level} (이 레벨의 EXP ${s.exp.toLocaleString()})`], ['현재 유행도', s.score.toLocaleString()], ['보유 키워드', s.holdCount],
     ['추가수', s.addCount.toLocaleString()], ['검색수', s.searchCount.toLocaleString()], ['댓글 점수', s.commentScore],
-    ['빼앗기', s.stealCount], ['봇 사냥', s.botWinCount], ['? 구슬', s.orbCount], ['잃기', s.loseCount], ['처치', s.killCount], ['패배', s.defeatCount], ['활동한 날', s.activeDays],
+    ['빼앗기', s.stealCount], ['봇 사냥', s.botWinCount], ['? 구슬', s.orbCount], ['잃기', s.loseCount], ['처치', s.killCount], ['사망', s.deathCount], ['활동한 날', s.activeDays],
     ['칭호', `${s.titleCount}개${s.title ? ` · 장착 ${s.title}` : ''}`], ['댓글', s.commentCount], ['채팅(30일)', s.chatCount],
   ];
   const times: [string, string][] = [

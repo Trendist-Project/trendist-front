@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { t, tOr } from '../i18n';
 import type { SkillId } from '../game/protocol';
 import type { SkillInfo } from '../api/types';
 import { keyLabel, type SlotKeys } from '../game/skillKeys';
+import { SkillIcon } from './SkillIcon';
 
 /** readyAt: 스킬마다 다시 쓸 수 있는 시각(performance.now 기준 ms). 아직 안 썼으면 없다 */
 export type SkillCooldowns = Partial<Record<SkillId, number>>;
@@ -31,6 +32,7 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
     const id = window.setInterval(() => setTick((n) => n + 1), 200);
     return () => window.clearInterval(id);
   }, [busy]);
+  const seenTotal = useRef<Record<string, number>>({}); // 스킬마다 이번 쿨타임에서 처음 본 가장 큰 남은 시간(= 전체 쿨타임). 가림막 높이의 기준이다
   const dashInfo = skills.find((k) => k.code === 'dash');
   const entries: { skill: SkillInfo | null; key: string; slot: number | null }[] = [
     ...slots.map((code, i) => ({ skill: (code && skills.find((k) => k.code === code)) || null, key: keys.slots[i], slot: i })),
@@ -57,6 +59,10 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
         const readyAt = isDash ? dash?.readyAt ?? 0 : cooldowns[s.code] ?? 0;
         const left = Math.max(0, readyAt - now);
         const shown = active && dash ? dash.until - now : left;
+        if (left <= 0) delete seenTotal.current[s.code]; else seenTotal.current[s.code] = Math.max(seenTotal.current[s.code] ?? 0, left);
+        const listed = s.cooldownSeconds * 1000;
+        const total = Math.max(seenTotal.current[s.code] ?? 0, left, left <= listed ? listed : 0);
+        const veil = !locked && !hooked && !active && left > 0 ? Math.min(100, Math.max(0, (left / total) * 100)) : 0; // 남은 시간 비율(%)
         const cat = CATEGORY_KEY[s.category] ?? 'move';
         const name = tOr(`skills.${s.code}_name`, s.code), desc = tOr(`skills.${s.code}_desc`, '');
         return (
@@ -65,7 +71,8 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
                     aria-disabled={hooked || undefined}
                     aria-label={`${name}${key ? ` (${key})` : ''}. ${locked ? t('gamescreen.skillLockedAria', { n: s.requiredLevel }) + ' ' : ''}${desc}`}
                     onClick={(e) => { e.currentTarget.blur(); if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}>
-              <span className="skill-icon">{s.icon}</span>
+              <span className="skill-icon"><SkillIcon code={s.code} icon={s.icon} /></span>
+              {veil > 0 && <span className="skill-veil-box" aria-hidden="true"><i className="skill-veil" style={{ height: `${veil}%` }} /></span>}
               {key && <kbd>{key}</kbd>}
               {hooked && !locked ? <span className="skill-hooked" aria-hidden="true">🪝</span>
                 : locked ? <span className="skill-lock" aria-hidden="true">🔒<b>{s.requiredLevel}</b></span>
@@ -73,7 +80,7 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
             </button>
             <div className="skill-tip" role="tooltip">
               <div className="st-head">
-                <span className="st-icon" aria-hidden="true">{s.icon}</span>
+                <span className="st-icon" aria-hidden="true"><SkillIcon code={s.code} icon={s.icon} /></span>
                 <strong>{name}</strong>
                 {key && <kbd>{key}</kbd>}
               </div>

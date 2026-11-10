@@ -18,5 +18,7 @@ export default {
   darkness_name: '암흑',
   darkness_desc: '겨눈 방향으로 검은 투사체를 던져요. 맞은 원은 3초 동안 자기 주변과 닉네임만 보이고 미니맵도 가려져요. 세이프존에서는 쓸 수 없어요.',
   cleanse_name: '정화',
+  heal_name: '회복',
+  heal_desc: '체력을 바로 채워요(최대 체력의 50%). 어디서든 쓸 수 있고, 체력이 가득이면 쿨타임을 쓰지 않아요.',
   cleanse_desc: '걸려 있는 갈고리·독·암흑을 한꺼번에 풀어요. 끌려오는 중에도 쓸 수 있어요.',
 } as Record<string, string>;

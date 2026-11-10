@@ -79,10 +79,7 @@ export function BottomBar({ me, hp, skills, slots, keys, onOpenSkills, readLook,
           <span className="et-bar" aria-hidden="true"><i style={{ width: `${pct}%` }} /></span>
           <span className="et-meta">
             {me.nextLevelExp > 0 ? (
-              <>
-                <span>{t('gamescreen.expProgress', { cur: fmtNumber(me.exp), max: fmtNumber(me.nextLevelExp) })}</span>
-                <span className="et-remain">{t('gamescreen.expRemain', { n: fmtNumber(Math.max(0, me.nextLevelExp - me.exp)) })}</span>
-              </>
+              <span>{t('gamescreen.expProgress', { cur: fmtNumber(me.exp), max: fmtNumber(me.nextLevelExp) })}</span>
             ) : <span>{t('gamescreen.expMax')}</span>}
           </span>
           <span className="et-hint">{t('gamescreen.expOpen')}</span>

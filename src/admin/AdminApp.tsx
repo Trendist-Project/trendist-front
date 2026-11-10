@@ -20,6 +20,7 @@ import { ConfigChangesTab } from './ConfigChangesTab';
 import { MarkupEditor } from './MarkupEditor';
 import { confirmToast, successToast } from '../ui/toast';
 import { adminConfirm, errMsg, fmt } from './format';
+import { SkillIcon } from '../ui/SkillIcon';
 
 /**
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
@@ -326,7 +327,7 @@ function ShareTab() {
  * 카드마다 −/＋로 조금씩 바꾸거나 직접 입력하고(범위를 벗어나면 그 자리에서 알려 저장을 막는다), 바꾼 카드는 노랗게 표시한다.
  * [모두 저장]으로 바뀐 것을 한꺼번에 저장하고, 사용 여부는 스위치로 바로 바뀐다(끌 때는 한 번 묻는다).
  */
-const SKILL_NAMES: Record<string, string> = { shield: '방패', hook: '갈고리', shockwave: '충격파', stealth: '은신', dash: '대시' };
+const SKILL_NAMES: Record<string, string> = { shield: '방패', hook: '갈고리', shockwave: '충격파', stealth: '은신', dash: '대시', darkness: '암흑', cleanse: '정화', poison: '독', heal: '회복' };
 const SKILL_CATEGORY: Record<string, string> = { MOVE: '이동', ATTACK: '공격', DEFENSE: '방어', STEALTH: '은신' };
 const COOLDOWN_MAX = 3600, LEVEL_MAX = 100;
 const keyLabel = (code: string) => code.replace(/^Digit/, '').replace(/^Key/, '');
@@ -438,7 +439,7 @@ function SkillsTab() {
             return (
               <li key={s.code} className={`sk-card${changed ? ' dirty' : ''}${s.enabled ? '' : ' off'}`}>
                 <div className="sk-head">
-                  <span className="sk-icon" aria-hidden="true">{s.icon}</span>
+                  <span className="sk-icon" aria-hidden="true"><SkillIcon code={s.code} icon={s.icon} /></span>
                   <div className="sk-title">
                     <strong>{name}</strong>
                     <span className="sk-sub"><code>{s.code}</code><span className={`sk-cat cat-${s.category.toLowerCase()}`}>{SKILL_CATEGORY[s.category] ?? s.category}</span><kbd>{keyLabel(s.defaultKey)}</kbd></span>

@@ -18,7 +18,7 @@ export default {
   steals: 'Steals',
   botHunts: 'Bot wins',
   kills: 'Knockouts',
-  defeats: 'Defeats',
+  defeats: 'Deaths',
   activeDays: 'Days active',
   countDays: '{n}',
   titles: 'Titles',

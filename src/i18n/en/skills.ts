@@ -17,5 +17,7 @@ export default {
   darkness_name: 'Darkness',
   darkness_desc: 'Throw a dark bolt in your aim direction. The target sees only the area around them and their nickname for 3 seconds, and loses the minimap. Cannot be used in a safe zone.',
   cleanse_name: 'Cleanse',
+  heal_name: 'Heal',
+  heal_desc: 'Restores HP right away (50% of max). Usable anywhere; no cooldown is spent if your HP is already full.',
   cleanse_desc: 'Removes hook, poison and darkness at once. Works even while being pulled.',
 } as Record<string, string>;

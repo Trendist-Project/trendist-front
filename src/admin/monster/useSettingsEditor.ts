@@ -39,6 +39,22 @@ export function useSettingsEditor(type: AdminMonsterType, onError: (m: string) =
     setBusy(false);
     if (ok > 0) successToast(`${ok}개를 저장했어요(1초 안에 반영)`);
   };
-  return { items, draft, busy, valueOf, check, isChanged, dirty, blocked, set, reset, saveAll };
+  /** 초안을 거치지 않고 바로 저장한다(켜짐/꺼짐 스위치처럼 누르면 곧바로 반영되는 값). 여러 개면 차례로 저장하고 성공한 개수를 돌려준다 */
+  const saveNow = async (changes: { name: string; value: number }[]): Promise<number> => {
+    if (busy) return 0;
+    setBusy(true);
+    let ok = 0;
+    for (const c of changes) {
+      try {
+        const u = await adminApi.setMonsterSetting(type.code, c.name, c.value);
+        setItems((l) => l.map((x) => (x.name === c.name ? u : x)));
+        setDraft((d) => { const n = { ...d }; delete n[c.name]; return n; });
+        ok++;
+      } catch (e) { onError(`${c.name}: ${errMsg(e)}`); }
+    }
+    setBusy(false);
+    return ok;
+  };
+  return { items, draft, busy, valueOf, check, isChanged, dirty, blocked, set, reset, saveAll, saveNow };
 }
 export type SettingsEditor = ReturnType<typeof useSettingsEditor>;

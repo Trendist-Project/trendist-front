@@ -28,18 +28,29 @@ export function MonsterHud({ read, mine }: { read: () => Hud | null; mine: { dmg
   const name = nameOf(hud.name, hud.en);
   return (
     <div className={`monster-hud${hud.rage ? ' rage' : ''}${hud.flame ? ' flame' : ''}`} role="status" aria-label={t('monster.hpAria', { name, pct: Math.round(pct) })}>
-      <div className="mh-top">
-        <strong className="mh-name">🐢 {name}</strong>
-        {hud.rage && <span className="mh-badge rage">{t('monster.rage')}</span>}
-        {hud.flame && <span className="mh-badge flame">{t('monster.flame')}</span>}
-        <span className="mh-time" title={t('monster.hudTime')}>⏱ {fmtTime(hud.leftMs)}</span>
+      <div className="mh-portrait" aria-hidden="true">
+        {hud.img ? <img src={`/monsters/${hud.img}.svg`} alt="" draggable={false} /> : <span>🐢</span>}
       </div>
-      <div className="mh-bar"><i style={{ width: `${pct}%` }} /></div>
-      <div className="mh-bottom">
-        <span>{fmtNumber(Math.round(hud.hp))} / {fmtNumber(hud.max)}</span>
-        {mine.hits > 0 && <span className="mh-mine">{t('monster.hudMine', { dmg: fmtNumber(mine.dmg), hits: mine.hits })}</span>}
+      <div className="mh-main">
+        <div className="mh-top">
+          <strong className="mh-name">{name}</strong>
+          {hud.rage && <span className="mh-badge rage">{t('monster.rage')}</span>}
+          {hud.flame && <span className="mh-badge flame">{t('monster.flame')}</span>}
+          <span className="mh-time" title={t('monster.hudTime')}>⏱ {fmtTime(hud.leftMs)}</span>
+        </div>
+        <div className="mh-bar"><i style={{ width: `${pct}%` }} /></div>
+        <div className="mh-bottom">
+          <span className="mh-hp"><b>{t('monster.hudHp')}</b> {fmtNumber(Math.round(hud.hp))} / {fmtNumber(hud.max)} <em>({Math.round(pct)}%)</em></span>
+          {mine.hits > 0 && (
+            <span className="mh-mine">
+              <b>{t('monster.hudMineLabel')}</b> {fmtNumber(mine.dmg)}
+              <em className="mh-share">{(Math.round((mine.dmg / Math.max(1, hud.max)) * 1000) / 10).toString()}%</em>
+              <i aria-hidden="true">·</i>{t('monster.hudMineHits', { n: mine.hits })}
+            </span>
+          )}
+        </div>
+        {hud.flame && <div className="mh-warn">{t('monster.flameWarn')}</div>}
       </div>
-      {hud.flame && <div className="mh-warn">{t('monster.flameWarn')}</div>}
     </div>
   );
 }

@@ -192,9 +192,15 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 /* 죽음(4.31): 마지막 장면이 흑백으로 어두워지고 그 자리에 머문다 */
 .arena.dead { filter: grayscale(1) brightness(0.45) contrast(1.1); }
 .death-overlay { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; pointer-events: none; }
-.death-box { pointer-events: auto; width: min(340px, calc(100% - 32px)); padding: 22px; display: grid; gap: 10px; text-align: center; background: rgba(11, 15, 23, 0.82); border: 1px solid var(--line); border-radius: 14px; animation: death-in 0.5s ease-out; }
-.death-box h2 { margin: 0; }
-.death-box p { margin: 0; color: var(--muted); }
+.death-box { pointer-events: auto; width: min(320px, calc(100% - 32px)); display: grid; text-align: center; overflow: hidden; border-radius: 10px; border: 3px solid #4a2e12; background: #f6e7c1; box-shadow: 0 0 0 2px #c79a55, 0 10px 28px rgba(0,0,0,0.65), inset 0 0 0 2px #fff4d6; animation: death-in 0.5s ease-out; } /* 메이플 알림창 느낌: 양피지 바탕 + 갈색 테두리 + 위쪽 제목 줄 + 주황 확인 버튼 */
+.death-bar { margin: 0; padding: 7px 12px; font-size: 0.95rem; letter-spacing: 0.08em; color: #fff4d6; text-shadow: 0 1px 0 #3b2208; background: linear-gradient(180deg, #8a5a26, #5e3a15); border-bottom: 2px solid #3b2208; }
+.death-body { display: grid; gap: 8px; justify-items: center; padding: 16px 18px 18px; }
+.death-tomb { font-size: 2.6rem; line-height: 1; filter: drop-shadow(0 3px 2px rgba(60,35,10,0.45)); }
+.death-box p { margin: 0; color: #4a2e12; font-weight: 700; word-break: keep-all; }
+.death-btn { margin-top: 4px; min-width: 120px; padding: 7px 18px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 #7a3a00; border-radius: 8px; border: 2px solid #9a4d00; background: linear-gradient(180deg, #ffbe4d, #ff8a0d); box-shadow: 0 2px 0 #9a4d00, inset 0 1px 0 rgba(255,255,255,0.55); }
+.death-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.death-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 #9a4d00, inset 0 1px 0 rgba(255,255,255,0.4); }
+.death-btn:disabled { filter: grayscale(0.6) brightness(0.9); cursor: default; }
 @keyframes death-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .arena { transition: none; } .death-box { animation: none; } }
 .toast { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: #2b1b1b; border: 1px solid #ff7a7a; padding: 10px 16px; border-radius: 10px; }
@@ -568,26 +574,27 @@ button.logout-btn:hover { background: rgba(242,184,75,0.12); }
 /* ---------------------------------------------------------------- 상단 정리: 접속 인원 표기와 모바일 ☰ 메뉴 */
 .hud-short { display: none; }
 .menu-toggle, .mobile-menu { display: none; }
+/* 오른쪽 위 도구는 PC·모바일 모두 ☰ 하나로 모으고 나머지는 메뉴 안에 이름과 함께 둔다(위쪽 공간을 비운다) */
+/* 오른쪽 위에는 ☰(메뉴)만. 나머지는 메뉴 안에 이름과 함께 */
+.arena-tools .tool-row > :not(.menu-toggle):not(.side-toggle):not(.fs-toggle) { display: none; }
+.arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
+.arena-tools .tool-row { gap: 6px; }
+/* 메뉴는 아래 요소(리더보드 등)를 밀어내지 않고 도구 줄 아래에 겹쳐 뜬다. 화면보다 길면 스크롤 */
+.mobile-menu { position: absolute; top: 50px; right: 0; max-height: calc(100dvh - 62px); overflow-y: auto; z-index: 9; display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
+  border-radius: 14px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+.mobile-menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; border: 0; border-radius: 10px;
+  background: transparent; padding: 0 12px; font-size: 0.95rem; text-align: left; }
+.mobile-menu button:active { background: rgba(255,255,255,0.06); }
+.mobile-menu button > span[aria-hidden] { width: 22px; text-align: center; }
+.menu-state { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
+.menu-state.on { color: var(--accent); }
+.mobile-menu-sep { height: 1px; background: var(--line); margin: 4px 6px; }
+.menu-login, .menu-logout { color: #f2b84b; }
 @media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .hud-long { display: none; }
   .hud-short { display: inline; }
   .hud { flex-direction: row; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 10px; }
-  /* 오른쪽 위에는 ☰(메뉴)만. 나머지는 메뉴 안에 이름과 함께 */
   .arena-tools { max-width: none; }
-  .arena-tools .tool-row > :not(.menu-toggle):not(.side-toggle):not(.fs-toggle) { display: none; }
-  .arena-tools .tool-row .menu-toggle { display: inline-grid; width: 40px; height: 40px; font-size: 1.15rem; }
-  .arena-tools .tool-row { gap: 6px; }
-  /* 메뉴는 아래 요소(리더보드 등)를 밀어내지 않고 도구 줄 아래에 겹쳐 뜬다. 화면보다 길면 스크롤 */
-  .mobile-menu { position: absolute; top: 50px; right: 0; max-height: calc(100dvh - 62px); overflow-y: auto; z-index: 9; display: grid; width: min(240px, calc(100vw - 24px)); background: rgba(20, 27, 38, 0.97); border: 1px solid var(--line);
-    border-radius: 14px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
-  .mobile-menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; border: 0; border-radius: 10px;
-    background: transparent; padding: 0 12px; font-size: 0.95rem; text-align: left; }
-  .mobile-menu button:active { background: rgba(255,255,255,0.06); }
-  .mobile-menu button > span[aria-hidden] { width: 22px; text-align: center; }
-  .menu-state { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
-  .menu-state.on { color: var(--accent); }
-  .mobile-menu-sep { height: 1px; background: var(--line); margin: 4px 6px; }
-  .menu-login, .menu-logout { color: #f2b84b; }
 }
 
 /* 계정: 탈퇴 확인·복구 안내(4.1) */
@@ -995,8 +1002,12 @@ button.link-back:hover { color: var(--text); }
 .skill-btn { position: relative; width: 40px; height: 40px; padding: 0; border-radius: 10px; border: 1px solid var(--line); background: rgba(11,15,23,0.78); color: var(--text); font-size: 1.15rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .skill-btn:hover { border-color: #ff7a90; }
 .skill-btn kbd { position: absolute; left: 3px; bottom: 1px; font-size: 0.6rem; font-family: inherit; font-weight: 700; color: var(--muted); }
-.skill-btn.cooling { opacity: 0.55; filter: grayscale(0.6); }
-.skill-btn .skill-cd { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(0,0,0,0.5); font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.skill-btn.cooling { filter: saturate(0.7); } /* 쿨타임: 위에서부터 탁한 가림막(.skill-veil)이 남은 시간만큼 덮고 점점 내려가며 걷힌다 */
+.skill-veil-box { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.skill-veil { position: absolute; left: 0; right: 0; bottom: 0; transition: height 0.22s linear; /* 200ms마다 갱신되는 값을 이어서 부드럽게 */
+  background: linear-gradient(180deg, rgba(9,13,22,0.86), rgba(9,13,22,0.72)); border-top: 2px solid rgba(190,210,240,0.55); box-shadow: 0 -3px 8px rgba(160,190,230,0.22); } /* 맨 위 가는 밝은 선이 내려가는 모습을 보여 준다 */
+@media (prefers-reduced-motion: reduce) { .skill-veil { transition: none; } }
+.skill-btn .skill-cd { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: transparent; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.9); font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .skill-btn { width: 44px; height: 44px; } .skill-btn kbd { display: none; } }
 
 /* 대시 버튼(4.27): 스킬 버튼 줄 맨 앞. 준비되면 노랗게 비치고, 대시 중에는 빛난다 */
@@ -1043,8 +1054,13 @@ button.link-back:hover { color: var(--text); }
   background: linear-gradient(180deg, rgba(27,36,52,0.95), rgba(10,14,22,0.97)); border: 1px solid rgba(255,255,255,0.16);
   box-shadow: 0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.09); }
 .bb-me { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; background: transparent; cursor: pointer; display: block; }
+/* 내 원 영역: 원 모양에 맞춰 둥글게. 전역 버튼 호버의 네모난 흰 막은 끄고, 둥근 빛 고리로 호버·포커스를 보여 준다 */
+.bb-me { border-radius: 50%; transition: box-shadow 0.15s ease; }
+.bb-me:hover:not(:disabled) { background-image: none; box-shadow: 0 0 0 3px rgba(255,255,255,0.2), 0 0 14px rgba(63,206,130,0.5); }
+.bb-me:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 5px; }
+@media (prefers-reduced-motion: reduce) { .bb-me { transition: none; } }
 .bb-ring { position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(from 0deg, rgba(122,170,220,0.85) calc(var(--exp, 0) * 1%), rgba(255,255,255,0.1) 0); /* 경험치: 차분한 청회색 고리(체력의 빨강·초록 원과 겹치지 않는 색, 가늘고 낮은 채도) */
+  background: conic-gradient(from 0deg, rgba(63,206,130,0.95) calc(var(--exp, 0) * 1%), rgba(255,255,255,0.1) 0); /* 경험치: 초록 고리(체력은 빨강이라 헷갈리지 않는다. 레벨 배지는 파랑) */
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
 .bb-me .exp-tip { position: absolute; left: -8px; bottom: calc(100% + 16px); width: 210px; padding: 10px 12px 9px; border-radius: 12px; z-index: 30; display: grid; gap: 6px; text-align: left; font-weight: 400;
   background: linear-gradient(180deg, rgba(27,36,52,0.98), rgba(11,15,23,0.99)); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 10px 28px rgba(0,0,0,0.6);
@@ -1053,14 +1069,14 @@ button.link-back:hover { color: var(--text); }
 .bb-me:hover .exp-tip, .bb-me:focus-visible .exp-tip { opacity: 1; visibility: visible; transform: none; }
 .exp-tip .et-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .exp-tip .et-head strong { font-size: 1rem; color: var(--text); }
-.exp-tip .et-pct { font-size: 0.82rem; font-weight: 800; color: #8fb8e6; font-variant-numeric: tabular-nums; }
-.exp-tip .et-bar { display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; } /* 경험치 고리와 같은 청회색 */
-.exp-tip .et-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #5d93cc, #8fb8e6); }
-.exp-tip .et-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.76rem; color: #d7e0ee; font-variant-numeric: tabular-nums; }
+.exp-tip .et-pct { font-size: 0.82rem; font-weight: 800; color: #5fe0a0; font-variant-numeric: tabular-nums; }
+.exp-tip .et-bar { display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; } /* 경험치 고리와 같은 초록 */
+.exp-tip .et-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #22b573, #5fe0a0); }
+.exp-tip .et-meta { display: flex; align-items: center; justify-content: flex-start; gap: 8px; white-space: nowrap; font-size: 0.76rem; color: #d7e0ee; font-variant-numeric: tabular-nums; }
 .exp-tip .et-remain { color: var(--muted); }
 .exp-tip .et-hint { margin-top: 2px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.7rem; color: var(--muted); }
 @media (hover: none) { .bb-me .exp-tip { display: none; } }
-.bb-lv { position: absolute; right: -4px; bottom: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: #0b0f17; border: 2px solid #3fb68b; color: #d8fff0; font-size: 0.72rem; font-weight: 800; display: grid; place-items: center; line-height: 1; }
+.bb-lv { position: absolute; right: -4px; bottom: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: #0b0f17; border: 2px solid #4da3ff; color: #d6e9ff; box-shadow: 0 0 0 1px rgba(77,163,255,0.25); font-size: 0.72rem; font-weight: 800; display: grid; place-items: center; line-height: 1; }
 .bb-info { display: grid; gap: 5px; min-width: 150px; max-width: 190px; align-content: center; }
 .bb-name { padding: 0; border: 0; background: transparent; color: var(--text); font-weight: 800; font-size: 0.95rem; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bb-name:hover { color: #9be8c8; }
@@ -1616,6 +1632,14 @@ button.link-back:hover { color: var(--text); }
 
 /* ---------- 몬스터(보스, 4.35) ---------- */
 .monster-hud { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.82); border: 1px solid rgba(255, 190, 90, 0.5); border-radius: 12px; padding: 8px 12px 9px; pointer-events: none; z-index: 5; box-shadow: 0 4px 18px rgba(0,0,0,0.4); }
+/* 보스 정보: 왼쪽에 보스 그림을 크게, 오른쪽에 이름·체력·피해 */
+.monster-hud { display: flex; align-items: stretch; gap: 12px; }
+.monster-hud .mh-main { flex: 1; min-width: 0; }
+.monster-hud .mh-portrait { flex: none; align-self: center; width: 72px; height: 72px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; font-size: 2.2rem;
+  background: radial-gradient(circle at 50% 40%, rgba(255,190,90,0.28), rgba(20,26,38,0.95) 72%); border: 2px solid rgba(255,190,90,0.6); box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.45); }
+.monster-hud .mh-portrait img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.55)); user-select: none; }
+.monster-hud.flame .mh-portrait { border-color: #ff9f1c; box-shadow: inset 0 0 12px rgba(255,120,20,0.45), 0 0 14px rgba(255,140,30,0.5); }
+.monster-hud.rage .mh-portrait { border-color: #ff4d3a; background: radial-gradient(circle at 50% 40%, rgba(255,70,50,0.38), rgba(30,14,16,0.95) 72%); box-shadow: inset 0 0 12px rgba(255,60,40,0.5), 0 0 16px rgba(255,70,50,0.55); }
 .monster-hud.rage { border-color: rgba(255, 80, 60, 0.85); box-shadow: 0 0 18px rgba(255, 70, 50, 0.45); }
 .monster-hud .mh-top { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
 .monster-hud .mh-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1627,7 +1651,14 @@ button.link-back:hover { color: var(--text); }
 .monster-hud .mh-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff8a3d, #ffd166); border-radius: 999px; transition: width 0.25s ease-out; }
 .monster-hud.rage .mh-bar i { background: linear-gradient(90deg, #ff3b30, #ff8a3d); }
 .monster-hud .mh-bottom { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: 0.78rem; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); }
-.monster-hud .mh-mine { color: #ffd166; font-weight: 700; }
+.monster-hud .mh-bottom { flex-wrap: wrap; row-gap: 2px; }
+.monster-hud .mh-bottom b { font-weight: 600; color: rgba(255,255,255,0.6); margin-right: 2px; } /* 라벨은 흐리게, 값이 눈에 띄게 */
+.monster-hud .mh-bottom em { font-style: normal; color: rgba(255,255,255,0.6); }
+.monster-hud .mh-mine { color: #ffd166; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.monster-hud .mh-mine b { color: rgba(255,209,102,0.75); }
+.monster-hud .mh-share { margin-left: 1px; padding: 0 6px; border-radius: 999px; background: rgba(255,209,102,0.18); color: #ffd166; font-weight: 800; font-size: 0.72rem; line-height: 1.6; } /* 전체 체력 대비 비율 알약 */
+.monster-hud .mh-mine i { font-style: normal; opacity: 0.5; }
+.monster-hud .mh-mine { font-weight: 700; }
 .monster-hud .mh-warn { margin-top: 5px; text-align: center; font-size: 0.78rem; font-weight: 700; color: #ffb347; }
 .monster-note { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.92); border: 1px solid rgba(255, 190, 90, 0.55); border-radius: 14px; padding: 14px 16px 14px; z-index: 6; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
 .monster-note.reward { border-color: rgba(120, 220, 160, 0.6); top: 96px; }
@@ -1640,7 +1671,21 @@ button.link-back:hover { color: var(--text); }
 .monster-note .mn-pos { font-weight: 800; color: #ffd166; }
 .monster-note .mn-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .monster-note .mn-dmg { font-variant-numeric: tabular-nums; font-weight: 700; }
-@media (max-width: 760px) { .monster-hud { top: 48px; } .monster-note { top: 120px; } }
+/* 보스 체력 막대는 PC에서 위쪽 가운데(도구는 ☰ 하나라 비어 있다). 보스가 있으면 그 아래 알림·카드는 한 칸씩 내려 겹치지 않게 한다 */
+.monster-note { top: 96px; }
+.arena-wrap:has(.monster-hud) :is(.toast, .orb-reveal, .title-alert, .notify-stack) { top: 100px; }
+.arena-wrap:has(.monster-hud) .target-card { top: 100px; }
+@media (max-width: 760px) {
+  .monster-hud { top: 64px; width: calc(100% - 16px); padding: 5px 10px 6px; gap: 9px; }
+  .monster-hud .mh-portrait { width: 52px; height: 52px; border-radius: 11px; font-size: 1.6rem; }
+  .monster-hud .mh-top { font-size: 0.82rem; }
+  .monster-hud .mh-bar { height: 9px; margin-top: 4px; }
+  .monster-hud .mh-bottom { font-size: 0.72rem; margin-top: 3px; }
+  .monster-hud .mh-warn { display: none; } /* 불꽃 배지가 이미 보여 주니 모바일은 경고 줄을 뺀다 */
+  .monster-note { top: 146px; }
+  .arena-wrap:has(.monster-hud) :is(.toast, .orb-reveal, .title-alert, .notify-stack) { top: 146px; }
+  .arena-wrap:has(.monster-hud) .target-card { top: 120px; }
+}
 
 /* 체력(4.36): 명령 줄 안, 스킬 버튼 줄 바로 아래 한 줄(롤·메이플의 게이지처럼 스킬 가까이). 폭은 명령 줄 전체, 숫자는 막대 안 가운데(색과 숫자를 함께 쓴다).
    맞으면 하얀 조각이 잠깐 남았다 줄고 붉게 번쩍, 25% 이하는 붉게 깜빡, 회복하면 초록 빛이 번쩍한다 */
@@ -1668,3 +1713,20 @@ button.link-back:hover { color: var(--text); }
   .bottom-bar .hp-hud { left: 10px; right: 10px; bottom: 8px; }
   .hp-hud .hp-track { height: 17px; }
 }
+
+/* 스킬창 장착 칸(세로 모드 폰): 대시+칸 4개가 고정 폭이라 좁은 폰에서 카드 오른쪽을 벗어났다. 칸·키캡·버튼이 카드 폭에 맞춰 줄어들게 한다 */
+@media (max-width: 720px) {
+  .sw-left, .sw-right { padding: 10px; }
+  .sw-bar-slots { gap: 4px; align-items: flex-start; }
+  .sw-vsep { margin: 22px 1px 0; }
+  .sw-cell { flex: 1 1 0; min-width: 0; gap: 4px; }
+  .sw-cell .sw-slot { width: 100%; height: auto; max-width: 60px; aspect-ratio: 1; }
+  .sw-cell .sw-keycap { min-width: 0; width: 100%; max-width: 60px; padding: 0 2px; height: 28px; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sw-bar-tools { gap: 6px; }
+  .sw-bar-tools button { min-width: 0; padding: 8px 6px; font-size: 0.8rem; white-space: nowrap; }
+}
+
+/* 회복 스킬 아이콘: 굵은 초록 + (글자 크기에 맞춰 1em, 가로·세로 막대 두께 38%) */
+.heal-plus { display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em; border-radius: 3px;
+  background: linear-gradient(#34d058, #16a34a) center / 100% 38% no-repeat, linear-gradient(#34d058, #16a34a) center / 38% 100% no-repeat;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 3px rgba(52, 208, 88, 0.45)); }

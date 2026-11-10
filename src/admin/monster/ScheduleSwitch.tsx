@@ -1,12 +1,12 @@
 import { mmss, num, type SettingMap } from './meta';
 
-/** 켜짐/꺼짐 스위치(role="switch"): 트랙과 손잡이로 상태가 한눈에 보이고, 글자("켜짐/꺼짐")도 함께 보인다. compact는 목록 카드용 작은 모양 */
+/** 켜짐/꺼짐 스위치(role="switch"): 트랙 색과 손잡이 위치로 상태를 보여 준다. compact는 목록 카드용 작은 모양 */
 export function ScheduleSwitch({ enabled, onChange, compact = false, label = '정기 등장' }: { enabled: boolean; onChange: (on: boolean) => void; compact?: boolean; label?: string }) {
   return (
     <button type="button" role="switch" aria-checked={enabled} className={`mn-switch${enabled ? ' on' : ''}${compact ? ' compact' : ''}`} onClick={() => onChange(!enabled)}
             title={enabled ? '정해진 주기에 자동으로 나와요. 누르면 꺼요' : '자동으로 나오지 않아요. 누르면 켜요'}>
       <span className="mn-switch-track" aria-hidden="true"><i /></span>
-      <span className="mn-switch-text"><b>{label}</b><small>{enabled ? '켜짐' : '꺼짐'}</small></span>
+      <span className="mn-switch-text"><b>{label}</b></span>
     </button>
   );
 }

@@ -22,6 +22,25 @@ const dicts: Record<Lang, Dict> = {
   en: load(import.meta.glob('./en/*.ts', { eager: true }) as Record<string, { default: Dict }>),
 };
 
+/**
+ * 한국어 조사: 문구에 "{name}이(가)"처럼 써 두면 값이 채워진 뒤 앞 글자의 받침에 맞춰 이/가, 을/를, 은/는, 과/와, 으로/로 중 하나로 바꾼다
+ * (받침이 있으면 앞 것, 없으면 뒤 것. 으로(로)는 ㄹ 받침도 로). 따옴표·괄호 뒤면 그 앞 글자를 본다. 한글이 아니면(숫자·영문) 그대로 둔다.
+ */
+const JOSA = /([^\s])(이\(가\)|을\(를\)|은\(는\)|과\(와\)|으로\(로\))/g;
+const SKIP = `'"’”)]」』`;
+function fixJosa(s: string): string {
+  return s.replace(JOSA, (m, _c: string, josa: string, offset: number) => {
+    let i = offset;
+    while (i >= 0 && SKIP.includes(s[i])) i--;
+    const code = i >= 0 ? s.charCodeAt(i) : 0;
+    if (code < 0xac00 || code > 0xd7a3) return m; // 한글이 아니면 손대지 않는다
+    const final = (code - 0xac00) % 28;            // 0이면 받침 없음, 8은 ㄹ
+    const [withFinal, without] = josa === '으로(로)' ? ['으로', '로'] : josa.replace(')', '').split('(');
+    const pick = josa === '으로(로)' ? (final === 0 || final === 8 ? without : withFinal) : final === 0 ? without : withFinal;
+    return s[offset] + pick;
+  });
+}
+
 export function t(key: string, params?: Record<string, string | number>): string {
   const lang = getLang();
   let s = dicts[lang][key];
@@ -30,7 +49,7 @@ export function t(key: string, params?: Record<string, string | number>): string
     s = dicts.ko[key] ?? key;
   }
   if (params) s = s.replace(/\{(\w+)\}/g, (m, n) => (n in params ? String(params[n]) : m));
-  return s;
+  return lang === 'ko' ? fixJosa(s) : s;
 }
 
 /** 나라(언어)가 바뀌면 컴포넌트를 다시 그린다. 최상위(App)에서 한 번 부르면 아래가 모두 다시 그려진다 */

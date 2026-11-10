@@ -33,6 +33,7 @@ import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
 import { MonsterHud, MonsterNoteCard, type MonsterNote } from './MonsterHud';
 import { getLang } from '../country';
+import { SkillIcon } from './SkillIcon';
 
 interface Props {
   initialPlayer: PlayerSummary;
@@ -133,7 +134,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
-  const [myHp, setMyHp] = useState<{ pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null }>({ pct: 100, flash: null }); // 내 체력(4.36)
+  const [myHp, setMyHp] = useState<{ pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null }>({ pct: -1, flash: null }); // 내 체력(4.36). -1은 서버에서 아직 못 받은 상태: 체력바를 숨겨 100에서 줄어드는 모션을 막는다
   const [dead, setDead] = useState<{ by: string; waiting: boolean; hp?: boolean } | null>(null); // 죽음(4.31): 흑백 화면에 머물며 리스폰을 기다린다
   const myEntityRef = useRef(-1); // 내 원 번호(콤보 시간이 끝났을 때 불꽃을 지우는 데 쓴다)
   const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number; until: number | null }>({ combo: 0, flameAt: 5, key: 0, until: null }); // 4.25. until: 콤보가 사라질 시각(performance.now 기준 ms, 제한 없으면 null)
@@ -334,13 +335,12 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             break;
           case 'monsterHit':
             arena.monsterHit(m);
-            if (m.e === myEntity) { // 내가 입힌 피해를 내 원 위에 크게 보여 준다
-              arena.floatText(`${m.flame ? '🔥' : '💥'} ${fmtNumber(m.dmg)}`, m.flame ? '#ffb347' : '#ffffff');
+            if (m.e === myEntity) { // 내가 입힌 피해는 보스 위 숫자로만 보인다(내 원 위 글씨는 중복이라 뺐다)
               setMyBossDmg((d) => ({ dmg: d.dmg + m.dmg, hits: d.hits + 1 }));
             }
             break;
           case 'monsterEnd':
-            arena.clearMonster();
+            if (m.result === 'KILLED') arena.vanishMonster(); else arena.clearMonster(); // 처치하면 증발 연출, 시간이 다 되면 그냥 사라진다
             setMonsterNote({ key: performance.now(), kind: 'end', result: m.result, name: m.name, en: m.en, top: m.top });
             window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'end' ? null : n)), 12000);
             break;
@@ -448,15 +448,15 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             arena.clearHp(); setMyHp({ pct: 100, flash: null }); // 다시 들어오면 체력은 가득이다(4.36)
             break;
           case 'hp': { // 내 체력(4.36)
-            if (m.e !== myEntity) break;
+            if (myEntity !== -1 && m.e !== myEntity) break; // hp는 본인에게만 온다. 접속 직후엔 welcome보다 먼저 와서 myEntity가 아직 -1이니 버리면 안 된다
             arena.setHp(m.e, m.pct);
             setMyHp((h) => ({ pct: m.pct, flash: m.heal ? { kind: 'heal', key: performance.now() } : h.flash }));
-            if (m.heal) arena.hpPop(m.e, `+${Math.max(1, Math.round(m.heal))}%`, '#7be0a0');
+            if (m.heal) arena.healPop(m.e);
             break;
           }
           case 'hps': arena.setHps(m.list); break; // 체력바 공개 설정일 때 모두의 체력
           case 'hpHit': { // 누가 맞았다: 그 원 위에 깎인 %를 띄운다. 내 체력바는 바로 줄인다
-            arena.hpPop(m.e, `-${Math.max(1, Math.round(m.dmg))}%`, '#ff6b6b');
+            arena.hpPop(m.e, `-${Math.max(1, Math.round(m.dmg))}%`, m.e === myEntity ? 'taken' : arena.isFlaming(m.by) ? 'crit' : 'other'); // 내가 입은 피해는 보라, 불꽃으로 때린 피해는 분홍 크리티컬, 나머지는 주황
             if (m.e === myEntity) {
               arena.setHp(m.e, m.pct);
               setMyHp({ pct: m.pct, flash: { kind: 'hit', key: performance.now() } });
@@ -486,7 +486,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             break;
           }
           case 'loadout': setSlots(m.slots); setCurrentSlots(m.slots); break; // 장착한 스킬 4칸(4.33)
-          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : t('gamescreen.skillSafe')); break;
+          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : t('gamescreen.skillSafe')); break;
           case 'skillFx': arena.showSkillFx(m); break; // 누군가 스킬을 썼다: 그 연출(4.33)
           case 'dark': arena.setDark(m.ms); showToast(t('gamescreen.darkened')); break; // 암흑에 맞았다(4.33)
           case 'darkEnd': arena.clearDark(); break; // 정화로 암흑이 풀렸다
@@ -928,12 +928,15 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
         {dead && (
           <div className="death-overlay" role="alertdialog" aria-labelledby="death-title">
             <div className="death-box">
-              <h2 id="death-title">💀 {t('gamescreen.diedTitle')}</h2>
-              <p>{t(dead.hp ? 'gamescreen.diedByHp' : 'gamescreen.diedBy', { by: dead.by })}</p>
-              <button className="primary" autoFocus disabled={dead.waiting || status !== 'open'}
-                      onClick={() => { setDead({ by: dead.by, waiting: true }); connRef.current?.send({ type: 'respawn' }); }}>
-                {dead.waiting ? t('gamescreen.respawning') : t('gamescreen.respawn')}
-              </button>
+              <h2 id="death-title" className="death-bar">{t('gamescreen.diedTitle')}</h2>
+              <div className="death-body">
+                <div className="death-tomb" aria-hidden="true">🪦</div>
+                <p>{t(dead.hp ? 'gamescreen.diedByHp' : 'gamescreen.diedBy', { by: dead.by })}</p>
+                <button className="death-btn" autoFocus disabled={dead.waiting || status !== 'open'}
+                        onClick={() => { setDead({ by: dead.by, waiting: true }); connRef.current?.send({ type: 'respawn' }); }}>
+                  {dead.waiting ? t('gamescreen.respawning') : t('gamescreen.respawn')}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -957,7 +960,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                       onDetail={() => { const e = targetCard; setInfoBot(arenaRef.current?.botInfo(e) ?? null); setInfoLook(arenaRef.current?.entityInfo(e)?.look ?? null); setInfoEntity(e); }}
                       onOpenKeyword={setOpenKeyword} />
         )}
-        <BottomBar me={player} hp={!dead && status === 'open' ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
+        <BottomBar me={player} hp={!dead && status === 'open' && myHp.pct >= 0 ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
                    onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
                    emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
                    onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />
@@ -1090,7 +1093,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           )}
           {unlockAlert && (
             <div key={unlockAlert.key} className="title-alert unlock-alert" role="status" aria-live="polite">
-              <span className="title-alert-icon" aria-hidden="true">{unlockAlert.skills[0].icon}</span>
+              <span className="title-alert-icon" aria-hidden="true"><SkillIcon code={unlockAlert.skills[0].code} icon={unlockAlert.skills[0].icon} /></span>
               <div className="title-alert-text">
                 <span className="title-alert-kicker">{t('gamescreen.skillUnlockKicker', { n: unlockAlert.level })}</span>
                 <strong>{unlockAlert.skills.map((k) => tOr(`skills.${k.code}_name`, k.code)).join(', ')}</strong>

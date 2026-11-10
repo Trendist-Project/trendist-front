@@ -99,7 +99,7 @@ export function ProfileModal({ player, onChanged, onClose, guest, onLogout, onWi
                    score={Number(player.currentScore)} scoreLabel={t('profile.myScore')}
                    orb={look ? <PlayerOrb look={look} level={player.level} size={112} /> : <TurtleIcon level={player.level} size={84} />} />
       <StatGroups s={{ holdCount: player.holdCount, addCount: player.addCount, searchCount: player.searchCount ?? 0, activeDays: player.activeDays ?? 0,
-                       stealCount: player.stealCount ?? 0, botWinCount: player.botWinCount ?? 0, killCount: player.killCount ?? 0, defeatCount: player.defeatCount ?? 0,
+                       stealCount: player.stealCount ?? 0, botWinCount: player.botWinCount ?? 0, killCount: player.killCount ?? 0, deathCount: player.deathCount ?? 0,
                        popularity: fmtNumber(player.popularity ?? 0), createdAt: player.createdAt }} />
 
       <div className="profile-links">

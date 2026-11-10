@@ -87,7 +87,7 @@ export function PlayerInfoModal({ entityNo, playerId, bot, look, onClose, onOpen
 
         <StatGroups s={{
           holdCount: card.stats?.holdCount ?? 0, addCount: card.stats?.addCount ?? 0, searchCount: card.stats?.searchCount ?? 0, activeDays: card.stats?.activeDays ?? 0,
-          stealCount: card.stats?.stealCount ?? 0, botWinCount: card.stats?.botWinCount ?? 0, killCount: card.stats?.killCount ?? 0, defeatCount: card.stats?.defeatCount ?? 0,
+          stealCount: card.stats?.stealCount ?? 0, botWinCount: card.stats?.botWinCount ?? 0, killCount: card.stats?.killCount ?? 0, deathCount: card.stats?.deathCount ?? 0,
           createdAt: card.createdAt,
           popularity: (
             <PopularityVote playerId={card.playerId} name={card.nickname} me={card.me} popularity={card.popularity} myVote={card.myVote}
