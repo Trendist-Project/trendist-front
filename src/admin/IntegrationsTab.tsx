@@ -14,6 +14,13 @@ const ICONS: Record<string, ReactNode> = {
   GOOGLE_SEARCH_CONSOLE: (
     <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="10" fill="#fff" /><circle cx="21" cy="21" r="10" fill="none" stroke="#4285f4" strokeWidth="5" /><path d="M29 29l10 10" stroke="#ea4335" strokeWidth="6" strokeLinecap="round" /><path d="M16 22l4 4 7-8" fill="none" stroke="#34a853" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
   ),
+  GOOGLE_AI_STUDIO: (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <defs><linearGradient id="int-gemini" x1="8" y1="40" x2="40" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#4285f4" /><stop offset="0.55" stopColor="#9b72cb" /><stop offset="1" stopColor="#d96570" /></linearGradient></defs>
+      <rect width="48" height="48" rx="10" fill="#fff" />
+      <path fill="url(#int-gemini)" d="M24 40A17 17 0 0 0 7 24 17 17 0 0 0 24 8a17 17 0 0 0 17 16 17 17 0 0 0-17 16" />
+    </svg>
+  ),
   GOOGLE_ANALYTICS: (
     <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="10" fill="#fff" /><rect x="29" y="8" width="10" height="32" rx="5" fill="#f9ab00" /><rect x="18" y="19" width="10" height="21" rx="5" fill="#e37400" /><circle cx="13" cy="35" r="5" fill="#e37400" /></svg>
   ),
