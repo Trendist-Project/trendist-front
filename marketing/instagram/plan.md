@@ -365,6 +365,7 @@ marketing/instagram/
 ├─ feed2-turtle/   01-cover … 04-cta        (4장)
 ├─ feed3-skills/   01-cover … 04-cta        (4장)
 ├─ feed4-quiz/     01-quiz                  (1장)
+├─ patch-notes/    2026-11-13-mobile … 2026-12-03-wheel + feeds.md   패치노트 피드(22장, 파일 이름 = 게시일-내용)(사진 1장 + 캡션, 2026-11-12부터의 기본 전략. 양식은 ../README.md)
 └─ _src/                      이미지를 만든 소스(HTML·스크립트). 수정 후 다시 만들 때 사용
 ```
 이미지는 게임의 실제 그리기 코드(거북이·스킬 연출)와 브랜드 로고, Noto Sans KR, Twemoji로 만들었다.

@@ -1,0 +1,17 @@
+{
+  "name": "trendist-instagram-src",
+  "private": true,
+  "type": "module",
+  "description": "인스타그램 피드 이미지 생성용 의존성(저장소에는 node_modules를 올리지 않는다)",
+  "scripts": {
+    "build:patch": "node patch.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/noto-color-emoji": "5.3.2",
+    "@fontsource/noto-sans-kr": "5.3.1",
+    "@fontsource/noto-sans-symbols-2": "5.3.0",
+    "@twemoji/svg": "15.0.0",
+    "playwright-core": "1.49.1",
+    "qrcode": "1.5.4"
+  }
+}

@@ -1,7 +1,7 @@
 // 슬라이드에서 쓰는 그리기 도우미(게임의 거북이·스킬 연출 코드를 그대로 쓴다: game.bundle.js)
 const G = window.Game;
-const TW = 'file:///tmp/pw/node_modules/@twemoji/svg/';
-const EMO = { '✨': '2728', '🕶️': '1f576', '🕶': '1f576', '☠️': '2620', '☠': '2620', '🛡': '1f6e1', '⚡': '26a1', '🪝': '1fa9d', '💥': '1f4a5', '👻': '1f47b' };
+const TW = 'node_modules/@twemoji/svg/';
+const EMO = { '✨': '2728', '🕶️': '1f576', '🕶': '1f576', '☠️': '2620', '☠': '2620', '🛡': '1f6e1', '⚡': '26a1', '🪝': '1fa9d', '💥': '1f4a5', '👻': '1f47b', '🔥': '1f525', '❤': '2764', '❤️': '2764', '➕': '2795', '💀': '1f480' };
 const emoImgs = {};
 for (const [k, cp] of Object.entries(EMO)) { const im = new Image(); im.src = TW + cp + '.svg'; emoImgs[k] = im; }
 // 캔버스 글자로 그리는 이모지(✨·🕶️)는 이 환경에 이모지 글꼴이 없어 트위모지 그림으로 대신 그린다

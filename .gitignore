@@ -2,3 +2,7 @@ node_modules
 dist
 .idea/
 *.local
+
+
+# 인스타 이미지 빌드용 로컬 라이브러리(marketing/instagram/_src/.libs, sudo 없을 때만 쓰는 우회용)
+.libs

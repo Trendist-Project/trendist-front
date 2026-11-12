@@ -1,6 +1,6 @@
-import { chromium } from '/tmp/pw/node_modules/playwright-core/index.mjs';
+import { chromium } from './node_modules/playwright-core/index.mjs';
 import fs from 'node:fs';
-const ROOT = '/home/dlrudgjs104/trendist/marketing/instagram';
+import { fileURLToPath } from 'node:url'; import path from 'node:path'; const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const feeds = [
   ['피드 1 · 런칭 캐러셀 (7장)', 'feed1-launch', ['01-cover', '02-problem', '03-how', '04-battle', '05-skills', '06-turtle', '07-cta']],
   ['피드 2 · 거북이 성장 일기 (4장)', 'feed2-turtle', ['01-cover', '02-growth', '03-colors', '04-cta']],
