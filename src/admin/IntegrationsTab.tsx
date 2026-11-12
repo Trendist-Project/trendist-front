@@ -21,6 +21,15 @@ const ICONS: Record<string, ReactNode> = {
       <path fill="url(#int-gemini)" d="M24 40A17 17 0 0 0 7 24 17 17 0 0 0 24 8a17 17 0 0 0 17 16 17 17 0 0 0-17 16" />
     </svg>
   ),
+  INSTAGRAM: (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <defs><linearGradient id="int-insta" x1="6" y1="44" x2="42" y2="4" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#feda75" /><stop offset="0.3" stopColor="#fa7e1e" /><stop offset="0.55" stopColor="#d62976" /><stop offset="0.8" stopColor="#962fbf" /><stop offset="1" stopColor="#4f5bd5" /></linearGradient></defs>
+      <rect width="48" height="48" rx="10" fill="url(#int-insta)" />
+      <rect x="12" y="12" width="24" height="24" rx="7" fill="none" stroke="#fff" strokeWidth="3" />
+      <circle cx="24" cy="24" r="6" fill="none" stroke="#fff" strokeWidth="3" />
+      <circle cx="31.5" cy="16.5" r="1.8" fill="#fff" />
+    </svg>
+  ),
   GOOGLE_ANALYTICS: (
     <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="10" fill="#fff" /><rect x="29" y="8" width="10" height="32" rx="5" fill="#f9ab00" /><rect x="18" y="19" width="10" height="21" rx="5" fill="#e37400" /><circle cx="13" cy="35" r="5" fill="#e37400" /></svg>
   ),
