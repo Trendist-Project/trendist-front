@@ -464,7 +464,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           }
           case 'hps': arena.setHps(m.list); break; // 체력바 공개 설정일 때 모두의 체력
           case 'hpHit': { // 누가 맞았다: 그 원 위에 깎인 %를 띄운다. 내 체력바는 바로 줄인다
-            arena.hpPop(m.e, `-${Math.max(1, Math.round(m.dmg))}%`, m.e === myEntity ? 'taken' : arena.isFlaming(m.by) ? 'crit' : 'other'); // 내가 입은 피해는 보라, 불꽃으로 때린 피해는 분홍 크리티컬, 나머지는 주황
+            arena.hpPop(m.e, `-${Math.max(1, m.pct > 0 ? Math.min(99, Math.round(m.dmg)) : Math.round(m.dmg))}%`, m.e === myEntity ? 'taken' : arena.isFlaming(m.by) ? 'crit' : 'other'); // 내가 입은 피해는 보라, 불꽃으로 때린 피해는 분홍 크리티컬, 나머지는 주황
             if (m.e === myEntity) {
               arena.setHp(m.e, m.pct);
               setMyHp({ pct: m.pct, flash: { kind: 'hit', key: performance.now() } });
