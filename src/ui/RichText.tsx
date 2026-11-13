@@ -3,6 +3,7 @@ import { GrowthIcons } from './GrowthIcons';
 import { LevelIconGallery } from './LevelText';
 import { ArenaLegend, Controls, KeywordStates, LevelExpTable, OrbOdds, SkillUnlockTable, StartSteps } from './GuideArt';
 import { SkillDemo } from './SkillDemo';
+import { GUIDE_DEMOS } from '../game/skills';
 
 /** 본문에 넣을 수 있는 게임 그림. 이름이 틀리면 글자 그대로 보인다. */
 const EMBEDS: Record<string, () => ReactNode> = {
@@ -15,21 +16,10 @@ const EMBEDS: Record<string, () => ReactNode> = {
   '[[스킬 해금 표]]': () => <SkillUnlockTable />,
   '[[구슬 확률]]': () => <OrbOdds />,
   '[[레벨 필요 경험치]]': () => <LevelExpTable />,
-  '[[스킬 대시]]': () => <SkillDemo skill="dash" />,
-  '[[스킬 방패]]': () => <SkillDemo skill="shield" />,
-  '[[스킬 갈고리]]': () => <SkillDemo skill="hook" />,
-  '[[스킬 반발]]': () => <SkillDemo skill="shockwave" />,
-  '[[스킬 충격파]]': () => <SkillDemo skill="shockwave" />, // 옛 가이드 본문 호환: 지금의 반발(방어형)이다. 키워드를 떨구게 하는 충격파는 아래 이름
-  '[[스킬 충격파 키워드]]': () => <SkillDemo skill="quake" />,
-  '[[스킬 슬로우]]': () => <SkillDemo skill="slow" />,
-  '[[스킬 스턴]]': () => <SkillDemo skill="stun" />,
-  '[[스킬 불꽃]]': () => <SkillDemo skill="flame" />,
-  '[[스킬 흡수]]': () => <SkillDemo skill="absorb" />,
-  '[[스킬 은신]]': () => <SkillDemo skill="stealth" />,
-  '[[스킬 독]]': () => <SkillDemo skill="poison" />,
-  '[[스킬 암흑]]': () => <SkillDemo skill="darkness" />,
-  '[[스킬 정화]]': () => <SkillDemo skill="cleanse" />,
 };
+
+// 스킬마다의 움직이는 그림(4.33). 이름은 game/skills.ts의 SKILL_DEFS가 정한다(영어 이름도 같은 표에서 온다)
+for (const [name, code] of Object.entries(GUIDE_DEMOS)) if (name.startsWith('[[스킬 ')) EMBEDS[name] = () => <SkillDemo skill={code} />;
 
 /** 관리자 편집기의 [그림] 메뉴가 쓰는 이름들(한국어 이름이 기준) */
 export const EMBED_NAMES = Object.keys(EMBEDS);
@@ -45,20 +35,6 @@ const EN_ALIASES: Record<string, string> = {
   '[[skill unlock table]]': '[[스킬 해금 표]]',
   '[[orb odds]]': '[[구슬 확률]]',
   '[[level exp table]]': '[[레벨 필요 경험치]]',
-  '[[skill dash]]': '[[스킬 대시]]',
-  '[[skill shield]]': '[[스킬 방패]]',
-  '[[skill hook]]': '[[스킬 갈고리]]',
-  '[[skill shockwave]]': '[[스킬 충격파]]',
-  '[[skill repel]]': '[[스킬 반발]]',
-  '[[skill quake]]': '[[스킬 충격파 키워드]]',
-  '[[skill slow]]': '[[스킬 슬로우]]',
-  '[[skill stun]]': '[[스킬 스턴]]',
-  '[[skill flame]]': '[[스킬 불꽃]]',
-  '[[skill absorb]]': '[[스킬 흡수]]',
-  '[[skill stealth]]': '[[스킬 은신]]',
-  '[[skill poison]]': '[[스킬 독]]',
-  '[[skill darkness]]': '[[스킬 암흑]]',
-  '[[skill cleanse]]': '[[스킬 정화]]',
 };
 
 /**
@@ -76,7 +52,8 @@ function RichTextBlocks({ text }: { text: string }) {
   return (
     <>
       {blocks.map((block, i) => {
-        const embed = EMBEDS[EN_ALIASES[block.toLowerCase()] ?? block];
+        const lower = block.toLowerCase(), demo = GUIDE_DEMOS[lower];
+        const embed = demo && lower.startsWith('[[skill ') ? () => <SkillDemo skill={demo} /> : EMBEDS[EN_ALIASES[lower] ?? block];
         if (embed) return <Fragment key={i}>{embed()}</Fragment>;
         const lines = block.split('\n').map((l) => l.trim());
         // 소제목: 문단 첫 줄이 `## `이면 소제목, 나머지 줄은 그 아래 문단

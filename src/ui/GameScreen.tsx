@@ -19,13 +19,17 @@ import { TargetCard } from './TargetCard';
 import type { OrbLook } from '../game/skin';
 import type { DashState, SkillCooldowns } from './SkillBar';
 import type { KeybindingsResponse, SkillInfo } from '../api/types';
-import { useSkills } from './useSkills';
-import { actionOf, cacheSlotKeys, defaultSlotKeys, keysFromBindings, legacyChanges, loadSlotKeys, markLegacySynced, setCurrentSlots, SKILL_WINDOW_KEY, targetOfKey, type SlotKeys } from '../game/skillKeys';
+import { FALLBACK, useSkills } from './useSkills';
+import { isAimed } from './skillMeta';
+import type { SkillLock } from './selfStatusMessages';
+import { handleGameMessage, type GameMessageContext, type GameSession } from './gameMessages';
+import { attachGameInput } from './gameInput';
+import { actionOf, cacheSlotKeys, defaultSlotKeys, keysFromBindings, legacyChanges, loadSlotKeys, markLegacySynced, type SlotKeys } from '../game/skillKeys';
 import { SkillWindow } from './SkillWindow';
 import { BottomBar } from './BottomBar';
 import { WheelModal } from './WheelModal';
-import { EMOTES } from '../game/skin';
 import { successToast } from './toast';
+import { loadSideHidden, saveSideHidden, loadMinimapPref, saveMinimapPref, loadLeaderboardPref, saveLeaderboardPref, loadChatView, saveChatView, loadHelpPref, saveHelpPref, pingQuality, type ChatView } from './gamePrefs';
 import { LayersProvider, useLayer } from './layers';
 import { useMultiTouchClicks } from './touchPress';
 import { FullscreenIcon } from './FullscreenIcon';
@@ -33,7 +37,6 @@ import { canFullscreen as canFullscreenSupported, enterFullscreen, setAutoFullsc
 import { EmergencyBar, emergencyText, useEmergency } from './EmergencyBar';
 import { fmtNumber, t, tOr } from '../i18n';
 import { MonsterHud, MonsterNoteCard, type MonsterNote } from './MonsterHud';
-import { getLang } from '../country';
 import { SkillIcon } from './SkillIcon';
 
 interface Props {
@@ -45,79 +48,6 @@ interface Props {
   onWithdrawn(): void;
 }
 
-const KEYS: Record<string, [number, number]> = {
-  ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
-  ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
-};
-const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 보낸다. 한 프레임(16ms) 안의 변화만 하나로 합친다(4.2)
-const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
-const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
-const CHAT_KEEP = 200;         // 화면에 쌓아 두는 채팅 줄 수
-/** 스킬을 보낼 때 겨눈 지점을 함께 보내는 스킬. 불꽃·흡수는 서버가 그 지점에서 가장 가까운 상대를 고른다 */
-const AIMED_SKILLS = new Set(['hook', 'poison', 'darkness', 'slow', 'stun', 'flame']);
-const JOY_RADIUS = 56;         // 조이스틱 판 반지름(px). 이만큼 끌면 최대 속도
-const JOY_DEAD = 8;            // 이보다 덜 끌면 멈춘 것으로 본다(손가락 떨림)
-const JOY_INTERVAL_MS = 50;    // 조이스틱 방향은 초당 20회까지 보낸다(끄는 동안 계속 바뀌므로 방향키보다 넉넉하게 묶는다)
-
-/** 작은 화면(모바일, 가로 모드 폰 포함). 저장된 선택이 없을 때의 기본값을 화면을 덜 가리는 쪽으로 정하는 데 쓴다. */
-function isSmallScreen() {
-  try { return window.matchMedia('(max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse)').matches; } catch { return false; }
-}
-
-/** 미니맵 켜짐 여부는 이 브라우저에만 기억한다. 저장소를 못 쓰면 기본값(켜짐). */
-const MINIMAP_KEY = 'trendist.minimap';
-/** PC에서 오른쪽 검색·보관함·플레이어 영역을 숨겼는지(이 브라우저에 기억한다). 모바일은 하단 시트라 이 값을 쓰지 않는다 */
-const SIDE_HIDDEN_KEY = 'trendist.sideHidden';
-function loadSideHidden() {
-  try { return localStorage.getItem(SIDE_HIDDEN_KEY) === '1'; } catch { return false; }
-}
-function saveSideHidden(hidden: boolean) {
-  try { localStorage.setItem(SIDE_HIDDEN_KEY, hidden ? '1' : '0'); } catch { /* 무시 */ }
-}
-
-function loadMinimapPref() {
-  try { return localStorage.getItem(MINIMAP_KEY) !== '0'; } catch { return true; }
-}
-function saveMinimapPref(visible: boolean) {
-  try { localStorage.setItem(MINIMAP_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
-}
-
-/** 리더보드 켜짐 여부도 이 브라우저에만 기억한다. 기본값은 켜짐, 모바일은 화면을 가리지 않게 꺼짐. */
-const LEADERBOARD_KEY = 'trendist.leaderboard';
-function loadLeaderboardPref() {
-  try { const v = localStorage.getItem(LEADERBOARD_KEY); return v === null ? !isSmallScreen() : v !== '0'; } catch { return !isSmallScreen(); }
-}
-function saveLeaderboardPref(visible: boolean) {
-  try { localStorage.setItem(LEADERBOARD_KEY, visible ? '1' : '0'); } catch { /* 무시 */ }
-}
-
-/** 채팅 켜짐·접힘 여부도 이 브라우저에만 기억한다. 처음 접속하면 PC·모바일 모두 접힌 채로 시작한다(한 줄 + 입력창). */
-const CHAT_KEY = 'trendist.chat';
-type ChatView = 'open' | 'collapsed' | 'off';
-function loadChatView(): ChatView {
-  const fallback: ChatView = 'collapsed'; // 처음 접속은 접힌 채로. 한 번 바꾸면 그 선택을 기억한다
-  try { const v = localStorage.getItem(CHAT_KEY); return v === 'open' || v === 'collapsed' || v === 'off' ? v : fallback; } catch { return fallback; }
-}
-function saveChatView(v: ChatView) {
-  try { localStorage.setItem(CHAT_KEY, v); } catch { /* 무시 */ }
-}
-
-/** 조작 설명은 처음 들어오면 펼쳐 두고, 접으면 이 브라우저에 기억해서 다음부터는 접힌 채로 시작한다. */
-const HELP_KEY = 'trendist.help';
-function loadHelpPref() {
-  // 모바일은 조작 설명 카드가 화면을 많이 가려서 처음에도 접어 둔다([?]로 펼친다)
-  try { const v = localStorage.getItem(HELP_KEY); return v === null ? !isSmallScreen() : v !== '0'; } catch { return !isSmallScreen(); }
-}
-function saveHelpPref(open: boolean) {
-  try { localStorage.setItem(HELP_KEY, open ? '1' : '0'); } catch { /* 무시 */ }
-}
-
-/**
- * 서버와의 왕복 시간(ms)을 네 단계로 나눈다. 서버가 초당 20번(50ms) 상태를 보내고 클라이언트가 내 움직임을 미리 그리며 보정하는 구조라
- * 80ms 안쪽은 차이를 못 느끼고, 150ms까지는 보정으로 자연스럽고, 250ms부터는 스킬·충돌 반응이 눈에 띄게 늦는다.
- */
-export type PingQuality = 'good' | 'ok' | 'slow' | 'bad';
-export const pingQuality = (ms: number): PingQuality => (ms <= 80 ? 'good' : ms <= 150 ? 'ok' : ms <= 250 ? 'slow' : 'bad');
 
 /** 겹치는 덩어리는 마지막에 손댄 것이 맨 위에 보인다(layers.tsx) */
 export function GameScreen(props: Props) {
@@ -309,238 +239,46 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     const arena = new Arena(canvasRef.current!);
     arenaRef.current = arena;
     arena.start();
-    // 서버 방에 들어간 뒤(welcome)부터 끊길 때까지만 이동 입력이 서버에 닿는다. 그 밖의 입력은 예측에도 넣지 않는다
-    let ready = false;
-    let resyncDir = () => {};
-    let myEntity = -1;
-    arena.onView = (hw, hh) => { if (ready) conn.send({ type: 'view', hw, hh }); }; // 관심 영역 전송: 내 화면 둘레의 원만 받는다
-    const toLine = (m: ChatMessage): ChatLine => ({ id: m.id, e: m.e, nickname: m.nickname, text: m.text, at: m.at, mine: m.e === myEntity });
+
+    // 서버 방에 들어간 뒤(welcome)부터 끊길 때까지만 ready. 메시지 처리(gameMessages)와 입력이 함께 쓴다
+    const sess: GameSession = { ready: false, myEntity: -1, resyncDir: () => {} };
+    arena.onView = (hw, hh) => { if (sess.ready) conn.send({ type: 'view', hw, hh }); }; // 관심 영역 전송: 내 화면 둘레의 원만 받는다
+    const toLine = (m: ChatMessage): ChatLine => ({ id: m.id, e: m.e, nickname: m.nickname, text: m.text, at: m.at, mine: m.e === sess.myEntity });
+    // 끌려오거나 스턴인 동안의 스킬 버튼 잠금: 끝나는 시각을 들고 있다가 시간이 지나면(조금 여유를 두고) 푼다
+    const skillLock: SkillLock = {
+      hold: (ms, pad, extend) => {
+        const until = performance.now() + ms + pad;
+        hookedUntilRef.current = extend ? Math.max(hookedUntilRef.current, until) : until; setHookedUntil(hookedUntilRef.current);
+        window.setTimeout(() => setHookedUntil((u) => (u === hookedUntilRef.current ? null : u)), ms + pad + 50);
+      },
+      release: () => { hookedUntilRef.current = 0; setHookedUntil(null); },
+    };
     const conn = new GameConnection({
       onSnapshot: (s) => arena.applySnapshot(s),
       onMinimap: (entries) => arena.setMinimap(entries),
       onStatus: (s) => {
-        if (s !== 'open') { ready = false; arena.clearControl(); }
+        if (s !== 'open') { sess.ready = false; arena.clearControl(); }
         setStatus(s);
       },
       onMessage: (m: ServerMessage) => {
-        switch (m.type) {
-          case 'welcome':
-            setDead(null); arena.setDead(false); // 처음 들어왔거나 리스폰했다
-            setDash(null); arena.resetDash(); // 새 원이라 대시 남은 시간·쿨타임 표시도 지운다(서버는 이미 초기화)
-            setSkillCd({}); arena.resetSkills(); hookedUntilRef.current = 0; setHookedUntil(null); // 스킬 쿨타임과 연출도(4.33)
-            arena.setMe(m.entityNo, m.x, m.y);
-            arena.resendView(); // 다시 들어왔으니 보이는 범위를 서버에 다시 알린다
-            myEntity = m.entityNo;
-            myEntityRef.current = m.entityNo;
-            ready = true;
-            resyncDir(); // 다시 연결됐을 때 아직 누르고 있는 방향키가 있으면 서버와 예측에 함께 다시 넣는다
-            conn.send({ type: 'ping', t: performance.now() });
-            break;
-          case 'monster': arena.setMonster(m); break; // 보스 상태(5Hz, 4.35)
-          case 'monsterFx': arena.monsterFx(m); break;
-          case 'monsterAlert': showToast(t('monster.alert', { name: getLang() === 'en' && m.en ? m.en : m.name, sec: Math.max(1, Math.round(m.seconds)) })); break;
-          case 'monsterSpawn':
-            setMyBossDmg({ dmg: 0, hits: 0 }); setMonsterNote(null);
-            showToast(t('monster.spawn', { name: getLang() === 'en' && m.en ? m.en : m.name, min: Math.max(1, Math.round(m.durationMs / 60000)) }));
-            break;
-          case 'monsterHit':
-            arena.monsterHit(m);
-            if (m.e === myEntity) { // 내가 입힌 피해는 보스 위 숫자로만 보인다(내 원 위 글씨는 중복이라 뺐다)
-              setMyBossDmg((d) => ({ dmg: d.dmg + m.dmg, hits: d.hits + 1 }));
-            }
-            break;
-          case 'monsterEnd':
-            if (m.result === 'KILLED') arena.vanishMonster(); else arena.clearMonster(); // 처치하면 증발 연출, 시간이 다 되면 그냥 사라진다
-            setMonsterNote({ key: performance.now(), kind: 'end', result: m.result, name: m.name, en: m.en, top: m.top });
-            window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'end' ? null : n)), 12000);
-            break;
-          case 'monsterReward':
-            setMonsterNote({ key: performance.now(), kind: 'reward', name: m.name, en: m.en, cleared: m.cleared, rank: m.rank, damage: m.damage, exp: m.exp, levelPercent: m.levelPercent ?? 0, keywords: m.keywords });
-            window.setTimeout(() => setMonsterNote((n) => (n && n.kind === 'reward' ? null : n)), 15000);
-            setRefreshKey((k) => k + 1);
-            break;
-          case 'tuning': arena.setTuning(m); break;
-          case 'emergency': applyEmergency(m.notice); break;
-          case 'titleGranted': showTitleAlert(m.titleId, m.name, m.description); break;
-          case 'roster': arena.setRoster(m.players, m.flameAt); setOnline(m.players.filter((p) => !p.bot).length); setBots(m.players.filter((p) => p.bot).length); break;
-          case 'score':
-            setPlayer((p) => ({ ...p, currentScore: m.score, exp: m.exp, nextLevelExp: m.nextExp, level: m.level, holdCount: m.holdCount }));
-            break;
-          case 'pong': {
-            const ms = performance.now() - m.t;
-            arena.updateRtt(ms);
-            if (Number.isFinite(ms) && ms >= 0 && ms < 5000) setPingMs((p) => (p === null ? Math.round(ms) : Math.round(p * 0.6 + ms * 0.4))); // 튀는 값에 깜빡이지 않게 조금씩 따라간다
-            break;
-          }
-          case 'orbs': arena.setOrbs(m.orbs); break;
-          case 'orbSpawn': arena.addOrb(m.id, m.x, m.y, m.prize); break;
-          case 'orbEaten': arena.eatOrb(m.id, m.e); break;
-          case 'safeZones': arena.setSafeZones(m.center, m.zones); break;
-          case 'orbResult': {
-            // 구슬이 원 안으로 빨려 들어간 뒤에 결과 카드를 띄운다
-            const key = performance.now();
-            const kind = m.status === 'GAINED' || m.status === 'RENEWED' ? 'GAIN' : m.status === 'LOST' ? 'LOSE' : undefined;
-            window.setTimeout(() => setOrbReveal({ result: { ...m, kind }, key }), 250);
-            window.setTimeout(() => setOrbReveal((cur) => (cur?.key === key ? null : cur)), 250 + ORB_REVEAL_MS);
-            if (m.status === 'GAINED') arena.floatText(`+${m.gained ?? 0}`);
-            if (m.status === 'LOST' && m.gained) arena.floatText(`-${m.gained}`);
-            if (m.status === 'GAINED' || m.status === 'RENEWED' || m.status === 'LOST') setRefreshKey((k) => k + 1); // 보관함 목록 새로고침(새 키워드, 또는 바뀐 만료 시각)
-            break;
-          }
-          case 'chat':
-            arena.showBubble(m.e, m.text);
-            setChatLines((lines) => [...lines, toLine(m)].slice(-CHAT_KEEP));
-            break;
-          case 'chatHistory':
-            // 다시 연결되면 최근 채팅이 다시 오므로 번호로 합친다
-            setChatLines((lines) => {
-              const seen = new Set(lines.map((l) => l.id));
-              return [...lines, ...m.messages.filter((x) => !seen.has(x.id)).map(toLine)].sort((a, b) => a.id - b.id).slice(-CHAT_KEEP);
-            });
-            break;
-          case 'chatError': showToast(m.message); break;
-          case 'kicked': conn.stop(); setKicked(m.message); break;
-          case 'emote': arena.showEmote(m.e, m.code); break;
-          case 'combo': {
-            // 연속 빼앗기 콤보와 불꽃(4.25). 콤보 수는 화면 위 카드로만 보이고, 원 위로 떠오르는 글자는 띄우지 않는다(점수 글자와 겹치지 않게)
-            arena.setCombo(m.e, m.combo, m.flameAt);
-            const mine = m.e === myEntity;
-            if (mine) {
-              // 콤보가 오를 때마다 유지시간이 다시 시작되므로(4.25) 그때 사라질 시각을 새로 잡는다
-              const rose = m.event === 'up' || m.event === 'start';
-              setMyCombo((c) => ({ combo: m.combo, flameAt: m.flameAt, key: c.key + (rose ? 1 : 0),
-                until: rose ? (m.maxMs ? performance.now() + m.maxMs : null) : c.until }));
-            }
-            // 다른 사람이 불꽃을 얻었다는 안내는 띄우지 않는다(불꽃은 그 원 둘레로 보인다)
-            if (m.event === 'broken') {
-              if (mine) showToast(t('gamescreen.flameOut', { by: m.by ?? t('gamescreen.someone') }));
-            }
-            break;
-          }
-          case 'lost':
-            // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
-            if (m.wiped && m.partial) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined, lostLabel: t(m.death ? 'gamescreen.lostPartDeath' : 'gamescreen.lostPartFlame') }); // 일부만 잃었다(4.36)
-            else if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
-            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison || m.monster ? 'LOSE' : 'STOLEN', who: m.by || undefined, lostCount: m.count, lostLabel: m.monster ? t('monster.lostBy', { by: m.by, n: m.count ?? 1 }) : m.cause === 'quake' ? t('gamescreen.quakeLostTitle') : m.cause === 'flame' ? t('gamescreen.flameLostTitle') : undefined }); // 독·충격파·불꽃·보스로 여러 개를 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
-            if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
-            setRefreshKey((k) => k + 1);
-            break;
-          case 'hit': {
-            // 공격 성공: 상대가 잃은 키워드와 점수를 내 화면에 보여 준다.
-            // 사람에게서 이기면 그 키워드를 빼앗는다: 없던 키워드는 보관함에 추가, 이미 있던 키워드는 남은 시간 갱신(4.3)
-            // 봇을 이기면 봇의 키워드 대신 무작위 🔥 키워드를 얻는다. 이미 가진 키워드면 남은 시간 갱신(4.21)
-            const key = performance.now();
-            const hp = { target: m.target ?? '', kw: m.keyword ?? '', score: m.score ?? 0, n: m.wiped ?? 0 };
-            const gainedBy = m.stolen && !m.wiped; // 키워드를 얻었다(빼앗음·봇을 이겨 획득): 구슬과 같은 결과 카드로 보여 준다
-            if (gainedBy) {
-              showReveal({ type: 'orbResult', status: m.stolen === 'ADDED' || m.stolen === 'BOT' ? 'GAINED' : 'RENEWED', text: m.keyword ?? '', gained: m.gained,
-                           kind: 'STEAL', who: m.target || undefined });
-            }
-            const text = m.wiped && m.partial ? t('gamescreen.hitPart', hp) : m.wiped ? t('gamescreen.hitWiped', hp)
-              : m.stolen === 'BOT' ? t('gamescreen.hitBot', hp)
-              : m.stolen === 'BOT_RENEWED' ? t('gamescreen.hitBotRenewed', hp)
-              : m.stolen === 'ADDED' ? t('gamescreen.hitAdded', hp)
-              : m.stolen === 'RENEWED' ? t('gamescreen.hitRenewed', hp)
-              : m.keyword ? t('gamescreen.hitDropped', hp) : t('gamescreen.hitWon', hp);
-            if (m.wiped) showReveal({ type: 'orbResult', status: 'GAINED', wipe: m.wiped, who: m.target || undefined, lostLabel: m.partial ? t('gamescreen.hitPartTitle') : undefined });
-            else if (!gainedBy) setHit({ text, key });
-            if (m.stolen) {
-              if (m.gained) arena.floatText(`+${m.gained}`);
-              setRefreshKey((k) => k + 1); // 보관함 목록 새로고침
-            }
-            if (!gainedBy && !m.wiped) window.setTimeout(() => setHit((h) => (h?.key === key ? null : h)), 3000);
-            break;
-          }
-          case 'died':
-            // 죽음(4.31): 입력을 끊고 마지막 장면을 흑백으로 두며, 누가 죽였는지 알려 준다
-            ready = false; arena.clearControl();
-            setDead({ by: m.by, waiting: false, hp: m.cause === 'hp' }); arena.setDead(true);
-            arena.clearHp(); setMyHp({ pct: 100, flash: null }); // 다시 들어오면 체력은 가득이다(4.36)
-            break;
-          case 'hp': { // 내 체력(4.36)
-            if (myEntity !== -1 && m.e !== myEntity) break; // hp는 본인에게만 온다. 접속 직후엔 welcome보다 먼저 와서 myEntity가 아직 -1이니 버리면 안 된다
-            arena.setHp(m.e, m.pct);
-            setMyHp((h) => ({ pct: m.pct, flash: m.heal ? { kind: 'heal', key: performance.now() } : h.flash }));
-            if (m.heal) arena.healPop(m.e);
-            break;
-          }
-          case 'hps': arena.setHps(m.list); break; // 체력바 공개 설정일 때 모두의 체력
-          case 'hpHit': { // 누가 맞았다: 그 원 위에 깎인 %를 띄운다. 내 체력바는 바로 줄인다
-            arena.hpPop(m.e, `-${Math.max(1, m.pct > 0 ? Math.min(99, Math.round(m.dmg)) : Math.round(m.dmg))}%`, m.e === myEntity ? 'taken' : arena.isFlaming(m.by) ? 'crit' : 'other'); // 내가 입은 피해는 보라, 불꽃으로 때린 피해는 분홍 크리티컬, 나머지는 주황
-            if (m.e === myEntity) {
-              arena.setHp(m.e, m.pct);
-              setMyHp({ pct: m.pct, flash: { kind: 'hit', key: performance.now() } });
-            }
-            break;
-          }
-          case 'kill': { // 내가 죽였다(4.31)
-            showReveal({ type: 'orbResult', status: 'GAINED', kill: m.target });
-            break;
-          }
-          case 'shield': arena.showShield(m.e, m.ms); break;
-          case 'knock': arena.applyKnock(m.dx, m.dy, m.ms); break;
-          case 'levelFx': arena.showLevelFx(m.e, m.level); break; // 레벨업 이펙트(4.30)
-          case 'dashFx': arena.showDashFx(m.e, m.ms); break; // 누군가 대시를 시작했다: 그 원에 강조 효과(4.27)
-          case 'skill': { // 내가 스킬을 썼다(4.33): 쿨타임 표시
-            const at = performance.now() + m.cooldownMs;
-            setSkillCd((c) => ({ ...c, [m.id]: at }));
-            break;
-          }
-          case 'cooldowns': { // 새로고침하고 다시 들어왔다: 서버가 들고 있는 스킬·대시 쿨타임을 다시 보여 준다(welcome 뒤에 온다)
-            const t0 = performance.now();
-            setSkillCd(Object.fromEntries(Object.entries(m.skills).map(([id, ms]) => [id, t0 + ms])));
-            if (m.dashReadyMs > 0) {
-              setDash({ until: t0 + m.dashActiveMs, readyAt: t0 + m.dashReadyMs });
-              if (m.dashActiveMs > 0) arena.startDash(m.dashActiveMs, m.dashMult);
-            }
-            break;
-          }
-          case 'loadout': setSlots(m.slots); setCurrentSlots(m.slots); break; // 장착한 스킬 4칸(4.33)
-          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : m.reason === 'noTarget' ? t('gamescreen.skillNoTarget') : t('gamescreen.skillSafe')); break;
-          case 'skillFx': arena.showSkillFx(m); break; // 누군가 스킬을 썼다: 그 연출(4.33)
-          case 'dark': arena.setDark(m.ms); showToast(t('gamescreen.darkened')); break; // 암흑에 맞았다(4.33)
-          case 'darkEnd': arena.clearDark(); break; // 정화로 암흑이 풀렸다
-          case 'slow': arena.startSlow(m.ms, m.mult); showToast(t('gamescreen.slowed')); break; // 슬로우에 맞았다: 예측도 같이 느려진다
-          case 'slowEnd': arena.endSlow(); break; // 정화로 슬로우가 풀렸다
-          case 'stun': // 스턴에 맞았다: 움직이지도 스킬을 쓰지도 못한다. 갈고리에 잡힌 때와 같이 스킬 버튼을 잠근다
-            arena.startStun(m.ms); showToast(t('gamescreen.stunned'));
-            hookedUntilRef.current = Math.max(hookedUntilRef.current, performance.now() + m.ms + 100); setHookedUntil(hookedUntilRef.current);
-            window.setTimeout(() => setHookedUntil((u) => (u === hookedUntilRef.current ? null : u)), m.ms + 150);
-            break;
-          case 'stunEnd': arena.endStun(); hookedUntilRef.current = 0; setHookedUntil(null); break; // 정화로 스턴이 풀렸다
-          case 'pullEnd': arena.endPull(); hookedUntilRef.current = 0; setHookedUntil(null); break; // 정화로 갈고리에서 풀렸다
-          case 'pull': // 갈고리에 끌려온다(4.33): 끌려오는 동안 스킬 버튼을 잠깐 못 쓰는 모양으로 바꾼다
-            arena.startPull(m.ms, m.byE); showToast(t('gamescreen.hooked'));
-            hookedUntilRef.current = performance.now() + m.ms + 150; setHookedUntil(hookedUntilRef.current);
-            window.setTimeout(() => setHookedUntil((u) => (u === hookedUntilRef.current ? null : u)), m.ms + 200);
-            break;
-          case 'dash': {
-            // 대시 시작(4.27): 예측을 같은 속도로 올리고 아래 표시줄에 남은 시간·쿨타임을 보여 준다
-            arena.startDash(m.ms, m.mult);
-            const t = performance.now();
-            setDash({ until: t + m.ms, readyAt: t + m.cooldownMs });
-            break;
-          }
-        }
+        handleGameMessage(m, ctx);
       },
     });
     connRef.current = conn;
-    sendEmoteRef.current = (code: string) => { if (ready) conn.send({ type: 'emote', code }); };
+    const ctx: GameMessageContext = {
+      arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, applyEmergency,
+      setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setDead, setMyCombo, setHit, setDash, setSkillCd,
+      setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines,
+    }; // 메시지는 연결이 열린 뒤에야 오므로 conn을 만든 다음에 묶어도 된다
+    sendEmoteRef.current = (code: string) => { if (sess.ready) conn.send({ type: 'emote', code }); };
     // 대시(4.27): 쿨타임·움직이는 중인지는 서버가 보고, 시작하면 {type: 'dash'}로 알려 온다
-    const sendDash = () => { if (ready) conn.send({ type: 'dash' }); };
+    const sendDash = () => { if (sess.ready) conn.send({ type: 'dash' }); };
     sendDashRef.current = sendDash; // 모바일은 ⚡ 버튼으로 쓴다
-    // 스킬(4.33): 쿨타임·세이프존은 서버가 본다. 갈고리는 겨눈 지점(PC는 마우스, 모바일은 조이스틱·이동 방향)을 함께 보낸다
-    let lastPointer: { x: number; y: number } | null = null;
-    const aimPoint = (): { x: number; y: number } | null => {
-      if (joy && (joy.dx || joy.dy)) { const me = arena.mePosition(); return { x: me.x + joy.dx * 1000, y: me.y + joy.dy * 1000 }; }
-      if (hold && moveTarget) return moveTarget;
-      if (lastPointer) return arena.screenToWorld(lastPointer.x, lastPointer.y);
-      return null; // 겨누지 않았으면 서버가 가던 방향으로 쓴다
-    };
-    sendLoadoutRef.current = (s: (string | null)[]) => { if (ready) conn.send({ type: 'loadout', slots: s }); };
+    let aimPoint: () => { x: number; y: number } | null = () => null; // 입력(attachGameInput)이 붙은 뒤 바뀐다
+    sendLoadoutRef.current = (s: (string | null)[]) => { if (sess.ready) conn.send({ type: 'loadout', slots: s }); };
     sendSkillRef.current = (id: string) => {
-      if (!ready) return;
-      const aim = AIMED_SKILLS.has(id) ? aimPoint() : null; // 충격파(quake)·반발은 겨누지 않는다
+      if (!sess.ready) return;
+      const aim = isAimed(id, skillsRef.current, FALLBACK) ? aimPoint() : null; // 겨누는 스킬만 겨눈 지점을 함께 보낸다(반발·충격파·흡수는 겨누지 않는다)
       conn.send(aim ? { type: 'skill', id, x: Math.round(aim.x), y: Math.round(aim.y) } : { type: 'skill', id });
     };
     conn.start();
@@ -550,302 +288,16 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     const bye = () => conn.send({ type: 'bye' });
     window.addEventListener('pagehide', bye);
 
-    // 방향키·WASD 입력. 입력창에 쓰는 중이면 무시한다.
-    const pressed = new Set<string>();
-    let lastSent = 0, pending: number | null = null;
-    // 터치 조이스틱(4.2): 누른 자리가 중심이고, 끈 방향·거리가 방향키처럼 서버로 가는 방향(-1~1)이 된다
-    let joy: { pointerId: number; ox: number; oy: number; dx: number; dy: number; armed: boolean } | null = null; // armed: 탭 범위를 넘게 끌어서 조이스틱이 켜졌다
-    const currentDir = () => {
-      if (joy) return { dx: joy.dx, dy: joy.dy };
-      let dx = 0, dy = 0;
-      pressed.forEach((k) => { dx += KEYS[k][0]; dy += KEYS[k][1]; });
-      return { dx, dy };
-    };
-    // 예측(arena)에는 서버로 실제로 보낸 입력만 넣는다. 그래야 둘이 같은 입력으로 움직인다(떨림·혼자 움직임 방지)
-    const fire = () => {
-      lastSent = performance.now();
-      const { dx, dy } = currentDir();
-      if (ready && conn.send({ type: 'input', dx, dy })) arena.setInput(dx, dy);
-    };
-    const sendDir = () => {
-      const now = performance.now();
-      const interval = joy ? JOY_INTERVAL_MS : KEY_INTERVAL_MS;
-      if (now - lastSent >= interval) fire();
-      else if (pending === null) pending = window.setTimeout(() => { pending = null; sendDir(); }, interval - (now - lastSent));
-    };
-    const steering = () => pressed.size > 0 || joy !== null;
-    resyncDir = () => { if (steering()) fire(); };
-    // 누르고 있는 동안에는 1초마다 지금 방향을 다시 보낸다. 중간에 메시지 하나가 빠져도 서버가 곧 같은 상태로 돌아온다
-    const resyncTimer = window.setInterval(() => { if (steering() && pending === null) fire(); }, INPUT_RESYNC_MS);
-    // 조이스틱 그림은 React state 대신 직접 옮긴다(끄는 동안 매 프레임 바뀌어서)
-    const drawJoy = () => {
-      const el = joyRef.current;
-      if (!el) return;
-      if (!joy || !joy.armed) { el.hidden = true; return; } // 탭(원 누르기)일 때는 조이스틱을 띄우지 않는다
-      const rect = canvas.getBoundingClientRect();
-      el.hidden = false;
-      el.style.left = `${joy.ox - rect.left}px`;
-      el.style.top = `${joy.oy - rect.top}px`;
-      el.style.setProperty('--kx', `${joy.dx * JOY_RADIUS}px`);
-      el.style.setProperty('--ky', `${joy.dy * JOY_RADIUS}px`);
-    };
-    const endJoy = () => { joy = null; drawJoy(); };
-    // 떼는 신호(keyup)를 못 받는 경우(창 전환, 보조키 조합, 입력창으로 포커스 이동)에는 모두 뗀 것으로 본다
-    const releaseAll = () => {
-      if (!steering()) return;
-      pressed.clear();
-      if (joy) endJoy();
-      sendDir();
-    };
-    // 빈 바닥 클릭(탭): 그 지점으로 이동(4.2). 이동 중에 다시 찍으면 이전 목표를 버리고 새 지점으로 바로 바꾼다.
-    // 서버에는 초당 10회까지만 보내되, 그 사이에 찍은 지점은 버리지 않고 마지막 지점을 이어서 보낸다.
-    // 내 원의 예측 이동도 서버로 보내는 순간에 새 목표를 쓴다. 연타해도 예측과 서버의 목표가 같아서 떨리지 않는다.
-    let moveTarget: { x: number; y: number } | null = null;
-    let lastMoveSent = 0, movePending: number | null = null;
-    const sendMove = () => {
-      if (!moveTarget) return;
-      const now = performance.now();
-      if (now - lastMoveSent >= CLICK_INTERVAL_MS) {
-        lastMoveSent = now;
-        if (ready && conn.send({ type: 'move', x: moveTarget.x, y: moveTarget.y })) arena.setTarget(moveTarget.x, moveTarget.y);
-      } else if (movePending === null) {
-        movePending = window.setTimeout(() => { movePending = null; sendMove(); }, CLICK_INTERVAL_MS - (now - lastMoveSent));
-      }
-    };
-    const canvas = canvasRef.current!;
-    // 다른 플레이어 정보(4.11): PC는 우클릭, 모바일은 [🔍]을 누른 뒤 원을 탭한다. 왼쪽 클릭·터치·드래그는 언제나 이동이라 겹치지 않는다
-    const openInfo = (hit: number) => { setInfoBot(arena.botInfo(hit)); setInfoLook(arena.entityInfo(hit)?.look ?? null); setInfoEntity(hit); };
-    // 누르고 있는 동안에는 손가락·마우스가 있는 곳으로 계속 따라간다(4.2). 화면이 같이 움직이므로 가만히 누르고 있어도 주기적으로 다시 찍는다
-    let hold: { pointerId: number; x: number; y: number } | null = null;
-    const followHold = () => {
-      if (!hold || !ready) return;
-      moveTarget = arena.screenToWorld(hold.x, hold.y);
-      sendMove();
-    };
-    const holdTimer = window.setInterval(followHold, CLICK_INTERVAL_MS);
-    // PC 좌클릭으로 고른 원(플레이어·봇)을 자동으로 따라간다. 그 원의 지금 위치를 이동 목표로 계속 보낸다(초당 10회).
-    // 방향키·우클릭 이동·터치·원이 사라짐·죽음이면 멈춘다
-    let followE: number | null = null;
-    // 조이스틱을 쥔 채 다른 손가락으로 고른 원: 조이스틱이 우선이라 쥐고 있는 동안은 따라가지 않고(표시만), 떼면 그 원을 따라간다
-    let followKeep = false;
-    const stopFollow = () => {
-      if (followE === null) return;
-      followE = null;
-      followKeep = false;
-      followPrev = null;
-      setFollowUi(null);
-      arena.setFollowTarget(null);
-      // 마지막 이동 목표와 이미 예약된 이동 전송을 지운다. 안 지우면 방향키·WASD를 눌렀는데도 늦게 나가는 이동 명령이 서버에서 방향 입력을 덮어써서 조작이 안 먹힌다
-      moveTarget = null;
-      if (movePending !== null) { clearTimeout(movePending); movePending = null; }
-    };
-    // 서버는 목표에 가까워질수록(120 안) 속도를 줄여서, 움직이는 원을 쫓으면 그 원의 속도에 비례한 거리가 벌어진다.
-    // 따라가는 원이 움직이는 만큼 그 진행 방향으로 목표를 앞에 두어(최대 120) 감속 구간을 채운다. 가만히 있으면 0이라 정확히 겹친다.
-    let followPrev: { x: number; y: number; at: number } | null = null;
-    const FOLLOW_SLOW_ZONE = 120, FOLLOW_REF_SPEED = 240;
-    const followTick = () => {
-      if (followE === null) return;
-      if (joy && joy.armed && (joy.dx || joy.dy)) return; // 조이스틱으로 움직이는 중에는 따라가기 명령이 방향 입력을 덮어쓰지 않게 건너뛴다
-      const p = ready ? arena.followPosition(followE) : null;
-      if (!p) { stopFollow(); return; }
-      const now = performance.now();
-      let lead = { x: 0, y: 0 };
-      if (followPrev && now - followPrev.at > 0) {
-        const dt = (now - followPrev.at) / 1000;
-        const vx = (p.x - followPrev.x) / dt, vy = (p.y - followPrev.y) / dt, v = Math.hypot(vx, vy);
-        if (v > 20 && v < 4000) { const k = FOLLOW_SLOW_ZONE * Math.min(1, v / FOLLOW_REF_SPEED) / v; lead = { x: vx * k, y: vy * k }; }
-      }
-      followPrev = { x: p.x, y: p.y, at: now };
-      moveTarget = { x: p.x + lead.x, y: p.y + lead.y };
-      sendMove();
-    };
-    const followTimer = window.setInterval(followTick, CLICK_INTERVAL_MS);
-    // 탭·더블탭 기준(UX): 손가락·마우스가 조금 흔들려도 탭으로 보고, 움직이는 원을 누르는 것이라 일반 앱(Android 탭 300ms·터치 슬롭 8dp·더블탭 300ms)보다 넉넉하게 잡는다.
-    // 손가락 목표는 지름 44~48px이 권장이라 터치는 원 둘레 24px까지 맞은 것으로 본다(마우스는 정확해서 14px).
-    const TAP_MS = 300;          // 이 안에 떼야 탭(길게 누르면 탭이 아니다)
-    const TAP_SLOP = 16;         // 이만큼(px) 안 움직여야 탭이고, 이보다 많이 움직여야 조이스틱이 뜬다
-    const TOUCH_TOL = 24, MOUSE_TOL = 14;
-    // 터치 탭 후보: 눌렀을 때의 자리와 시각
-    const taps = new Map<number, { x: number; y: number; t: number }>();
-    // 원을 골라 따라간다(터치 탭·PC 좌클릭). 누른 원의 정보는 왼쪽 위 작은 카드로 보여 주고(더블클릭·더블탭은 쓰지 않는다),
-    // 빈 곳은 아무 효과 없고, 따라가는 원을 다시 누르면 따라가기만 멈춘다(카드는 그대로)
-    const selectTarget = (px: number, py: number, tol: number) => {
-      const hit = arena.entityAt(px, py, tol);
-      if (hit === null) return;
-      setTargetCard(hit);
-      setTargetTouch((n) => n + 1);
-      if (hit === followE) { stopFollow(); return; }
-      followE = hit;
-      followKeep = !!(joy && joy.armed); // 조이스틱을 쥔 채 골랐다면 조이스틱을 움직여도 취소하지 않는다
-      setFollowUi(hit);
-      arena.setFollowTarget(hit);
-      followTick();
-    };
-    const pointerDown = (e: PointerEvent) => {
-      if (!ready) return;
-      const mouse = e.pointerType === 'mouse';
-      // PC(마우스): 우클릭이 이동, 좌클릭은 원을 골라 따라가기(빈 곳이면 따라가기 취소). 터치·펜은 그대로 왼쪽(0) 버튼이 이동이다
-      if (mouse ? e.button !== 0 && e.button !== 2 : e.button !== 0) return;
-      setMenuOpen(false); // 아레나를 누르면 열린 메뉴는 닫는다
-      // 미니맵: 크게 보는 중이면 어디를 눌러도 닫고, 작은 미니맵을 누르면(PC 좌클릭·터치) 크게 본다. 이동·따라가기는 하지 않는다
-      if (arena.isMinimapEnlarged()) { arena.setMinimapEnlarged(false); return; }
-      if ((!mouse || e.button === 0) && arena.minimapHit(e.clientX, e.clientY)) { arena.setMinimapEnlarged(true); return; }
-      if (mouse && e.button === 0) {
-        const hit = arena.entityAt(e.clientX, e.clientY, MOUSE_TOL);
-        if (hit !== null && e.shiftKey) { openInfo(hit); return; } // Shift+클릭: 바로 정보
-        selectTarget(e.clientX, e.clientY, MOUSE_TOL); // 클릭: 따라가기 + 왼쪽 위 정보 카드
-        return;
-      }
-      if (e.pointerType !== 'touch') stopFollow(); // 직접 움직이면(우클릭) 자동 따라가기는 멈춘다. 터치는 탭일 수도 있어서 조이스틱이 켜질 때(끌기) 멈춘다
-      try { canvas.setPointerCapture(e.pointerId); } catch { /* 이미 뗐다 */ }
-      if (e.pointerType === 'touch') {
-        // 짧게 톡 누르고 떼면 원 고르기(따라가기)다. 조이스틱을 쥔 채 다른 손가락으로 찍어도 된다. 대시는 ⚡ 버튼으로 쓴다
-        taps.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
-        // 조이스틱: 누른 자리에 판이 생기고, 끌기 전까지는 움직이지 않는다. 두 번째 손가락은 조이스틱이 되지 않는다
-        if (joy) return;
-        hold = null;
-        moveTarget = null;
-        pressed.clear();
-        joy = { pointerId: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0, armed: false };
-        drawJoy();
-        return;
-      }
-      hold = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
-      const p = arena.screenToWorld(e.clientX, e.clientY);
-      pressed.clear(); // 방향키 이동 중이었다면 목표 이동으로 바꾼다(서버도 목표를 받으면 방향 입력을 지운다)
-      arena.showRipple(p.x, p.y); // 물결은 클릭하는 즉시
-      moveTarget = p;
-      sendMove();
-    };
-    canvas.addEventListener('pointerdown', pointerDown);
-    const pointerMove = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') lastPointer = { x: e.clientX, y: e.clientY }; // 갈고리를 겨누는 마우스 위치(4.33)
-      if (joy && e.pointerId === joy.pointerId) {
-        const vx = e.clientX - joy.ox, vy = e.clientY - joy.oy, d = Math.hypot(vx, vy);
-        if (!joy.armed) {
-          if (d < TAP_SLOP) return; // 탭 범위 안의 떨림: 조이스틱도 이동도 아니다(원을 탭하려던 것일 수 있다)
-          joy.armed = true;
-          drawJoy();
-        }
-        // 판 반지름만큼 끌면 최대 속도. 소수 둘째 자리로 묶어 같은 방향을 거듭 보내지 않는다
-        const k = d < JOY_DEAD ? 0 : Math.min(d, JOY_RADIUS) / JOY_RADIUS / d;
-        const dx = Math.round(vx * k * 100) / 100, dy = Math.round(vy * k * 100) / 100;
-        if (dx === joy.dx && dy === joy.dy) return;
-        joy.dx = dx; joy.dy = dy;
-        if ((dx || dy) && !followKeep) stopFollow(); // 조이스틱으로 직접 움직이면 자동 따라가기는 멈춘다(조이스틱을 쥔 채 고른 원은 예외)
-        drawJoy();
-        sendDir();
-        return;
-      }
-      if (hold && e.pointerId === hold.pointerId) { hold.x = e.clientX; hold.y = e.clientY; followHold(); }
-    };
-    const pointerEnd = (e: PointerEvent) => {
-      const tp = taps.get(e.pointerId);
-      taps.delete(e.pointerId);
-      if (tp && e.type === 'pointerup' && performance.now() - tp.t < TAP_MS && Math.hypot(e.clientX - tp.x, e.clientY - tp.y) < TAP_SLOP) {
-        selectTarget(tp.x, tp.y, TOUCH_TOL); // 짧은 탭: 원 고르기(따라가기 + 왼쪽 위 정보 카드)
-      }
-      if (joy && e.pointerId === joy.pointerId) { endJoy(); followKeep = false; sendDir(); if (followE !== null) followTick(); return; } // 떼면 그 자리에서 감속해 멈추고, 고른 원이 있으면 그 원을 따라가기 시작한다
-      if (hold && e.pointerId === hold.pointerId) hold = null;
-    };
-    // 우클릭: 브라우저 메뉴 대신 그 자리 원의 정보. 모바일의 길게 누르기 메뉴도 막는다
-    const noMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      if (!ready) return;
-      if ((e as PointerEvent).pointerType === 'mouse') return; // PC 우클릭은 이동이다. 정보는 Shift+클릭이나 [🔍]
-      const hit = arena.entityAt(e.clientX, e.clientY);
-      if (hit !== null) openInfo(hit);
-    };
-    canvas.addEventListener('pointermove', pointerMove);
-    canvas.addEventListener('pointerup', pointerEnd);
-    canvas.addEventListener('pointercancel', pointerEnd);
-    canvas.addEventListener('pointerleave', pointerEnd);
-    canvas.addEventListener('contextmenu', noMenu);
-
-    const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-    const down = (e: KeyboardEvent) => {
-      if (typing(e)) return;
-      // Enter: 채팅 입력창으로(입력창에서 Esc를 누르면 다시 조작으로)
-      if (e.key === 'Enter' && !e.isComposing && chatOnRef.current) {
-        e.preventDefault();
-        releaseAll();
-        chatInputRef.current?.focus();
-        return;
-      }
-      // M: 미니맵 크게 보기(켜고 닫기), Esc: 크게 보기 닫기. 미니맵·리더보드·채팅을 켜고 끄는 것은 위쪽 버튼으로만 한다(예전의 M·L·C 키는 없앴다).
-      // 한글 입력 상태(ㅡ)에서도 되도록 key가 아니라 code로 본다
-      if (e.code === 'KeyM' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        arena.setMinimapEnlarged(!arena.isMinimapEnlarged());
-        return;
-      }
-      if (e.code === 'Escape' && arena.isMinimapEnlarged()) { arena.setMinimapEnlarged(false); return; }
-      // E: 이모트 창 열기/닫기, 창이 열려 있을 때 1~8: 그 이모트를 보내고 창을 접는다(4.26). 한글 입력 상태(ㄷ)에서도 되게 code로 본다
-      if (e.code === 'KeyE' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        setEmoteOpen((v) => !v);
-        return;
-      }
-      if (emoteOpenRef.current && /^Digit[1-8]$/.test(e.code) && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const em = EMOTES[Number(e.code.slice(5)) - 1];
-        if (em) sendEmoteRef.current(em[0]);
-        setEmoteOpen(false);
-        return;
-      }
-      // 스킬 키(4.33): 칸(1~4번)에 묶인 키를 눌러 그 칸에 장착한 스킬을 쓴다. 대시는 장착과 상관없이 대시 키로 쓴다. 키는 사용자가 바꾼 것이 있으면 그것이다.
-      // 이모트 창이 열려 있을 때의 숫자는 위에서 이모트로 처리했다. 한글 입력 상태에서도 되게 code로 보고, 숫자 줄의 키는 숫자패드로도 쓴다.
-      // K는 스킬창을 열고 닫는다. 스페이스는 버튼이 눌리거나 화면이 내려가지 않게 막는다
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.code === SKILL_WINDOW_KEY) { if (!e.repeat) setPanel((p) => (p === 'skills' ? null : 'skills')); return; }
-        const target = targetOfKey(e.code, loadSlotKeys());
-        if (target !== null) {
-          if (e.code === 'Space') e.preventDefault();
-          if (e.repeat) return;
-          if (performance.now() < hookedUntilRef.current) return; // 갈고리에 잡혀 끌려오는 동안은 쓸 수 없다(정화는 서버가 따로 받는다)
-          if (target === 'dash') { sendDash(); return; }
-          const code = slotsRef.current[target];
-          if (!code) { showToast(t('gamescreen.skillEmptySlotTip')); return; }
-          const sk = skillsRef.current.find((k) => k.code === code);
-          if (sk && sk.requiredLevel > levelRef.current) { showToast(t('gamescreen.skillLockedToast', { n: sk.requiredLevel })); return; } // 해금 레벨이 안 됐다(서버도 막는다)
-          sendSkillRef.current(code);
-          return;
-        }
-      }
-      if (!(e.code in KEYS)) return;
-      // Ctrl·Alt·Cmd와 함께 누른 키는 단축키다. 이때는 떼는 신호가 오지 않는 브라우저가 있어 이동으로 쓰지 않는다
-      if (e.ctrlKey || e.metaKey || e.altKey) { releaseAll(); return; }
-      e.preventDefault();
-      stopFollow(); // 방향키로 움직이면 자동 따라가기는 멈춘다
-      if (pressed.has(e.code)) return; // 길게 눌러 반복되는 신호
-      pressed.add(e.code); sendDir();
-    };
-    const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !typing(e)) e.preventDefault(); // 포커스된 버튼이 스페이스로 눌리지 않게
-      if (e.key === 'Meta' || e.key === 'Control' || e.key === 'Alt') { releaseAll(); return; }
-      if (pressed.delete(e.code)) sendDir();
-    };
-    const focusIn = (e: FocusEvent) => { if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) releaseAll(); };
-    const hidden = () => { if (document.hidden) releaseAll(); };
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    window.addEventListener('blur', releaseAll);
-    window.addEventListener('focusin', focusIn);
-    document.addEventListener('visibilitychange', hidden);
+    // 키보드·마우스·터치(조이스틱) 입력(4.2, 4.11, 4.27, 4.33). 겨누는 지점(aimPoint)도 입력이 들고 있다
+    const input = attachGameInput({
+      arena, conn, sess, canvas: canvasRef.current!, joyEl: () => joyRef.current, sendDash, showToast,
+      hookedUntilRef, slotsRef, levelRef, skillsRef, sendSkillRef, sendEmoteRef, chatOnRef, chatInputRef, emoteOpenRef,
+      setMenuOpen, setEmoteOpen, setPanel, setTargetCard, setTargetTouch, setFollowUi,
+      openInfo: (hit) => { setInfoBot(arena.botInfo(hit)); setInfoLook(arena.entityInfo(hit)?.look ?? null); setInfoEntity(hit); },
+    });
+    aimPoint = input.aimPoint;
     return () => {
-      window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', releaseAll);
-      window.removeEventListener('focusin', focusIn);
-      document.removeEventListener('visibilitychange', hidden);
-      clearInterval(resyncTimer);
-      canvas.removeEventListener('pointerdown', pointerDown);
-      canvas.removeEventListener('pointermove', pointerMove);
-      canvas.removeEventListener('pointerup', pointerEnd);
-      canvas.removeEventListener('pointercancel', pointerEnd);
-      canvas.removeEventListener('pointerleave', pointerEnd);
-      canvas.removeEventListener('contextmenu', noMenu);
-      clearInterval(holdTimer);
-      clearInterval(followTimer);
-      if (pending !== null) clearTimeout(pending);
-      if (movePending !== null) clearTimeout(movePending);
+      input.detach();
       clearInterval(pingTimer);
       window.removeEventListener('pagehide', bye);
       bye(); // 로그아웃 등으로 게임 화면을 나갈 때도

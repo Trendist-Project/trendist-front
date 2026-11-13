@@ -4,8 +4,8 @@ import { t, tOr } from '../i18n';
 import type { SkillInfo } from '../api/types';
 import { conflictOf, keyLabel, SLOT_COUNT, type SlotKeys } from '../game/skillKeys';
 import { SkillIcon } from './SkillIcon';
+import { categoryKey } from './skillMeta';
 
-const CATEGORY_KEY: Record<string, string> = { ATTACK: 'attack', DEFENSE: 'defense', CC: 'cc', UTILITY: 'utility' };
 const DRAG_TYPE = 'application/x-trendist-skill';
 
 interface Props {
@@ -43,7 +43,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
   const [dragOver, setDragOver] = useState<number | null>(null);
   const info = (code: string | null) => (code ? skills.find((s) => s.code === code) ?? null : null);
   const nameOf = (s: SkillInfo) => tOr(`skills.${s.code}_name`, s.code);
-  const catOf = (s: SkillInfo) => CATEGORY_KEY[s.category] ?? 'utility';
+  const catOf = (s: SkillInfo) => categoryKey(s.category);
   const dashInfo = skills.find((s) => s.code === 'dash');
   const sel = info(picked);
   const selSlot = sel ? slots.indexOf(sel.code) : -1;

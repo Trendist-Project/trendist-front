@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { DemoSkillCode } from '../game/skills';
 
 /**
  * 스킬 아이콘(4.33). 스킬마다 직접 그린 SVG이고(글자 이모지는 스킬 연출의 색·모양과 맞지 않아서), 색은 게임 안 연출과 같다:
@@ -31,7 +32,8 @@ const SNOW_ARMS = [0, 60, 120].map((deg) => {
   return `M${p(-9.4)}L${p(9.4)}${side(6, 2.4, 1)}${side(6, 2.4, -1)}${side(-6, -2.4, 1)}${side(-6, -2.4, -1)}`;
 }).join('');
 
-const ICONS: Record<string, () => ReactNode> = {
+/** 그림이 있는 스킬(코드는 game/skills.ts). 회복은 CSS로 그린다 */
+const ICONS: Record<DemoSkillCode, () => ReactNode> = {
   // 대시: 하늘색 번개와 뒤로 흐르는 속도선
   dash: () => (
     <Svg>
@@ -70,7 +72,7 @@ const ICONS: Record<string, () => ReactNode> = {
     </Svg>
   ),
   // 반발: 청록 파문(가운데에서 퍼져 나가는 매끄러운 고리)
-  shockwave: () => (
+  repel: () => (
     <Svg>
       <circle cx="12" cy="12" r="10.4" fill="none" stroke="#3ee0d0" strokeWidth="1.3" strokeOpacity="0.45" strokeDasharray="2.2 2.4" />
       <circle cx="12" cy="12" r="6.9" fill="#3ee0d0" fillOpacity="0.14" stroke="#3ee0d0" strokeWidth="2" strokeOpacity="0.9" />
@@ -136,7 +138,7 @@ const ICONS: Record<string, () => ReactNode> = {
     </Svg>
   ),
   // 불꽃: 주황 불꽃 안에 노란 불꽃
-  flame: () => (
+  fireball: () => (
     <Svg>
       <path d="M12.4 1.8c.6 3.6 5.6 5.6 5.6 11.4 0 4.6-2.7 8-6 8s-6-3-6-6.6c0-2.6 1.4-4.2 2.4-6 1 1.4 1.4 2.4 1.8 3.2.6-2.8.2-6.2 2.2-10z" fill="#ff8a1f" stroke={DARK} strokeWidth="1.3" strokeLinejoin="round" />
       <path d="M12 8.4c.4 2.4 3.4 3.8 3.4 7.4 0 2.6-1.6 4.6-3.4 4.6s-3.4-1.8-3.4-3.8c0-1.6.8-2.6 1.4-3.6.6 1 .9 1.6 1.2 2.1.4-1.8.1-4 .8-6.7z" fill="#ffe14d" />
@@ -166,6 +168,6 @@ const ICONS: Record<string, () => ReactNode> = {
 /** 스킬 아이콘. 그림이 있는 스킬(위 목록)은 직접 그린 SVG, 없으면 DB의 이모지 글자(회복은 굵은 초록 + 모양을 CSS로 그린다) */
 export function SkillIcon({ code, icon }: { code: string; icon: string | null | undefined }) {
   if (code === 'heal') return <i className="heal-plus" aria-hidden="true" />;
-  const draw = ICONS[code];
+  const draw = ICONS[code as DemoSkillCode];
   return draw ? <>{draw()}</> : <>{icon}</>;
 }

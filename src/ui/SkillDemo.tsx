@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { SkillFxLayer } from '../game/skillFx';
 import { borderLineWidth, drawTurtle, TURTLE_BASE } from '../game/turtle';
 import { t } from '../i18n';
+import { skillDef, type DemoSkillCode } from '../game/skills';
 
 /**
  * 가이드의 스킬 예시(4.17, 4.33): 스킬이 어떻게 동작하고 **내 화면**과 **상대 화면**에서 어떻게 보이는지를 움직이는 그림 두 장으로 보여 준다.
@@ -9,7 +10,8 @@ import { t } from '../i18n';
  * 화면에 보일 때만 움직이고(IntersectionObserver), 모션 줄이기 설정이면 대표 장면 한 컷만 그린다.
  * 노란 테두리 원 = 스킬을 쓰는 사람(청록), 파란 원 = 다른 사람. 흰 테두리가 "이 화면의 주인(나)"이다.
  */
-export type DemoSkill = 'dash' | 'shield' | 'hook' | 'shockwave' | 'stealth' | 'poison' | 'darkness' | 'cleanse' | 'slow' | 'stun' | 'flame' | 'quake' | 'absorb';
+/** 그림이 있는 스킬(회복은 그림이 없다). 스킬 목록은 game/skills.ts */
+export type DemoSkill = DemoSkillCode;
 
 const W = 280, H = 150, R = 15;
 const USER_BG = TURTLE_BASE, OTHER_BG = '#4f7fd8';
@@ -34,7 +36,7 @@ const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 const base: Frame = { user: { x: 0, y: 75 }, other: { x: 0, y: 75 }, shield: 0, dash: false, dashAt: 0, lostAt: null, note: null };
 
 // 독·암흑·정화는 아래에서 이어서 더한다(투사체 도우미가 필요해서)
-const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'shockwave' | 'stealth', Script> = {
+const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'repel' | 'stealth', Script> = {
   // 대시: 같은 속도로 걷다가 쓰면 2배 속도로 멀어진다. 쫓아가던 사람은 점점 뒤처진다
   dash: {
     total: 3600,
@@ -65,10 +67,10 @@ const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'shockwave' | 'stealth',
       return { ...base, user: { x: 70, y: 75 }, other: { x: ox, y: 75 }, lostAt: u >= 1060 ? 1060 : null, note: u > 1000 && u < 3600 ? 'a' : null };
     },
   },
-  // 반발(코드 shockwave): 내 원 둘레로 방어막 파문이 퍼져서 닿은 원을 밀어낸다(키워드는 안 잃음)
-  shockwave: {
+  // 반발(코드 repel): 내 원 둘레로 방어막 파문이 퍼져서 닿은 원을 밀어낸다(키워드는 안 잃음)
+  repel: {
     total: 4000,
-    events: [{ at: 700, run: (fx, now) => fx.show({ id: 'shockwave', e: 1, x: 110, y: 75, r0: R, rMax: R * 5, speed: 120 }, now) }],
+    events: [{ at: 700, run: (fx, now) => fx.show({ id: 'repel', e: 1, x: 110, y: 75, r0: R, rMax: R * 5, speed: 120 }, now) }],
     frame: (u) => {
       const hitAt = 700 + ((65 - R) / 120) * 1000; // 고리 앞쪽이 상대 가장자리에 닿는 때
       const push = ease((u - hitAt) / 600);
@@ -147,15 +149,15 @@ const STUN_SCRIPT: Script = {
   ],
   frame: (u) => ({ ...base, user: { x: 60, y: 75 }, other: { x: 200, y: 75 }, note: u > 1100 && u < 3800 ? 'a' : null }),
 };
-const FLAME_AT = [600, 750, 900], FLAME_FLY_MS = ((BOLT_TO - BOLT_FROM) / 300) * 1000;
-const FLAME_SCRIPT: Script = {
+const FIREBALL_AT = [600, 750, 900], FIREBALL_FLY_MS = ((BOLT_TO - BOLT_FROM) / 300) * 1000;
+const FIREBALL_SCRIPT: Script = {
   // 불꽃: 가장 가까운 상대를 노려 3발이 차례로 날아가 반드시 맞는다. 한 발마다 키워드 1개, 총 3개
   total: 5000,
-  events: FLAME_AT.flatMap((at, i) => [
-    { at, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'flame', fid: i + 1, e: 1, t: 2, x: BOLT_FROM, y: 75, speed: 300 }, now) },
-    { at: at + FLAME_FLY_MS, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'flameEnd', fid: i + 1, hit: true, t: 2, x: BOLT_TO, y: 75 }, now) },
+  events: FIREBALL_AT.flatMap((at, i) => [
+    { at, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'fireball', fid: i + 1, e: 1, t: 2, x: BOLT_FROM, y: 75, speed: 300 }, now) },
+    { at: at + FIREBALL_FLY_MS, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'fireballEnd', fid: i + 1, hit: true, t: 2, x: BOLT_TO, y: 75 }, now) },
   ]),
-  frame: (u) => ({ ...base, user: { x: 60, y: 75 }, other: { x: 200, y: 75 }, lostAt: u >= FLAME_AT[2] + FLAME_FLY_MS ? FLAME_AT[2] + FLAME_FLY_MS : null, note: u > 1300 && u < 3800 ? 'a' : null }),
+  frame: (u) => ({ ...base, user: { x: 60, y: 75 }, other: { x: 200, y: 75 }, lostAt: u >= FIREBALL_AT[2] + FIREBALL_FLY_MS ? FIREBALL_AT[2] + FIREBALL_FLY_MS : null, note: u > 1300 && u < 3800 ? 'a' : null }),
 };
 const QUAKE_SCRIPT: Script = {
   // 충격파: 내 원 둘레로 붉은 충격파가 퍼져 닿은 원이 키워드 3개를 잃는다(밀어내지는 않는다)
@@ -183,7 +185,7 @@ const ABSORB_SCRIPT: Script = {
 
 const SCRIPTS: Record<DemoSkill, Script> = {
   ...BASE_SCRIPTS, poison: POISON_SCRIPT, darkness: DARKNESS_SCRIPT, cleanse: CLEANSE_SCRIPT,
-  slow: SLOW_SCRIPT, stun: STUN_SCRIPT, flame: FLAME_SCRIPT, quake: QUAKE_SCRIPT, absorb: ABSORB_SCRIPT,
+  slow: SLOW_SCRIPT, stun: STUN_SCRIPT, fireball: FIREBALL_SCRIPT, quake: QUAKE_SCRIPT, absorb: ABSORB_SCRIPT,
 };
 
 type View = 'mine' | 'theirs';
@@ -308,14 +310,15 @@ function drawScene(ctx: CanvasRenderingContext2D, view: View, skill: DemoSkill, 
     drawActor(ctx, who, f.dark.who === 'user' ? USER_BG : OTHER_BG, 1, who === f.user ? userIsMe : !userIsMe, who === f.user ? userLabel : otherLabel, 0); ctx.restore();
   }
 
-  // 갈고리·독·불꽃·충격파·흡수: 맞은 원 위로 "키워드 -N"(독·불꽃은 한꺼번에 잃어 개수만 보여 준다)
-  if ((skill === 'hook' || skill === 'poison' || skill === 'flame' || skill === 'quake' || skill === 'absorb') && f.lostAt !== null) {
+  // 키워드를 잃게 하는 스킬(갈고리·독·화염구·충격파·흡수): 맞은 원 위로 "키워드 -N"(독·불꽃은 한꺼번에 잃어 개수만 보여 준다)
+  const lose = skillDef(skill)?.demoLose ?? 0; // 잃는 개수(스킬 정의 game/skills.ts)
+  if (lose > 0 && f.lostAt !== null) {
     const age = u - f.lostAt;
     if (age < 1800) {
       ctx.save(); ctx.globalAlpha = Math.min(1, age / 150) * Math.min(1, (1800 - age) / 400);
       ctx.font = '800 13px "Noto Sans KR", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.fillStyle = '#ff8a8a';
-      const txt = t(skill === 'poison' ? 'guideArt.demoLose2' : skill === 'flame' || skill === 'quake' ? 'guideArt.demoLose3' : 'guideArt.demoLose'), y = f.other.y - R - 8 - age * 0.012;
+      const txt = t(lose === 1 ? 'guideArt.demoLose' : `guideArt.demoLose${lose}`), y = f.other.y - R - 8 - age * 0.012;
       ctx.strokeText(txt, f.other.x, y); ctx.fillText(txt, f.other.x, y); ctx.restore();
     }
   }

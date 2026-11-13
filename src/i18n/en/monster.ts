@@ -9,7 +9,6 @@ export default {
   flame: '🔥 Flame',
   flameWarn: 'Flaming boss! Without flame you die instantly',
   hpAria: '{name} HP {pct}%',
-  lostBy: '{by} took {n} of your keywords',
   endKilled: '🎉 {name} was defeated!',
   endTimeout: '⏱ Failed to defeat {name}',
   endRemoved: '{name} has vanished',

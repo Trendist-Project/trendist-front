@@ -67,8 +67,16 @@ export interface RosterEntry {
 export type SkillId = string; // DB(skills)의 스킬 코드. 동작이 있는 코드는 서버 Room.SKILLS
 
 /** skillFx: id마다 담긴 값이 다르다. 충격파 = 쓴 자리와 반지름·속도, 갈고리 = 방향·사거리·ms, hookHit = 맞은 원(t)과 끌려오는 ms, stealth = 은신(유령) 시작과 지속 ms */
+/**
+ * 키워드를 잃은 원인(서버 KeywordLoss.Cause.code). fight 몸싸움·hook 갈고리·absorb 흡수는 이긴 쪽이 가져가고,
+ * poison 독·quake 충격파·fireball 화염구는 아무도 가져가지 않으며, flame 불꽃·death 체력 0은 가진 것의 일부를 잃는다
+ */
+export type LossCause = 'fight' | 'hook' | 'absorb' | 'poison' | 'quake' | 'fireball' | 'flame' | 'death';
+/** 가진 것의 일부를 한꺼번에 잃는 원인(키워드 이름 없이 개수만 온다) */
+export const isPartLoss = (c: LossCause) => c === 'flame' || c === 'death';
+
 export type SkillFx =
-  | { id: 'shockwave'; e: number; x: number; y: number; r0: number; rMax: number; speed: number } // 반발(방어형: 밀어내기만)
+  | { id: 'repel'; e: number; x: number; y: number; r0: number; rMax: number; speed: number } // 반발(방어형: 밀어내기만)
   | { id: 'quakeHit'; t: number; n: number } // 충격파가 원(t)에 닿아 키워드 n개를 잃게 했다(맞은 원 위에 표시)
   | { id: 'quake'; e: number; x: number; y: number; r0: number; rMax: number; speed: number } // 충격파(닿은 원이 키워드를 잃는다)
   | { id: 'hook'; e: number; dx: number; dy: number; range: number; ms: number }
@@ -85,8 +93,8 @@ export type SkillFx =
   | { id: 'slowEnd'; t: number }
   | { id: 'stun'; t: number; ms: number } // 원(t)이 스턴에 걸렸다
   | { id: 'stunEnd'; t: number }
-  | { id: 'flame'; fid: number; e: number; t: number; x: number; y: number; speed: number } // 불꽃 한 발이 (x, y)에서 원 t를 쫓아 날아간다(한 번에 3발이 따로 온다)
-  | { id: 'flameEnd'; fid: number; hit: boolean; t?: number; x?: number; y?: number }
+  | { id: 'fireball'; fid: number; e: number; t: number; x: number; y: number; speed: number } // 화염구 한 발이 (x, y)에서 원 t를 쫓아 날아간다(한 번에 3발이 따로 온다)
+  | { id: 'fireballEnd'; fid: number; hit: boolean; t?: number; x?: number; y?: number }
   | { id: 'absorb'; e: number; t: number; ms: number; range: number } // 원 e가 원 t와 흡수 선을 이었다(ms 동안, 사거리 range). 사거리 안의 원마다 하나씩 온다
   | { id: 'absorbTick'; e: number; t: number } // 키워드 1개를 빼앗는 순간(이은 순간, 1초 뒤, 2초 뒤)
   | { id: 'absorbEnd'; e: number; t?: number } // 선이 끊겼다
@@ -137,11 +145,11 @@ export type ServerMessage =
   | { type: 'kicked'; message: string } // 관리자가 내보냄·계정 금지(13.10). 다시 연결하지 않는다
   | { type: 'titleGranted'; titleId: number; name: string; description: string } // 새 칭호를 받았다(4.10). titleId는 [장착하기]에 쓴다
   | { type: 'score'; score: number; exp: number; nextExp: number; level: number; holdCount: number } // exp = 지금 레벨에서 모은 EXP, nextExp = 다음 레벨에 필요한 EXP(최고 레벨이면 -1)
-  | { type: 'lost'; by: string; keyword?: string; score: number; stolen?: boolean; wiped?: number; partial?: boolean; death?: boolean; poison?: boolean; cause?: 'poison' | 'quake' | 'flame'; monster?: boolean; count?: number } // 내가 잃음: 잃은 키워드와 점수(4.3). 독 스택으로 한 틱에 여러 개를 잃으면 count에 개수가 온다(키워드 이름은 오지 않고 score는 합계). stolen이면 상대가 빼앗아 감
+  | { type: 'lost'; cause: LossCause; by: string; count: number; score: number; keyword?: string; stolen?: boolean } // 내가 잃음(4.3): count개, 점수 합계 score, keyword는 하나일 때 그 이름·여럿이면 첫 하나(불꽃·죽음은 없음). stolen이면 상대가 가져감. 서버 LossMessages와 짝
   // 공격 성공: 상대가 잃은 키워드와 점수(봇은 이름 없음). 사람에게서 이기면 빼앗는다:
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로.
   // BOT = 봇을 이겨 🔥 키워드를 새로 얻음, BOT_RENEWED = 봇을 이겼는데 이미 가진 키워드라 남은 시간만 24시간으로
-  | { type: 'hit'; target: string; keyword?: string; score: number; wiped?: number; partial?: boolean; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number }
+  | { type: 'hit'; cause: LossCause; target: string; count: number; score: number; keyword?: string; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number } // 내가 상대에게서 잃게 함: stolen이 있으면 그 키워드를 가져왔다
   | { type: 'shield'; e: number; ms: number }                         // 키워드를 잃은 원의 무적 시간(카운트다운)
   | { type: 'knock'; dx: number; dy: number; ms: number }             // 내 원이 튕김: 전체 밀려날 거리와 시간
   | { type: 'pong'; t: number }

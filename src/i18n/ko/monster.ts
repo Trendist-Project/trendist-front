@@ -9,7 +9,6 @@ export default {
   flame: '🔥 불꽃',
   flameWarn: '불꽃 보스! 불꽃이 아니면 즉사해요',
   hpAria: '{name} 체력 {pct}%',
-  lostBy: '{by}에게 키워드 {n}개를 잃었어요',
   endKilled: '🎉 {name}을(를) 쓰러뜨렸어요!',
   endTimeout: '⏱ {name} 공략에 실패했어요',
   endRemoved: '{name}이(가) 사라졌어요',

@@ -5,6 +5,7 @@ import {
 } from '../api/client';
 import { ADMIN_COUNTRIES, getAdminCountry, setAdminCountry, type AdminCountry } from '../api/adminCountry';
 import { RichText } from '../ui/RichText';
+import { categoryNameKo, skillNameKo } from '../ui/skillMeta';
 import { GuidesTab } from './GuidesTab';
 import { KeywordsTab } from './KeywordsTab';
 import { BulkTab } from './BulkTab';
@@ -327,8 +328,6 @@ function ShareTab() {
  * 카드마다 −/＋로 조금씩 바꾸거나 직접 입력하고(범위를 벗어나면 그 자리에서 알려 저장을 막는다), 바꾼 카드는 노랗게 표시한다.
  * [모두 저장]으로 바뀐 것을 한꺼번에 저장하고, 사용 여부는 스위치로 바로 바뀐다(끌 때는 한 번 묻는다).
  */
-const SKILL_NAMES: Record<string, string> = { shield: '방패', hook: '갈고리', shockwave: '반발', stealth: '은신', dash: '대시', darkness: '암흑', cleanse: '정화', poison: '독', heal: '회복', slow: '슬로우', stun: '스턴', flame: '화염구', quake: '충격파', absorb: '흡수' };
-const SKILL_CATEGORY: Record<string, string> = { ATTACK: '공격', DEFENSE: '방어', CC: 'CC', UTILITY: '유틸' };
 const COOLDOWN_MAX = 3600, LEVEL_MAX = 100;
 const keyLabel = (code: string) => code.replace(/^Digit/, '').replace(/^Key/, '');
 type SkillDraft = { cd?: string; lv?: string };
@@ -387,7 +386,7 @@ function SkillsTab() {
     const body: { cooldownSeconds?: number; requiredLevel?: number } = {};
     if (Number(v.cd) !== s.cooldownSeconds) body.cooldownSeconds = Number(v.cd);
     if (Number(v.lv) !== s.requiredLevel) body.requiredLevel = Number(v.lv);
-    if (await patch(s, body)) successToast(`${SKILL_NAMES[s.code] ?? s.code} 설정을 저장했어요(1초 안에 게임에 반영)`);
+    if (await patch(s, body)) successToast(`${skillNameKo(s.code)} 설정을 저장했어요(1초 안에 게임에 반영)`);
   };
   const saveAll = async () => {
     if (busy || blocked.length > 0) return;
@@ -413,8 +412,8 @@ function SkillsTab() {
     successToast(n > 0 ? `기본값과 다른 스킬 ${n}개를 기본값으로 채웠어요. 확인하고 저장하세요` : '모든 스킬이 이미 기본값이에요');
   };
   const toggle = async (s: AdminSkill, on: boolean) => {
-    if (!on && !(await confirmToast(`${SKILL_NAMES[s.code] ?? s.code} 스킬을 끌까요? 게임의 스킬 목록에서 빠지고 서버도 이 스킬을 받지 않아요.`))) return;
-    if (await patch(s, { enabled: on })) successToast(`${SKILL_NAMES[s.code] ?? s.code} 스킬을 ${on ? '켰어요' : '껐어요'}`);
+    if (!on && !(await confirmToast(`${skillNameKo(s.code)} 스킬을 끌까요? 게임의 스킬 목록에서 빠지고 서버도 이 스킬을 받지 않아요.`))) return;
+    if (await patch(s, { enabled: on })) successToast(`${skillNameKo(s.code)} 스킬을 ${on ? '켰어요' : '껐어요'}`);
   };
 
   const sorted = [...(items ?? [])].sort((a, b) => a.requiredLevel - b.requiredLevel);
@@ -443,14 +442,14 @@ function SkillsTab() {
         <ul className="sk-list">
           {sorted.map((s) => {
             const v = valueOf(s), e = errorsOf(s), changed = changedOf(s);
-            const name = SKILL_NAMES[s.code] ?? s.code;
+            const name = skillNameKo(s.code);
             return (
               <li key={s.code} className={`sk-card${changed ? ' dirty' : ''}${s.enabled ? '' : ' off'}`}>
                 <div className="sk-head">
                   <span className="sk-icon" aria-hidden="true"><SkillIcon code={s.code} icon={s.icon} /></span>
                   <div className="sk-title">
                     <strong>{name}</strong>
-                    <span className="sk-sub"><code>{s.code}</code><span className={`sk-cat cat-${s.category.toLowerCase()}`}>{SKILL_CATEGORY[s.category] ?? s.category}</span><kbd>{keyLabel(s.defaultKey)}</kbd></span>
+                    <span className="sk-sub"><code>{s.code}</code><span className={`sk-cat cat-${s.category.toLowerCase()}`}>{categoryNameKo(s.category)}</span><kbd>{keyLabel(s.defaultKey)}</kbd></span>
                   </div>
                   <label className="sk-switch" title={s.enabled ? '사용 중 — 끄면 게임에서 빠져요' : '꺼짐 — 켜면 게임에 나와요'}>
                     <input type="checkbox" role="switch" checked={s.enabled} onChange={(ev) => void toggle(s, ev.target.checked)} aria-label={`${name} 사용`} />

@@ -1,7 +1,8 @@
 import { t as tr } from '../i18n';
 import type { EntityState, MinimapEntry, RosterEntry, SkillFx, Snapshot, Tuning } from './protocol';
 import { SkillFxLayer } from './skillFx';
-import { drawDamage, type DmgKind } from './damageText';
+import { SelfStatus } from './selfStatus';
+import type { DmgKind } from './damageText';
 import { MonsterLayer, type MonsterFxMsg, type MonsterHitMsg, type MonsterHud, type MonsterState } from './monsterFx';
 import { BOT_BASE, borderLineWidth, drawTurtle, TURTLE_BASE } from './turtle';
 import { artImage, artPose, drawArt, turnArt } from './pixelArt';
@@ -10,6 +11,10 @@ import { drawBorderEffect, drawComboFlames, drawNameTag, EMOTE_CHAR, type OrbLoo
 const EMOTE_MS = 2500;
 import { Trails } from './trails';
 import { drawLevelUp, FX_MAX, LEVELUP_MS, type LevelFx } from './fx';
+import { OrbLayer } from './arena/orbs';
+import { SafeZones } from './arena/zones';
+import { HpLayer } from './arena/hp';
+import { roundRectPath } from './arena/draw';
 
 /** 다른 엔티티의 최근 스냅샷들(서버 시각 ms 순). 조금 늦은 시각을 두 스냅샷 사이로 보간해 그린다. */
 interface Interp { buf: { t: number; s: EntityState }[]; cur: EntityState }
@@ -52,24 +57,8 @@ const RIPPLE_BAND = 7;          // 띠 두께(px)
 
 interface Ripple { x: number; y: number; at: number }
 
-/** ? 구슬(4.20). 서버 반지름 14px, 화면에서는 위아래로 살짝 떠다닌다. */
-const ORB_RADIUS = 14;
-const ORB_GROW_MS = 350;   // 생길 때 커지는 시간
-const ORB_EAT_MS = 380;    // 먹힐 때 원 안으로 빨려 들어가는 시간
-const GULP_MS = 320;       // 먹은 원이 한 번 부풀었다 돌아오는 시간
-/** prize: ! 구슬(불꽃에게 키워드를 모두 잃은 자리에 떨어짐, 4.20). 아니면 ? 구슬 */
-interface Orb { x: number; y: number; born: number; phase: number; prize: boolean }
-interface EatenOrb { x: number; y: number; e: number; at: number; prize: boolean }
-
 /** 미니맵: 오른쪽 아래, 화면 짧은 변의 24%(110~180px). */
 const BUBBLE_MS = 3000;
-/** 세이프존(4.22): 가운데 고정 존은 파란색, 무작위 존은 연두색(성장 캐릭터 바탕색 #3fb68b과 겹치지 않는 노란 기 초록) */
-const CENTER_ZONE_FILL = 'rgba(79,140,255,0.16)';
-const CENTER_ZONE_LINE = '#4f8cff';
-const ZONE_FILL = 'rgba(166,224,74,0.14)';
-const ZONE_LINE = '#a6e04a';
-const ZONE_BLINK_MS = 30000;   // 사라지기 30초 전부터 깜빡인다
-interface Zone { id: number; x: number; y: number; size: number; until: number }
 /** 대시 꼬리(4.27): 최근 WAKE_MS 동안 지나온 경로를 꼬리로 쓰고, 길이는 기본 길이의 WAKE_MAX배까지만 늘린다 */
 const WAKE_MS = 240;
 const WAKE_MAX = 2.2;
@@ -138,10 +127,8 @@ export class Arena {
   /** 내 위치 예측이 계산된 시각(ms). 조작이 바뀌는 순간까지 먼저 움직여 두고 바꿔서, 프레임 경계로 반올림되지 않게 한다. */
   private predictedAt = performance.now();
   private floatTexts: { text: string; at: number; color: string }[] = [];
-  /** 체력바(4.36): 원 번호 → 남은 %, 맞기 전 %(잠깐 하얗게 남았다 줄어든다), 맞은 시각. 100%면 지운다(공개 설정이 아니면 내 것만 들어 있다) */
-  private hpBars = new Map<number, { pct: number; ghost: number; at: number }>();
-  /** 체력 피해·회복 숫자(원 위로 떠오른다) */
-  private hpPops: { e: number; text: string; at: number; kind?: DmgKind; heal?: { ox: number; oy: number; k: number } }[] = [];
+  /** 체력바와 피해·회복 표시(4.36) */
+  private hp = new HpLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
   private shields = new Map<number, number>();
   private levelFxs: LevelFx[] = []; // 레벨업 빛기둥(4.30)
@@ -166,15 +153,14 @@ export class Arena {
   monsterHud(): MonsterHud | null { return this.monsters.hud(); }
   /** 스킬 연출(4.33): 충격파·갈고리·먹물·은신 */
   private fx = new SkillFxLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
-  /** 갈고리에 맞아 끌려오는 중(4.33): 남은 시간(초)과 쓴 원 번호. 그동안 입력으로 움직이지 않고 서버처럼 쓴 원 쪽으로 당겨진다 */
-  private pull: { left: number; byE: number } | null = null;
+  /** 내 원에 걸린 상태(4.33): 갈고리에 끌려옴·암흑·슬로우·스턴. 예측과 화면 가림에 쓴다 */
+  private self = new SelfStatus();
   /** 은신 중인 원을 그릴 임시 캔버스(투명하게 겹쳐 그리려고) */
   private stealthCanvas: HTMLCanvasElement | null = null;
   private followTarget: number | null = null;
   private ripples: Ripple[] = [];
-  private orbs = new Map<number, Orb>();
-  private eatenOrbs: EatenOrb[] = [];
-  private gulps = new Map<number, number>(); // 엔티티 번호 → 구슬을 먹은 시각
+  /** ? 구슬·! 구슬(4.20) */
+  private orbs = new OrbLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   private minimap: MinimapEntry[] = [];
   /** 직전 미니맵 위치와 받은 시각. 스냅샷에 없는 원은 두 미니맵 사이(1초)를 이어 그린다 */
   private minimapPrev = new Map<number, MinimapEntry>();
@@ -183,11 +169,10 @@ export class Arena {
   /** 크게 보기(M·미니맵 누르기): 아레나 전체를 화면 가운데에 크게 그린다. 게임은 멈추지 않는다 */
   private minimapBig = false;
   private bubblesVisible = true;
-  private centerZone = 0;
-  private zones: Zone[] = [];
+  /** 세이프존(4.22) */
+  private zones = new SafeZones(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   /** 서버 시각(틱 × 50ms)과 이 브라우저 시각의 차이. 가장 빨리 도착한 스냅샷 기준으로 잡는다 */
   private clockOffset: number | null = null;
-  private orbSprites: (HTMLCanvasElement | null)[] = [null, null]; // [? 구슬, ! 구슬]
   private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -242,32 +227,28 @@ export class Arena {
   /** 내가 갈고리에 맞았다(4.33): ms 동안 byE에게 끌려온다. 서버처럼 목표와 튕김을 지우고 예측도 같이 끌려간다. */
   startPull(ms: number, byE: number) {
     this.predictUntil(performance.now());
-    this.pull = { left: ms / 1000, byE };
+    this.self.pull = { left: ms / 1000, byE };
     this.target = null; this.knock = null;
   }
   /** 슬로우에 맞았다: ms 동안 내 최대 속도가 mult배가 된다(서버 Room.advance와 같게 예측도 느려진다) */
-  startSlow(ms: number, mult: number) { this.predictUntil(performance.now()); this.slowLeft = ms / 1000; this.slowMult = mult; }
-  endSlow() { this.slowLeft = 0; this.slowMult = 1; }
+  startSlow(ms: number, mult: number) { this.predictUntil(performance.now()); this.self.start('slow', ms, mult); }
+  endSlow() { this.self.end('slow'); }
   /** 스턴에 맞았다: ms 동안 입력으로 움직이지 않는다. 목표와 속도를 지운다 */
-  startStun(ms: number) { this.predictUntil(performance.now()); this.stunLeft = ms / 1000; this.target = null; this.me.vx = 0; this.me.vy = 0; }
-  endStun() { this.stunLeft = 0; }
-  private slowLeft = 0;
-  private slowMult = 1;
-  private stunLeft = 0;
+  startStun(ms: number) { this.predictUntil(performance.now()); this.self.start('stun', ms); this.target = null; this.me.vx = 0; this.me.vy = 0; }
+  endStun() { this.self.end('stun'); }
   /** 새 원이다(리스폰): 스킬 상태와 연출을 비운다 */
-  resetSkills() { this.pull = null; this.darkUntil = 0; this.slowLeft = 0; this.slowMult = 1; this.stunLeft = 0; this.fx.clear(); }
+  resetSkills() { this.self.reset(); this.fx.clear(); }
   /** 정화로 갈고리에서 풀렸다(4.33): 끌려오는 예측을 멈춘다 */
-  endPull() { this.pull = null; }
+  endPull() { this.self.pull = null; }
   /** 암흑에 맞았다(4.33): ms 동안 내 원 둘레(반지름 1.5배)와 닉네임만 보이고 미니맵도 가린다 */
-  private darkUntil = 0;
-  setDark(ms: number) { this.darkUntil = performance.now() + ms; }
-  clearDark() { this.darkUntil = 0; }
-  private isDark(now: number) { return !this.spec && now < this.darkUntil; }
+  setDark(ms: number) { this.self.start('darkness', ms); }
+  clearDark() { this.self.end('darkness'); }
+  private isDark(_now: number) { return !this.spec && this.self.has('darkness'); }
 
   /** 암흑 가림막: 화면 전체를 검게 덮고 내 원 중심에서 반지름 1.5배만 구멍을 낸다. 가장자리에서 연기가 일렁이고 닉네임은 그 위에 다시 그린다. */
   private drawDarkness(ctx: CanvasRenderingContext2D, w: number, h: number, now: number) {
     const cx = w / 2, cy = h / 2, hole = this.me.r * this.zoom * 1.5;
-    const fade = Math.min(1, (this.darkUntil - now) / 250, 1); // 끝날 때 부드럽게 걷힌다
+    const fade = Math.min(1, (this.self.left('darkness') * 1000) / 250, 1); // 끝날 때 부드럽게 걷힌다
     ctx.save();
     ctx.globalAlpha = Math.max(0, fade);
     const g = ctx.createRadialGradient(cx, cy, hole * 0.88, cx, cy, hole);
@@ -319,58 +300,22 @@ export class Arena {
     if (this.ripples.length > 6) this.ripples.shift(); // 연타해도 쌓이지 않게
   }
   /** 세이프존 목록(4.22). 남은 시간은 받은 순간부터 센다. */
-  setSafeZones(center: number, list: [number, number, number, number, number][]) {
-    const now = performance.now();
-    this.centerZone = center;
-    this.zones = list.map(([id, x, y, size, ms]) => ({ id, x, y, size, until: now + ms }));
-  }
+  setSafeZones(center: number, list: [number, number, number, number, number][]) { this.zones.set(center, list); }
   /** 입장할 때 받은 구슬 전체 목록. */
-  setOrbs(list: [number, number, number, number?][]) {
-    const now = performance.now();
-    this.orbs = new Map(list.map(([id, x, y, kind]) => [id, { x, y, born: now - ORB_GROW_MS, phase: Math.random() * Math.PI * 2, prize: kind === 1 }]));
-  }
-  addOrb(id: number, x: number, y: number, prize = false) {
-    this.orbs.set(id, { x, y, born: performance.now(), phase: Math.random() * Math.PI * 2, prize });
-  }
+  setOrbs(list: [number, number, number, number?][]) { this.orbs.setAll(list); }
+  addOrb(id: number, x: number, y: number, prize = false) { this.orbs.add(id, x, y, prize); }
   /** 누가(e) 구슬을 먹었다. e가 0이면 영역 밖으로 사라진 것이라 그냥 지운다. */
-  eatOrb(id: number, e: number) {
-    const o = this.orbs.get(id);
-    this.orbs.delete(id);
-    if (!o || e === 0) return;
-    const now = performance.now();
-    this.eatenOrbs.push({ x: o.x, y: o.y, e, at: now, prize: o.prize });
-    this.gulps.set(e, now);
-  }
-  setHp(e: number, pct: number) {
-    const now = performance.now(), b = this.hpBars.get(e);
-    if (pct >= 100) { this.hpBars.delete(e); return; }
-    if (!b) { this.hpBars.set(e, { pct, ghost: pct, at: now }); return; }
-    if (pct < b.pct) { b.ghost = Math.max(b.ghost, b.pct); b.at = now; }
-    b.pct = pct;
-  }
+  eatOrb(id: number, e: number) { this.orbs.eat(id, e); }
+  setHp(e: number, pct: number) { this.hp.set(e, pct); }
   /** 체력바 공개(4.36): 모두의 체력 목록으로 맞춘다. 목록에 없는 원(내 것 제외)은 100%라 지운다 */
-  setHps(list: [number, number][]) {
-    const keep = new Set(list.map((l) => l[0]));
-    for (const e of [...this.hpBars.keys()]) if (e !== this.me.e && !keep.has(e)) this.hpBars.delete(e);
-    for (const [e, pct] of list) this.setHp(e, pct);
-  }
-  clearHp() { this.hpBars.clear(); }
+  setHps(list: [number, number][]) { this.hp.setAll(list, this.me.e); }
+  clearHp() { this.hp.clear(); }
+  /** 그 원 위로 피해 숫자를 띄운다(내가 입은 피해는 보라 'taken', 다른 사람이 입은 피해는 주황 'other') */
+  hpPop(e: number, text: string, kind: DmgKind) { this.hp.pop(e, text, kind); }
+  /** 회복: 원 안 여기저기에서 작은 초록 + 가 떠오른다 */
+  healPop(e: number) { this.hp.healPop(e); }
   /** 그 원이 지금 불꽃(콤보 불꽃 단계)인가 */
   isFlaming(e: number) { return (this.names.get(e)?.combo ?? 0) >= this.flameAt; }
-  /** 그 원 위로 피해 숫자를 띄운다(내가 입은 피해는 보라 'taken', 다른 사람이 입은 피해는 주황 'other') */
-  hpPop(e: number, text: string, kind: DmgKind) {
-    if (this.hpPops.length >= 24) this.hpPops.shift();
-    this.hpPops.push({ e, text, at: performance.now(), kind });
-  }
-  /** 회복: 숫자 대신 원 안 여기저기(서로 겹치지 않는 자리)에서 작은 초록 + 가 시차를 두고 떠올랐다 사라진다 */
-  healPop(e: number) {
-    const now = performance.now(), n = 4, a0 = Math.random() * Math.PI * 2;
-    for (let i = 0; i < n; i++) {
-      if (this.hpPops.length >= 24) this.hpPops.shift();
-      const ang = a0 + (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.9, d = 0.28 + Math.random() * 0.4; // 중심에서 반지름의 28~68%
-      this.hpPops.push({ e, text: '', at: now + i * 130 + Math.random() * 90, heal: { ox: Math.cos(ang) * d, oy: Math.sin(ang) * d, k: 0.7 + Math.random() * 0.5 } });
-    }
-  }
   /**
    * 원 아래 이름표(글자만 세 줄, 상자 없음): ① 닉네임(꾸미기 색·모양 그대로) ② `⚔ 유행도` ③ 칭호(작은 금색).
    * (x, top)은 첫 줄 윗가운데, fs는 닉네임 글자 크기, u는 이 좌표계에서 화면 1px의 길이.
@@ -421,49 +366,6 @@ export class Arena {
     ctx.restore();
   }
 
-  private drawHpBar(ctx: CanvasRenderingContext2D, e: EntityState, b: { pct: number; ghost: number; at: number }, now: number) {
-    const z = this.zoom, w = Math.max(48 / z, Math.min(e.r * 1.7, 150 / z)), h = 7 / z, pad = 1.5 / z;
-    const x = e.x - w / 2, y = e.y - e.r - 12 / z;
-    ctx.save();
-    ctx.fillStyle = 'rgba(8,12,20,0.8)';
-    ctx.beginPath(); roundRectPath(ctx, x - pad, y - pad, w + pad * 2, h + pad * 2, (h + pad * 2) / 2); ctx.fill();
-    const lag = Math.max(0, 1 - (now - b.at - 350) / 400); // 맞은 뒤 0.35초 동안 하얗게 남았다가 0.4초에 걸쳐 줄어든다
-    const ghost = b.pct + Math.max(0, b.ghost - b.pct) * Math.max(0, Math.min(1, lag));
-    if (ghost > b.pct) { ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); roundRectPath(ctx, x, y, w * ghost / 100, h, h / 2); ctx.fill(); }
-    const pulse = b.pct <= 25 && !this.reducedMotion ? 0.7 + 0.3 * Math.sin(now / 160) : 1;
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#f04a4a'; // 체력은 항상 빨강(경험치의 초록과 구별). 위급하면 깜빡인다
-    ctx.beginPath(); roundRectPath(ctx, x, y, Math.max(h, w * b.pct / 100), h, h / 2); ctx.fill();
-    ctx.restore();
-  }
-  private drawHpPops(ctx: CanvasRenderingContext2D, now: number) {
-    if (this.hpPops.length === 0) return;
-    this.hpPops = this.hpPops.filter((p) => now - p.at < 1100);
-    const z = this.zoom;
-    for (const p of this.hpPops) {
-      const pos = this.entityPos(p.e, now);
-      if (!pos || this.camouflaged(p.e, now)) continue;
-      const t = (now - p.at) / 1100;
-      if (t < 0) continue; // 시차를 둔 + 는 차례가 오기 전에는 그리지 않는다
-      ctx.save();
-      ctx.globalAlpha = 1 - t * t;
-      if (p.heal) {
-        // 힐 표시: 둥근 십자(+). 원 안의 정해진 자리에서 살짝 떠오른다(모션 줄이기면 제자리)
-        const a = Math.max(9 / z, Math.min(pos.r * 0.17, 20 / z)) * p.heal.k, w = a * 0.62; // 팔 길이, 팔 굵기
-        const cx = pos.x + p.heal.ox * pos.r, cy = pos.y + p.heal.oy * pos.r - (this.reducedMotion ? 0 : t * 22 / z);
-        ctx.beginPath();
-        roundRectPath(ctx, cx - a, cy - w / 2, a * 2, w, w / 2);
-        roundRectPath(ctx, cx - w / 2, cy - a, w, a * 2, w / 2);
-        ctx.lineWidth = 2.5 / z; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.stroke();
-        ctx.fillStyle = '#4ade80'; ctx.fill();
-        ctx.restore();
-        continue;
-      }
-      ctx.restore();
-      const size = Math.max(18 / z, Math.min(pos.r * 0.55, 40 / z)) * (p.kind === 'taken' ? 1.15 : 1);
-      drawDamage(ctx, p.text, pos.x, pos.y - pos.r - 14 / z, t, p.kind ?? 'other', size, this.reducedMotion);
-    }
-  }
   floatText(text: string, color = '#ffd166') { this.floatTexts.push({ text, at: performance.now(), color }); }
 
   /** e 원에 ms 동안 무적 표시(보호막 + 카운트다운)를 띄운다. */
@@ -727,7 +629,7 @@ export class Arena {
     const serverMoving = prev !== null && Math.hypot(e.x - prev.x, e.y - prev.y) > 0.5;
     this.serverMoving = serverMoving;
     const meMoving = this.isMeMoving();
-    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1) * (this.slowLeft > 0 ? this.slowMult : 1);
+    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1) * this.self.speedMult();
     const tolerance = serverMoving || meMoving ? speed * (MOVING_TOLERANCE_SEC + this.rtt) : CORRECT_WHEN_STOPPED;
     if (err > SNAP_DISTANCE) {
       this.resetMe(e.e, e.x, e.y);
@@ -760,17 +662,16 @@ export class Arena {
 
   /** 서버 Room.move와 같은 규칙으로 내 위치를 미리 움직인다(속도·감속·가속이 같아야 보정이 생기지 않는다). */
   private predictMe(dt: number) {
-    if (this.pull) { this.pullStep(dt); return; } // 갈고리에 끌려오는 중: 입력으로 움직이지 않는다(4.33)
-    if (this.stunLeft > 0) { // 스턴: 입력으로 움직이지 않는다(서버도 조작만 받아 두고 멈춰 있다)
-      this.stunLeft = Math.max(0, this.stunLeft - dt);
-      if (this.slowLeft > 0) this.slowLeft = Math.max(0, this.slowLeft - dt);
+    if (this.self.pull) { this.self.tick(dt); this.pullStep(dt); return; } // 갈고리에 끌려오는 중: 입력으로 움직이지 않는다(4.33). 걸린 효과의 시간은 흐른다
+    if (this.self.stunned) { // 스턴: 입력으로 움직이지 않는다(서버도 조작만 받아 두고 멈춰 있다)
+      this.self.tick(dt);
       if (this.dashLeft > 0) this.dashLeft = Math.max(0, this.dashLeft - dt);
       this.me.vx = 0; this.me.vy = 0; this.target = null;
       return;
     }
-    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1) * (this.slowLeft > 0 ? this.slowMult : 1); // 크기와 관계없이 같다. 대시 중이면 배수, 슬로우 중이면 느려진다
+    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1) * this.self.speedMult(); // 크기와 관계없이 같다. 대시 중이면 배수, 슬로우 중이면 느려진다
     if (this.dashLeft > 0) this.dashLeft = Math.max(0, this.dashLeft - dt);
-    if (this.slowLeft > 0) this.slowLeft = Math.max(0, this.slowLeft - dt);
+    this.self.tick(dt);
     let wantX = 0, wantY = 0;
     if (this.input.dx || this.input.dy) {
       const len = Math.hypot(this.input.dx, this.input.dy);
@@ -800,7 +701,7 @@ export class Arena {
 
   /** 서버 Room.pullHooked와 같은 식: 남은 시간에 맞춰 쓴 원과 닿는 자리까지 당겨진다. */
   private pullStep(dt: number) {
-    const p = this.pull;
+    const p = this.self.pull;
     if (!p) return;
     const o = this.entityPos(p.byE, performance.now());
     if (o) {
@@ -812,7 +713,7 @@ export class Arena {
     }
     p.left -= dt;
     this.me.vx = 0; this.me.vy = 0;
-    if (p.left <= 0) this.pull = null;
+    if (p.left <= 0) this.self.pull = null;
     const lim = this.half - this.me.r;
     this.me.x = Math.max(-lim, Math.min(lim, this.me.x));
     this.me.y = Math.max(-lim, Math.min(lim, this.me.y));
@@ -884,21 +785,21 @@ export class Arena {
     const half = this.half;
     ctx.fillStyle = '#1f2a37'; // 짙은 회청색 바닥
     ctx.fillRect(-half, -half, half * 2, half * 2);
-    this.drawZones(ctx, now, w, h);
+    this.zones.draw(ctx, now, this.view, this.zoom, w, h);
     this.drawGrid(ctx, w, h);
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 4 / this.zoom;
     ctx.strokeRect(-half, -half, half * 2, half * 2);
 
     this.drawRipples(ctx, now);
-    this.drawOrbs(ctx, now, w, h);
+    this.orbs.draw(ctx, now, this.view, this.zoom, w, h);
     this.monsters.update(dt);
     this.monsters.drawBody(ctx, now, this.zoom); // 보스 몸과 패턴 예고는 모든 원 아래(4.35)
 
     // 작은 아이콘을 위에 그리려고 큰 것부터
     const list = [...this.entities.values()].map((i) => {
       const s = this.current(i, now);
-      const r = s.r * this.gulpScale(s.e, now);
+      const r = s.r * this.orbs.gulpScale(s.e, now);
       if (this.spec) return { ...s, r: Math.max(r, 3 / this.zoom) }; // 멀리서 봐도 점이 보이게
       return s.me ? { ...s, x: this.view.x, y: this.view.y, r } : { ...s, r };
     }).sort((a, b) => b.r - a.r);
@@ -916,10 +817,10 @@ export class Arena {
       if (Math.abs(e.x - this.view.x) > viewHalfW + e.r || Math.abs(e.y - this.view.y) > viewHalfH + e.r) continue; // 화면 밖은 그리지 않는다
       this.drawEntity(ctx, e);
     }
-    this.drawEatenOrbs(ctx, now);
+    this.orbs.drawEaten(ctx, now, this.zoom, (e, t) => this.entityPos(e, t));
     this.drawBubbles(ctx, now);
     this.drawEmotes(ctx, now);
-    this.drawHpPops(ctx, now);
+    this.hp.drawPops(ctx, now, this.zoom, (e, t) => (this.camouflaged(e, t) ? null : this.entityPos(e, t)));
     this.drawShields(ctx, now);
     this.drawStealthTimer(ctx, now);
     this.drawHiddenWarning(ctx, now);
@@ -981,18 +882,10 @@ export class Arena {
     ctx.strokeStyle = 'rgba(255,255,255,0.25)';
     ctx.strokeRect(toX(this.view.x) - vw / 2, toY(this.view.y) - vh / 2, vw, vh);
 
-    // 세이프존: 가운데는 파란 칸, 무작위 존은 연두색 칸
-    ctx.fillStyle = 'rgba(79,140,255,0.55)';
-    const c = this.centerZone * s;
-    ctx.fillRect(toX(0) - c / 2, toY(0) - c / 2, Math.max(2, c), Math.max(2, c));
-    ctx.fillStyle = 'rgba(166,224,74,0.55)';
-    for (const z of this.zones) {
-      const zs = Math.max(2, z.size * s);
-      ctx.fillRect(toX(z.x) - zs / 2, toY(z.y) - zs / 2, zs, zs);
-    }
+    this.zones.drawMinimap(ctx, toX, toY, s); // 세이프존
     this.monsters.drawMinimap(ctx, toX, toY, s, big); // 보스 몸(4.35)
     // ? 구슬은 작은 금색 점, ! 구슬은 붉은 점으로
-    for (const o of this.orbs.values()) {
+    for (const o of this.orbs.all()) {
       ctx.fillStyle = o.prize ? 'rgba(255,90,90,0.95)' : 'rgba(255,200,74,0.9)';
       ctx.beginPath(); ctx.arc(toX(o.x), toY(o.y), (o.prize ? 2.2 : 1.6) * (big ? 1.7 : 1), 0, Math.PI * 2); ctx.fill();
     }
@@ -1028,48 +921,6 @@ export class Arena {
   }
 
   /** 세이프존(4.22): 반투명 칸과 테두리. 무작위 존은 남은 시간을 보여 주고 끝나기 30초 전부터 깜빡인다. */
-  private drawZones(ctx: CanvasRenderingContext2D, now: number, w: number, h: number) {
-    const z = this.zoom;
-    const viewHalfW = w / 2 / z, viewHalfH = h / 2 / z;
-    const visible = (x: number, y: number, size: number) =>
-      Math.abs(x - this.view.x) <= viewHalfW + size / 2 && Math.abs(y - this.view.y) <= viewHalfH + size / 2;
-    const label = (text: string, x: number, y: number, color: string) => {
-      const fs = 14 / z;
-      ctx.font = `700 ${fs}px "Noto Sans KR", system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = color;
-      ctx.fillText(text, x, y + 8 / z);
-    };
-    this.zones = this.zones.filter((zone) => zone.until > now);
-    for (const zone of this.zones) {
-      if (!visible(zone.x, zone.y, zone.size)) continue;
-      const left = zone.until - now;
-      const blink = left < ZONE_BLINK_MS && !this.reducedMotion ? 0.55 + 0.45 * Math.abs(Math.sin(now / 250)) : 1;
-      const x0 = zone.x - zone.size / 2, y0 = zone.y - zone.size / 2;
-      ctx.globalAlpha = blink;
-      ctx.fillStyle = ZONE_FILL;
-      ctx.fillRect(x0, y0, zone.size, zone.size);
-      ctx.strokeStyle = ZONE_LINE;
-      ctx.lineWidth = 3 / z;
-      ctx.setLineDash([16 / z, 10 / z]);
-      ctx.strokeRect(x0, y0, zone.size, zone.size);
-      ctx.setLineDash([]);
-      const sec = Math.ceil(left / 1000);
-      label(tr('arena.safeZone', { time: `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` }), zone.x, y0, '#d6f5a8');
-      ctx.globalAlpha = 1;
-    }
-    const c = this.centerZone;
-    if (c > 0 && visible(0, 0, c)) {
-      ctx.fillStyle = CENTER_ZONE_FILL;
-      ctx.fillRect(-c / 2, -c / 2, c, c);
-      ctx.strokeStyle = CENTER_ZONE_LINE;
-      ctx.lineWidth = 4 / z;
-      ctx.strokeRect(-c / 2, -c / 2, c, c);
-      label(tr('arena.safeZoneFixed'), 0, -c / 2, '#bcd4ff');
-    }
-  }
-
   private drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
     const half = this.half;
     const vw = w / 2 / this.zoom, vh = h / 2 / this.zoom;
@@ -1293,8 +1144,7 @@ export class Arena {
       ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4 / this.zoom, 0, Math.PI * 2); ctx.stroke();
     }
     this.drawDashFx(ctx, e, true); // 대시 시작할 때 튀어 오르는 ⚡(4.27)
-    const hpBar = this.hpBars.get(e.e);
-    if (hpBar) this.drawHpBar(ctx, e, hpBar, performance.now()); // 체력바(4.36): 100%면 없다
+    this.hp.drawBar(ctx, e, this.zoom, performance.now()); // 체력바(4.36): 100%면 없다
     const info = this.names.get(e.e);
     // 관전 중 멀리서는 이름이 겹쳐 지저분하니 화면에서 반지름 7px 이상이거나 따라가는 원만 보인다
     const showName = !this.spec || e.r * this.zoom >= 7 || this.spec.follow === e.e;
@@ -1375,15 +1225,6 @@ export class Arena {
   }
 
   /** 구슬을 먹은 원은 잠깐 부풀었다 돌아온다(삼키는 느낌). */
-  private gulpScale(e: number, now: number) {
-    const at = this.gulps.get(e);
-    if (at === undefined) return 1;
-    const t = (now - at - ORB_EAT_MS * 0.6) / GULP_MS; // 구슬이 거의 들어갔을 때 부푼다
-    if (t >= 1) { this.gulps.delete(e); return 1; }
-    if (t <= 0 || this.reducedMotion) return 1;
-    return 1 + 0.12 * Math.sin(Math.PI * t);
-  }
-
   /** 무적인 원: 하늘색 보호막(천천히 도는 점선 고리)과 원 위의 남은 초(3, 2, 1). 모두에게 보인다(4.3). */
   /** 따라가는 원(좌클릭으로 고른 목표) 둘레의 표시: 천천히 도는 점선 고리와 맥동. 그 원이 사라지면 지운다. */
   private drawFollowMark(ctx: CanvasRenderingContext2D, now: number) {
@@ -1414,17 +1255,6 @@ export class Arena {
   }
 
   /** 내 화면 안(보이는 범위)에 은신(유령) 중이라 안 보이는 다른 원이 있는지(4.33). 거의 다 사라진 뒤부터 센다. */
-  /** 그 자리(월드 좌표)가 세이프존(가운데 고정 존이나 아직 남아 있는 무작위 존) 안인지(4.22). 서버 Room.inSafeZone과 같은 규칙 */
-  private inSafeZone(x: number, y: number, now: number): boolean {
-    const c = this.centerZone / 2;
-    if (c > 0 && Math.abs(x) <= c && Math.abs(y) <= c) return true;
-    for (const z of this.zones) {
-      const h = z.size / 2;
-      if (z.until > now && Math.abs(x - z.x) <= h && Math.abs(y - z.y) <= h) return true;
-    }
-    return false;
-  }
-
   private hiddenEnemyInView(now: number): boolean {
     const hw = this.canvas.clientWidth / 2 / this.zoom, hh = this.canvas.clientHeight / 2 / this.zoom;
     for (const [e, i] of this.entities) {
@@ -1441,7 +1271,7 @@ export class Arena {
    */
   private drawHiddenWarning(ctx: CanvasRenderingContext2D, now: number) {
     if (this.spec || this.dead || !this.me.initialized) return;
-    if (this.inSafeZone(this.me.x, this.me.y, now)) return; // 세이프존 안에서는 부딪히지 않으니 경고하지 않는다(4.22)
+    if (this.zones.contains(this.me.x, this.me.y, now)) return; // 세이프존 안에서는 부딪히지 않으니 경고하지 않는다(4.22)
     if (!this.hiddenEnemyInView(now)) return;
     const z = this.zoom, pos = this.entityPos(this.me.e, now);
     if (!pos) return;
@@ -1574,96 +1404,6 @@ export class Arena {
     return i ? this.current(i, now) : null;
   }
 
-  private drawOrbs(ctx: CanvasRenderingContext2D, now: number, w: number, h: number) {
-    if (this.orbs.size === 0) return;
-    const z = this.zoom;
-    const viewHalfW = w / 2 / z, viewHalfH = h / 2 / z;
-    for (const o of this.orbs.values()) {
-      if (Math.abs(o.x - this.view.x) > viewHalfW + 40 || Math.abs(o.y - this.view.y) > viewHalfH + 40) continue;
-      const grow = Math.min(1, (now - o.born) / ORB_GROW_MS);
-      const pop = grow < 1 ? 1 - (1 - grow) ** 3 : 1;
-      const bob = this.reducedMotion ? 0 : Math.sin(now / 520 + o.phase) * 4; // 둥실둥실
-      const pulse = this.reducedMotion ? 1 : 1 + Math.sin(now / 300 + o.phase) * 0.06;
-      const r = Math.max(ORB_RADIUS, 9 / z) * pop * pulse; // 멀리서 봐도 보이게
-      this.drawOrbBall(ctx, o.x, o.y + bob, r, 1, o.prize);
-    }
-  }
-
-  /** 구슬 그림은 한 번만 그려 두고 크기만 바꿔 찍는다(매 프레임 구슬마다 그라데이션을 만들지 않게). */
-  private drawOrbBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number, prize = false) {
-    const kind = prize ? 1 : 0;
-    let sprite = this.orbSprites[kind];
-    if (!sprite) {
-      const base = 32, size = Math.ceil(base * 2.2 * 2);
-      const c = document.createElement('canvas');
-      c.width = size; c.height = size;
-      const g = c.getContext('2d');
-      if (!g) return;
-      this.paintOrb(g, size / 2, size / 2, base, prize);
-      sprite = this.orbSprites[kind] = c;
-    }
-    const R = r * 2.2;
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(sprite, x - R, y - R, R * 2, R * 2);
-    ctx.globalAlpha = 1;
-  }
-
-  /** prize면 ! 구슬: 금색 ? 구슬과 구별되게 붉은 빛과 몸통으로 그린다 */
-  private paintOrb(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, prize = false) {
-    const glow = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 2.2);
-    glow.addColorStop(0, prize ? 'rgba(255,90,90,0.6)' : 'rgba(255,209,102,0.55)');
-    glow.addColorStop(1, prize ? 'rgba(255,90,90,0)' : 'rgba(255,209,102,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, Math.PI * 2); ctx.fill();
-    const body = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
-    body.addColorStop(0, prize ? '#ffd6d6' : '#fff3c4');
-    body.addColorStop(0.55, prize ? '#ff5a5a' : '#ffc84a');
-    body.addColorStop(1, prize ? '#b81d1d' : '#e08a00');
-    ctx.fillStyle = body;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = Math.max(1.5, r * 0.12);
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    ctx.stroke();
-    ctx.fillStyle = prize ? '#ffffff' : '#5a3200';
-    ctx.font = `800 ${Math.round(r * 1.25)}px system-ui, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(prize ? '!' : '?', x, y + r * 0.06);
-    ctx.textBaseline = 'alphabetic';
-  }
-
-  /** 먹힌 구슬: 먹은 원 가운데로 빨려 들어가며 작아지고, 반짝이는 고리가 퍼진다. */
-  private drawEatenOrbs(ctx: CanvasRenderingContext2D, now: number) {
-    this.eatenOrbs = this.eatenOrbs.filter((o) => now - o.at < ORB_EAT_MS + 260);
-    const z = this.zoom;
-    for (const o of this.eatenOrbs) {
-      const target = this.entityPos(o.e, now);
-      const t = Math.min(1, (now - o.at) / ORB_EAT_MS);
-      if (t < 1) {
-        const ease = t * t * (3 - 2 * t);
-        const tx = target ? target.x : o.x, ty = target ? target.y : o.y;
-        const x = this.reducedMotion ? o.x : o.x + (tx - o.x) * ease;
-        const y = this.reducedMotion ? o.y : o.y + (ty - o.y) * ease;
-        this.drawOrbBall(ctx, x, y, Math.max(ORB_RADIUS, 9 / z) * (1 - ease * 0.85), 1 - t * 0.5, o.prize);
-      }
-      // 먹은 원 둘레에서 금빛 고리가 퍼지며 사라진다
-      const tr = (now - o.at - ORB_EAT_MS * 0.6) / 420;
-      if (target && tr > 0 && tr < 1) {
-        ctx.strokeStyle = `rgba(255,209,102,${0.9 * (1 - tr)})`;
-        ctx.lineWidth = (4 * (1 - tr) + 1) / z;
-        ctx.beginPath(); ctx.arc(target.x, target.y, target.r + (8 + 26 * tr) / z, 0, Math.PI * 2); ctx.stroke();
-        if (!this.reducedMotion) {
-          ctx.fillStyle = `rgba(255,240,180,${1 - tr})`;
-          for (let k = 0; k < 8; k++) {
-            const a = (k / 8) * Math.PI * 2 + o.at;
-            const d = target.r + (6 + 34 * tr) / z;
-            ctx.beginPath(); ctx.arc(target.x + Math.cos(a) * d, target.y + Math.sin(a) * d, (2.5 * (1 - tr) + 0.5) / z, 0, Math.PI * 2); ctx.fill();
-          }
-        }
-      }
-    }
-  }
-
   private drawFloatTexts(ctx: CanvasRenderingContext2D, w: number, h: number, now: number) {
     this.floatTexts = this.floatTexts.filter((f) => now - f.at < 1200);
     for (const f of this.floatTexts) {
@@ -1682,17 +1422,6 @@ export class Arena {
 function fmtPower(n: number): string {
   const v = Math.max(0, Math.round(n));
   return v >= 1000 ? `${Number((v / 1000).toFixed(3))}K` : String(v);
-}
-
-/** 모서리가 둥근 사각형 경로(ctx.roundRect가 없는 브라우저에서도 같게). */
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
 }
 
 /** 말풍선 줄바꿈: 글자 수 기준으로 자르고 maxLines를 넘으면 말줄임표. */
