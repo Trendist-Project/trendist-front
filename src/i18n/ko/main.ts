@@ -14,6 +14,7 @@ export default {
   or: '또는',
   googleHint: '로그인하면 다른 기기에서도 기록이 이어져요. 게스트로 하던 기록도 그대로 이어져요',
   googleStart: 'Google로 시작',
+  admin: '관리자 페이지',
   logout: '로그아웃',
   serverLabel: '서버',
   countryLabel: '서버 선택 (게임 방과 언어가 함께 바뀝니다)',

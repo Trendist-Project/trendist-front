@@ -633,8 +633,8 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .sk-cat { padding: 0 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; background: #232d3d; color: #cbd5e1; }
 .sk-cat.cat-attack { background: rgba(255,107,107,0.16); color: #ff9a9a; }
 .sk-cat.cat-defense { background: rgba(63,182,200,0.16); color: #7fd8e6; }
-.sk-cat.cat-move { background: rgba(242,208,75,0.16); color: #f2d04b; }
-.sk-cat.cat-stealth { background: rgba(167,139,250,0.18); color: #c4b5fd; }
+.sk-cat.cat-utility { background: rgba(242,208,75,0.16); color: #f2d04b; }
+.sk-cat.cat-cc { background: rgba(167,139,250,0.18); color: #c4b5fd; }
 .sk-switch { flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--muted); }
 .sk-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .sk-track { position: relative; width: 38px; height: 22px; border-radius: 999px; background: #2b3546; border: 1px solid #3a4659; transition: background 0.12s; }

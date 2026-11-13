@@ -14,6 +14,7 @@ export default {
   or: 'or',
   googleHint: 'Sign in to keep your progress on other devices. Your guest progress carries over too',
   googleStart: 'Start with Google',
+  admin: 'Admin page',
   logout: 'Log out',
   serverLabel: 'Server',
   countryLabel: 'Choose server (changes game room and language)',

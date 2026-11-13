@@ -11,7 +11,7 @@ export type SkillCooldowns = Partial<Record<SkillId, number>>;
 /** 대시 상태(4.27): until은 대시가 끝나는 시각, readyAt은 다시 쓸 수 있는 시각(둘 다 performance.now 기준 ms). 아직 안 썼으면 null */
 export interface DashState { until: number; readyAt: number }
 
-const CATEGORY_KEY: Record<string, string> = { MOVE: 'move', ATTACK: 'attack', DEFENSE: 'defense', STEALTH: 'stealth' };
+const CATEGORY_KEY: Record<string, string> = { ATTACK: 'attack', DEFENSE: 'defense', CC: 'cc', UTILITY: 'utility' };
 
 /**
  * 스킬 버튼 줄(4.33). 장착한 4칸(slots)과 대시를 보여 주고, 칸의 키(keys)는 사용자가 바꾼 것이 있으면 그것을 쓴다. 스킬 목록·아이콘·쿨타임은 DB에서 온다(useSkills).
@@ -63,7 +63,7 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
         const listed = s.cooldownSeconds * 1000;
         const total = Math.max(seenTotal.current[s.code] ?? 0, left, left <= listed ? listed : 0);
         const veil = !locked && !hooked && !active && left > 0 ? Math.min(100, Math.max(0, (left / total) * 100)) : 0; // 남은 시간 비율(%)
-        const cat = CATEGORY_KEY[s.category] ?? 'move';
+        const cat = CATEGORY_KEY[s.category] ?? 'utility';
         const name = tOr(`skills.${s.code}_name`, s.code), desc = tOr(`skills.${s.code}_desc`, '');
         return (
           <div key={s.code} className="skill-slot">

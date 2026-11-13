@@ -5,7 +5,7 @@ import type { SkillInfo } from '../api/types';
 import { conflictOf, keyLabel, SLOT_COUNT, type SlotKeys } from '../game/skillKeys';
 import { SkillIcon } from './SkillIcon';
 
-const CATEGORY_KEY: Record<string, string> = { MOVE: 'move', ATTACK: 'attack', DEFENSE: 'defense', STEALTH: 'stealth' };
+const CATEGORY_KEY: Record<string, string> = { ATTACK: 'attack', DEFENSE: 'defense', CC: 'cc', UTILITY: 'utility' };
 const DRAG_TYPE = 'application/x-trendist-skill';
 
 interface Props {
@@ -43,7 +43,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
   const [dragOver, setDragOver] = useState<number | null>(null);
   const info = (code: string | null) => (code ? skills.find((s) => s.code === code) ?? null : null);
   const nameOf = (s: SkillInfo) => tOr(`skills.${s.code}_name`, s.code);
-  const catOf = (s: SkillInfo) => CATEGORY_KEY[s.category] ?? 'move';
+  const catOf = (s: SkillInfo) => CATEGORY_KEY[s.category] ?? 'utility';
   const dashInfo = skills.find((s) => s.code === 'dash');
   const sel = info(picked);
   const selSlot = sel ? slots.indexOf(sel.code) : -1;
@@ -139,8 +139,8 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
               {/* 대시는 늘 쓰는 스킬이라 맨 왼쪽에 두고, 세로 구분선으로 장착 칸 4개와 나눈다 */}
               <div className="sw-cell dash">
                 <span className="sw-target-arrow" aria-hidden="true">▼</span>
-                <span className="sw-slot cat-move fixed" title={`${tOr('skills.dash_name', 'dash')} · ${t('gamescreen.skillAlways')}`}>
-                  <span className="sw-no" aria-hidden="true">⚡</span><span className="sw-ico">{dashInfo.icon}</span>
+                <span className="sw-slot cat-utility fixed" title={`${tOr('skills.dash_name', 'dash')} · ${t('gamescreen.skillAlways')}`}>
+                  <span className="sw-no" aria-hidden="true">⚡</span><span className="sw-ico"><SkillIcon code="dash" icon={dashInfo.icon} /></span>
                 </span>
                 {keycap('dash', keys.dash)}
               </div>

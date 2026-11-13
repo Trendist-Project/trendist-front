@@ -153,8 +153,8 @@ export function LevelExpTable() {
   }, []);
   if (rows === null) return <div className="muted small">{t('common.loading')}</div>;
   if (rows.length === 0) return null;
-  const unlocks = new Map<number, string[]>();
-  for (const k of skills) if (k.requiredLevel > 1) unlocks.set(k.requiredLevel, [...(unlocks.get(k.requiredLevel) ?? []), k.icon ?? '']);
+  const unlocks = new Map<number, typeof skills>();
+  for (const k of skills) if (k.requiredLevel > 1) unlocks.set(k.requiredLevel, [...(unlocks.get(k.requiredLevel) ?? []), k]);
   const groups: { level: number; requiredExp: number }[][] = [];
   for (let i = 0; i < rows.length; i += 10) groups.push(rows.slice(i, i + 10));
   return (
@@ -165,7 +165,7 @@ export function LevelExpTable() {
           <tbody>
             {g.map((r) => (
               <tr key={r.level}>
-                <th scope="row">{t('guideArt.unlockLv', { n: r.level })}{unlocks.has(r.level) && <span className="lv-unlock" title={t('guideArt.levelUnlocks')}> {unlocks.get(r.level)!.join('')}</span>}</th>
+                <th scope="row">{t('guideArt.unlockLv', { n: r.level })}{unlocks.has(r.level) && <span className="lv-unlock" title={t('guideArt.levelUnlocks')}> {unlocks.get(r.level)!.map((k) => <SkillIcon key={k.code} code={k.code} icon={k.icon} />)}</span>}</th>
                 <td>{fmtNumber(r.requiredExp)}</td>
               </tr>
             ))}

@@ -1,6 +1,6 @@
 import { enterFullscreenOnStart } from './fullscreen';
 import { useEffect, useRef, useState } from 'react';
-import { api, ApiFailure, resumeSession } from './api/client';
+import { adminApi, api, ApiFailure, resumeSession } from './api/client';
 import { takeGoogleResult } from './googleAuth';
 import type { PlayerSummary } from './api/types';
 import { MainScreen } from './ui/MainScreen';
@@ -34,6 +34,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   // 메인 화면에서 이미 구글 계정으로 로그인한 상태인지(갱신 토큰). 맞으면 구글 버튼 없이 [시작]만 보여 준다. 확인 전에는 null
   const [account, setAccount] = useState<boolean | null>(null);
+  // 로그인한 계정이 관리자인지. 시작 화면의 [관리자 페이지] 버튼은 이때만 보인다(서버 /api/me/admin이 판정)
+  const [admin, setAdmin] = useState(false);
   const googlePending = useRef(false);
   // 탈퇴한 계정으로 구글 로그인했으면 복구할지 묻는다. 같은 ID 토큰으로 복구를 요청한다(4.1)
   const [restoreToken, setRestoreToken] = useState<{ idToken: string; nonce: string | null } | null>(null);
@@ -42,6 +44,11 @@ export function App() {
   async function route() {
     const me = await api.me();
     setPhase(me.player ? { kind: 'game', player: me.player, guest: me.guest, key: Date.now() } : { kind: 'nickname' });
+  }
+
+  /** 로그인한 계정이면 관리자 여부를 확인해 시작 화면 버튼에 반영한다. 못 알아내면 관리자가 아닌 것으로 본다 */
+  function refreshAdmin() {
+    adminApi.status().then((s) => setAdmin(s.admin)).catch(() => setAdmin(false));
   }
 
   async function start() {
@@ -56,7 +63,7 @@ export function App() {
     }
   }
 
-  // 구글 계정 선택을 마치고 돌아왔으면(9.3) 그 ID 토큰으로 로그인하고 바로 게임으로 들어간다.
+  // 구글 계정 선택을 마치고 돌아왔으면(9.3) 그 ID 토큰으로 로그인하고 시작 화면에 머문다(로그인한 상태로 [시작]·[로그아웃]이 보인다. 게임은 [시작]을 눌러야 들어간다).
   // 게스트로 하던 중이었다면 방문자 ID 쿠키로 그 기록에 연결된다
   useEffect(() => {
     const r = takeGoogleResult();
@@ -71,7 +78,8 @@ export function App() {
     api.googleLogin(r.idToken, r.nonce)
       .then((result) => {
         if (result === 'WITHDRAWN') { setRestoreToken({ idToken: r.idToken, nonce: r.nonce }); setAccount(false); return; }
-        return route();
+        setAccount(true);
+        refreshAdmin();
       })
       .catch((e) => { setError(e instanceof ApiFailure ? e.message : t('app.googleLoginFailed')); setAccount(false); })
       .finally(() => { googlePending.current = false; });
@@ -88,7 +96,7 @@ export function App() {
     resumeSession()
       .then((ok) => (ok ? api.me().then((me) => !me.guest) : false))
       .catch(() => false)
-      .then((v) => { if (alive) setAccount(v); });
+      .then((v) => { if (alive) { setAccount(v); if (v) refreshAdmin(); else setAdmin(false); } });
     return () => { alive = false; };
   }, [phase.kind]);
 
@@ -112,6 +120,7 @@ export function App() {
 
   async function logout() {
     await api.logout().catch(() => { /* 서버에 못 닿아도 화면은 나간다 */ });
+    setAdmin(false);
     setAccount(false); // 메인에서 로그아웃하면 단계가 그대로라 계정 확인이 다시 돌지 않으므로 직접 내린다
     setPhase({ kind: 'main' });
   }
@@ -120,7 +129,8 @@ export function App() {
     if (!restoreToken) return;
     await api.googleRestore(restoreToken.idToken, restoreToken.nonce);
     setRestoreToken(null);
-    await route();
+    setAccount(true); // 복구한 뒤에도 시작 화면에 머문다
+    refreshAdmin();
   }
 
   async function createPlayer(nickname: string) {
@@ -132,7 +142,7 @@ export function App() {
   switch (phase.kind) {
     case 'main':
       return (<>
-        <MainScreen onStart={start} error={error} loggedIn={account} onLogout={logout} />
+        <MainScreen onStart={start} error={error} loggedIn={account} admin={admin} onLogout={logout} />
         {restoreToken && <RestoreDialog onRestore={restore} onCancel={() => setRestoreToken(null)} />}
       </>);
     case 'nickname':

@@ -245,8 +245,17 @@ export class Arena {
     this.pull = { left: ms / 1000, byE };
     this.target = null; this.knock = null;
   }
+  /** 슬로우에 맞았다: ms 동안 내 최대 속도가 mult배가 된다(서버 Room.advance와 같게 예측도 느려진다) */
+  startSlow(ms: number, mult: number) { this.predictUntil(performance.now()); this.slowLeft = ms / 1000; this.slowMult = mult; }
+  endSlow() { this.slowLeft = 0; this.slowMult = 1; }
+  /** 스턴에 맞았다: ms 동안 입력으로 움직이지 않는다. 목표와 속도를 지운다 */
+  startStun(ms: number) { this.predictUntil(performance.now()); this.stunLeft = ms / 1000; this.target = null; this.me.vx = 0; this.me.vy = 0; }
+  endStun() { this.stunLeft = 0; }
+  private slowLeft = 0;
+  private slowMult = 1;
+  private stunLeft = 0;
   /** 새 원이다(리스폰): 스킬 상태와 연출을 비운다 */
-  resetSkills() { this.pull = null; this.darkUntil = 0; this.fx.clear(); }
+  resetSkills() { this.pull = null; this.darkUntil = 0; this.slowLeft = 0; this.slowMult = 1; this.stunLeft = 0; this.fx.clear(); }
   /** 정화로 갈고리에서 풀렸다(4.33): 끌려오는 예측을 멈춘다 */
   endPull() { this.pull = null; }
   /** 암흑에 맞았다(4.33): ms 동안 내 원 둘레(반지름 1.5배)와 닉네임만 보이고 미니맵도 가린다 */
@@ -718,7 +727,7 @@ export class Arena {
     const serverMoving = prev !== null && Math.hypot(e.x - prev.x, e.y - prev.y) > 0.5;
     this.serverMoving = serverMoving;
     const meMoving = this.isMeMoving();
-    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1);
+    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1) * (this.slowLeft > 0 ? this.slowMult : 1);
     const tolerance = serverMoving || meMoving ? speed * (MOVING_TOLERANCE_SEC + this.rtt) : CORRECT_WHEN_STOPPED;
     if (err > SNAP_DISTANCE) {
       this.resetMe(e.e, e.x, e.y);
@@ -752,8 +761,16 @@ export class Arena {
   /** 서버 Room.move와 같은 규칙으로 내 위치를 미리 움직인다(속도·감속·가속이 같아야 보정이 생기지 않는다). */
   private predictMe(dt: number) {
     if (this.pull) { this.pullStep(dt); return; } // 갈고리에 끌려오는 중: 입력으로 움직이지 않는다(4.33)
-    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1); // 크기와 관계없이 같다. 대시 중이면 배수
+    if (this.stunLeft > 0) { // 스턴: 입력으로 움직이지 않는다(서버도 조작만 받아 두고 멈춰 있다)
+      this.stunLeft = Math.max(0, this.stunLeft - dt);
+      if (this.slowLeft > 0) this.slowLeft = Math.max(0, this.slowLeft - dt);
+      if (this.dashLeft > 0) this.dashLeft = Math.max(0, this.dashLeft - dt);
+      this.me.vx = 0; this.me.vy = 0; this.target = null;
+      return;
+    }
+    const speed = (this.tuning?.maxSpeed ?? 240) * (this.dashLeft > 0 ? this.dashMult : 1) * (this.slowLeft > 0 ? this.slowMult : 1); // 크기와 관계없이 같다. 대시 중이면 배수, 슬로우 중이면 느려진다
     if (this.dashLeft > 0) this.dashLeft = Math.max(0, this.dashLeft - dt);
+    if (this.slowLeft > 0) this.slowLeft = Math.max(0, this.slowLeft - dt);
     let wantX = 0, wantY = 0;
     if (this.input.dx || this.input.dy) {
       const len = Math.hypot(this.input.dx, this.input.dy);

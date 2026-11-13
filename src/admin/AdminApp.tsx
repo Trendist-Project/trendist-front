@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
-  adminApi, api, resumeSession,
+  adminApi, resumeSession,
   type AdminReport, type SanctionKind, type AdminNotice, type AdminNoticeInput, type AdminReportPage, type AdminSetting, type AdminSkill, type AdminShareStats, type AdminStatus,
 } from '../api/client';
 import { ADMIN_COUNTRIES, getAdminCountry, setAdminCountry, type AdminCountry } from '../api/adminCountry';
@@ -327,8 +327,8 @@ function ShareTab() {
  * 카드마다 −/＋로 조금씩 바꾸거나 직접 입력하고(범위를 벗어나면 그 자리에서 알려 저장을 막는다), 바꾼 카드는 노랗게 표시한다.
  * [모두 저장]으로 바뀐 것을 한꺼번에 저장하고, 사용 여부는 스위치로 바로 바뀐다(끌 때는 한 번 묻는다).
  */
-const SKILL_NAMES: Record<string, string> = { shield: '방패', hook: '갈고리', shockwave: '충격파', stealth: '은신', dash: '대시', darkness: '암흑', cleanse: '정화', poison: '독', heal: '회복' };
-const SKILL_CATEGORY: Record<string, string> = { MOVE: '이동', ATTACK: '공격', DEFENSE: '방어', STEALTH: '은신' };
+const SKILL_NAMES: Record<string, string> = { shield: '방패', hook: '갈고리', shockwave: '반발', stealth: '은신', dash: '대시', darkness: '암흑', cleanse: '정화', poison: '독', heal: '회복', slow: '슬로우', stun: '스턴', flame: '화염구', quake: '충격파', absorb: '흡수' };
+const SKILL_CATEGORY: Record<string, string> = { ATTACK: '공격', DEFENSE: '방어', CC: 'CC', UTILITY: '유틸' };
 const COOLDOWN_MAX = 3600, LEVEL_MAX = 100;
 const keyLabel = (code: string) => code.replace(/^Digit/, '').replace(/^Key/, '');
 type SkillDraft = { cd?: string; lv?: string };
@@ -353,9 +353,7 @@ function SkillsTab() {
   const [draft, setDraft] = useState<Record<string, SkillDraft>>({});
   const [msg, setMsg] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [needExp, setNeedExp] = useState<Record<number, number>>({}); // 레벨 → 그 레벨로 올라갈 때 필요한 EXP(levels 표의 값 그대로, 읽기 전용 안내)
   useEffect(() => { adminApi.skills().then(setItems).catch(() => setItems([])); }, []);
-  useEffect(() => { api.allLevels().then((l) => setNeedExp(Object.fromEntries(l.map((x) => [x.level, x.requiredExp])))).catch(() => { /* 안내만 빠진다 */ }); }, []);
 
   const valueOf = (s: AdminSkill) => { const d = draft[s.code] ?? {}; return { cd: d.cd ?? String(s.cooldownSeconds), lv: d.lv ?? String(s.requiredLevel) }; };
   const errorsOf = (s: AdminSkill) => { const v = valueOf(s); return { cd: checkCooldown(v.cd), lv: checkLevel(v.lv) }; };
@@ -404,6 +402,16 @@ function SkillsTab() {
     setBusy(false);
     if (ok > 0) successToast(`스킬 ${ok}개를 저장했어요(1초 안에 게임에 반영)`);
   };
+  // 모든 스킬의 입력칸을 시더의 기본값으로 채운다. 바로 저장하지 않는다: 현재 값과 다른 스킬만 "바뀐 칸"(저장하지 않은 변경)으로 표시되어
+  // 어디가 바뀌는지 보고 [모두 저장]으로 저장하거나 [모두 되돌리기]로 취소할 수 있다. 사용 여부는 건드리지 않는다
+  const atDefaults = (items ?? []).every((s) => s.cooldownSeconds === s.defaultCooldown && s.requiredLevel === s.defaultRequiredLevel);
+  const fillDefaults = () => {
+    const list = items ?? [];
+    setDraft(Object.fromEntries(list.map((s) => [s.code, { cd: String(s.defaultCooldown), lv: String(s.defaultRequiredLevel) }])));
+    setMsg({});
+    const n = list.filter((s) => s.cooldownSeconds !== s.defaultCooldown || s.requiredLevel !== s.defaultRequiredLevel).length;
+    successToast(n > 0 ? `기본값과 다른 스킬 ${n}개를 기본값으로 채웠어요. 확인하고 저장하세요` : '모든 스킬이 이미 기본값이에요');
+  };
   const toggle = async (s: AdminSkill, on: boolean) => {
     if (!on && !(await confirmToast(`${SKILL_NAMES[s.code] ?? s.code} 스킬을 끌까요? 게임의 스킬 목록에서 빠지고 서버도 이 스킬을 받지 않아요.`))) return;
     if (await patch(s, { enabled: on })) successToast(`${SKILL_NAMES[s.code] ?? s.code} 스킬을 ${on ? '켰어요' : '껐어요'}`);
@@ -424,6 +432,7 @@ function SkillsTab() {
           ? <span className="set-dirty-note" role="status">저장하지 않은 변경 {dirty.length}개{blocked.length > 0 ? ` · 입력을 고쳐야 저장돼요(${blocked.length}개)` : ''}</span>
           : <span className="muted small">바꾸면 여기에 표시돼요</span>}
         <span className="sk-toolbar-actions">
+          <button type="button" disabled={items === null || (atDefaults && dirty.length === 0) || busy} onClick={fillDefaults}>전체 기본값으로</button>
           <button type="button" disabled={dirty.length === 0 || busy} onClick={() => dirty.forEach((s) => revert(s.code))}>모두 되돌리기</button>
           <button type="button" className={dirty.length > 0 ? 'primary' : undefined} disabled={dirty.length === 0 || blocked.length > 0 || busy} onClick={saveAll}>
             {busy ? '저장 중…' : `모두 저장${dirty.length > 0 ? ` (${dirty.length})` : ''}`}
@@ -434,7 +443,6 @@ function SkillsTab() {
         <ul className="sk-list">
           {sorted.map((s) => {
             const v = valueOf(s), e = errorsOf(s), changed = changedOf(s);
-            const lv = Number(v.lv), exp = Number.isInteger(lv) ? needExp[lv] : undefined;
             const name = SKILL_NAMES[s.code] ?? s.code;
             return (
               <li key={s.code} className={`sk-card${changed ? ' dirty' : ''}${s.enabled ? '' : ' off'}`}>
@@ -478,7 +486,7 @@ function SkillsTab() {
                       <button type="button" onClick={() => step(s, 'lv', -1)} aria-label={`${name} 해금 레벨 내리기`}>−</button>
                       <span className="sk-unit">레벨</span>
                     </div>
-                    <div className="sk-hint">{e.lv ? <span className="error small">{e.lv}</span> : <span className="muted small">{s.requiredLevel <= 1 && Number(v.lv) <= 1 ? '처음부터 쓸 수 있어요' : exp !== undefined ? `레벨업 필요 EXP ${exp.toLocaleString()}` : ''}</span>}</div>
+                    <div className="sk-hint">{e.lv ? <span className="error small">{e.lv}</span> : (<><span className="muted small">{s.requiredLevel <= 1 && Number(v.lv) <= 1 ? '처음부터 쓸 수 있어요' : ''}</span>{Number(v.lv) !== s.defaultRequiredLevel && <button type="button" className="set-reset" onClick={() => set(s.code, { lv: String(s.defaultRequiredLevel) })}>기본 {s.defaultRequiredLevel}레벨로</button>}</>)}</div>
                   </div>
                 </div>
                 <div className="sk-foot">

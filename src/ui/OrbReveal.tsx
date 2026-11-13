@@ -71,7 +71,7 @@ export function OrbReveal({ result }: { result: RevealResult }) {
   if (result.status === 'LOST') {
     return (
       <div className="orb-reveal muted-reveal miss-reveal" role="status" aria-live="polite">
-        <p className="orb-title"><Tag kind={result.kind} />{t('gamescreen.orbLost')}</p>
+        <p className="orb-title"><Tag kind={result.kind} />{result.lostLabel ?? t('gamescreen.orbLost')}</p>
         <p className="orb-keyword"><strong title={result.text}>{result.text}</strong></p>
         <p className="orb-meta">
           {result.state && <span className="badge">{STATE_BADGE[result.state] ?? result.state}</span>}

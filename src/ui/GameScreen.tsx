@@ -53,6 +53,8 @@ const KEY_INTERVAL_MS = 16;    // 방향키는 누르고 뗄 때마다 바로 �
 const CLICK_INTERVAL_MS = 100; // 클릭 이동은 초당 10회까지(4.2). 세밀하게 방향을 바꿀 수 있게
 const INPUT_RESYNC_MS = 1000;  // 방향키를 누르고 있는 동안 지금 방향을 다시 보내는 간격(서버와 어긋남 방지)
 const CHAT_KEEP = 200;         // 화면에 쌓아 두는 채팅 줄 수
+/** 스킬을 보낼 때 겨눈 지점을 함께 보내는 스킬. 불꽃·흡수는 서버가 그 지점에서 가장 가까운 상대를 고른다 */
+const AIMED_SKILLS = new Set(['hook', 'poison', 'darkness', 'slow', 'stun', 'flame']);
 const JOY_RADIUS = 56;         // 조이스틱 판 반지름(px). 이만큼 끌면 최대 속도
 const JOY_DEAD = 8;            // 이보다 덜 끌면 멈춘 것으로 본다(손가락 떨림)
 const JOY_INTERVAL_MS = 50;    // 조이스틱 방향은 초당 20회까지 보낸다(끄는 동안 계속 바뀌므로 방향키보다 넉넉하게 묶는다)
@@ -419,7 +421,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3)
             if (m.wiped && m.partial) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined, lostLabel: t(m.death ? 'gamescreen.lostPartDeath' : 'gamescreen.lostPartFlame') }); // 일부만 잃었다(4.36)
             else if (m.wiped) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.wiped, who: m.by || undefined });
-            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison || m.monster ? 'LOSE' : 'STOLEN', who: m.by || undefined, lostCount: m.count, lostLabel: m.monster ? t('monster.lostBy', { by: m.by, n: m.count ?? 1 }) : undefined }); // 독·보스로 여러 개를 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
+            else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.poison || m.monster ? 'LOSE' : 'STOLEN', who: m.by || undefined, lostCount: m.count, lostLabel: m.monster ? t('monster.lostBy', { by: m.by, n: m.count ?? 1 }) : m.cause === 'quake' ? t('gamescreen.quakeLostTitle') : m.cause === 'flame' ? t('gamescreen.flameLostTitle') : undefined }); // 독·충격파·불꽃·보스로 여러 개를 잃은 것은 아무도 가져가지 않으므로 '뺏김'이 아니라 '잃음'
             if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
             setRefreshKey((k) => k + 1);
             break;
@@ -494,10 +496,18 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             break;
           }
           case 'loadout': setSlots(m.slots); setCurrentSlots(m.slots); break; // 장착한 스킬 4칸(4.33)
-          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : t('gamescreen.skillSafe')); break;
+          case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : m.reason === 'noTarget' ? t('gamescreen.skillNoTarget') : t('gamescreen.skillSafe')); break;
           case 'skillFx': arena.showSkillFx(m); break; // 누군가 스킬을 썼다: 그 연출(4.33)
           case 'dark': arena.setDark(m.ms); showToast(t('gamescreen.darkened')); break; // 암흑에 맞았다(4.33)
           case 'darkEnd': arena.clearDark(); break; // 정화로 암흑이 풀렸다
+          case 'slow': arena.startSlow(m.ms, m.mult); showToast(t('gamescreen.slowed')); break; // 슬로우에 맞았다: 예측도 같이 느려진다
+          case 'slowEnd': arena.endSlow(); break; // 정화로 슬로우가 풀렸다
+          case 'stun': // 스턴에 맞았다: 움직이지도 스킬을 쓰지도 못한다. 갈고리에 잡힌 때와 같이 스킬 버튼을 잠근다
+            arena.startStun(m.ms); showToast(t('gamescreen.stunned'));
+            hookedUntilRef.current = Math.max(hookedUntilRef.current, performance.now() + m.ms + 100); setHookedUntil(hookedUntilRef.current);
+            window.setTimeout(() => setHookedUntil((u) => (u === hookedUntilRef.current ? null : u)), m.ms + 150);
+            break;
+          case 'stunEnd': arena.endStun(); hookedUntilRef.current = 0; setHookedUntil(null); break; // 정화로 스턴이 풀렸다
           case 'pullEnd': arena.endPull(); hookedUntilRef.current = 0; setHookedUntil(null); break; // 정화로 갈고리에서 풀렸다
           case 'pull': // 갈고리에 끌려온다(4.33): 끌려오는 동안 스킬 버튼을 잠깐 못 쓰는 모양으로 바꾼다
             arena.startPull(m.ms, m.byE); showToast(t('gamescreen.hooked'));
@@ -530,7 +540,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     sendLoadoutRef.current = (s: (string | null)[]) => { if (ready) conn.send({ type: 'loadout', slots: s }); };
     sendSkillRef.current = (id: string) => {
       if (!ready) return;
-      const aim = id === 'hook' || id === 'poison' || id === 'darkness' ? aimPoint() : null;
+      const aim = AIMED_SKILLS.has(id) ? aimPoint() : null; // 충격파(quake)·반발은 겨누지 않는다
       conn.send(aim ? { type: 'skill', id, x: Math.round(aim.x), y: Math.round(aim.y) } : { type: 'skill', id });
     };
     conn.start();

@@ -4,7 +4,7 @@
  *
  * kind: hit(내가 입힌 일반 피해·주황 노랑) / crit(불꽃 타격·분홍) / taken(내가 입은 피해·보라) / other(다른 사람이 입은 피해·주황)
  */
-export type DmgKind = 'hit' | 'crit' | 'taken' | 'other';
+export type DmgKind = 'hit' | 'crit' | 'taken' | 'other' | 'lose';
 
 interface Skin { top: string; mid: string; bot: string; stroke: string; glow: string; label?: string }
 const SKINS: Record<DmgKind, Skin> = {
@@ -12,6 +12,7 @@ const SKINS: Record<DmgKind, Skin> = {
   crit:  { top: '#fff2fb', mid: '#ff8fd6', bot: '#e5308e', stroke: '#47073a', glow: 'rgba(255,80,190,0.75)', label: 'CRITICAL' },
   taken: { top: '#f5ebff', mid: '#b98cff', bot: '#7a3fe0', stroke: '#26085a', glow: 'rgba(150,90,255,0.7)' },
   other: { top: '#fff1d6', mid: '#ffb347', bot: '#ff7a00', stroke: '#4d2000', glow: 'rgba(255,140,20,0.6)' },
+  lose:  { top: '#ffe6e9', mid: '#ff6577', bot: '#d9142d', stroke: '#4a0510', glow: 'rgba(255,70,100,0.75)' }, // 스킬로 키워드를 잃었다(충격파)
 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));

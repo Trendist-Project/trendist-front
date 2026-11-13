@@ -6,7 +6,7 @@ import type {
   AiCommentPage, AiCommentRow, EmergencyNotice, Look, LevelBadge, PixelArtData, ProfileBox, ProfileSave, ShareCardCreated, PlusResult, RankingEntry, SearchResult, TitleBox, TokenResponse, VoteResult, SkillInfo, KeybindingsResponse } from './types';
 
 /** 관리자 스킬 설정(13.3) */
-export interface AdminSkill { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; enabled: boolean; defaultCooldown: number; updatedAt: string }
+export interface AdminSkill { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; enabled: boolean; defaultCooldown: number; defaultRequiredLevel: number; updatedAt: string }
 
 /** 관리자 몬스터(4.35, 13.16) */
 export interface AdminMonsterSetting { name: string; value: number; min: number; max: number; description: string; unit: string | null; group: string }
