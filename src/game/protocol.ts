@@ -49,6 +49,8 @@ export interface Tuning {
   maxRadius: number;
   scoreCap: number;
   zoomFactor: number;
+  /** 시야 배율(관리자 설정 view_range_multiplier): 가로·세로로 이 배수만큼 넓게 본다. 없으면 기본 2 */
+  viewRange?: number;
   worldSize: number;
 }
 

@@ -63,9 +63,13 @@ const BUBBLE_MS = 3000;
 /** 대시 꼬리(4.27): 최근 WAKE_MS 동안 지나온 경로를 꼬리로 쓰고, 길이는 기본 길이의 WAKE_MAX배까지만 늘린다 */
 const WAKE_MS = 240;
 const WAKE_MAX = 2.2;
-// 화면 크기 보정(모바일): 짧은 변이 이보다 작으면 그 비율만큼 더 넓게 보여 준다(최소 배율 아래로는 줄이지 않는다)
+// 화면 크기 보정(모바일): 짧은 변이 이보다 작으면 더 넓게 보여 준다. 배율은 (짧은 변 ÷ 기준)의 VIEW_SHRINK_POW제곱이라 작은 화면일수록 비례보다 더 크게 줌아웃한다
+// (폰은 전에 최소 0.6배에서 멈췄는데, 이제 짧은 변 390px에서 약 0.43배로 훨씬 넓은 영역을 본다). 최소 배율 아래로는 줄이지 않는다
 const VIEW_REF_SHORT = 720;
-const VIEW_MIN_SCALE = 0.6;
+const VIEW_SHRINK_POW = 1.35;
+const VIEW_MIN_SCALE = 0.38;
+// 전체 시야 배율: 서버 설정 view_range_multiplier(관리자 페이지, 기본 2)의 역수를 줌에 곱해 가로·세로로 그만큼 넓게 본다. 서버 값이 오기 전에는 이 기본값을 쓴다
+const VIEW_RANGE_DEFAULT = 2;
 // 내 원의 지름이 화면 짧은 변에서 차지하는 비율 상한. 원이 커져도 주변이 보이고 움직이기 편하게 한다
 const ME_MAX_SHARE = 0.25;
 const MINIMAP_MIN = 110;
@@ -774,9 +778,10 @@ export class Arena {
     const minR = this.tuning?.minRadius ?? 16;
     const short = Math.min(w, h);
     if (this.spec) this.updateSpectatorCamera(dt);
-    const viewScale = Math.max(VIEW_MIN_SCALE, Math.min(1, short / VIEW_REF_SHORT));
+    const viewScale = Math.max(VIEW_MIN_SCALE, Math.min(1, (short / VIEW_REF_SHORT) ** VIEW_SHRINK_POW));
     const radiusZoom = 1 / (1 + Math.max(0, this.me.r - minR) / (this.tuning?.zoomFactor ?? 280));
-    const targetZoom = Math.min(radiusZoom * viewScale, (short * ME_MAX_SHARE) / (2 * Math.max(this.me.r, 1)));
+    const widen = 1 / Math.max(0.25, this.tuning?.viewRange ?? VIEW_RANGE_DEFAULT);
+    const targetZoom = Math.min(radiusZoom * viewScale * widen, (short * ME_MAX_SHARE) / (2 * Math.max(this.me.r, 1)));
     if (!this.spec) this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * 6);
     this.reportView(w, h, targetZoom, now);
 
