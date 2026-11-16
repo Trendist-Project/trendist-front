@@ -26,7 +26,7 @@ export interface GameSession { ready: boolean; myEntity: number; resyncDir: () =
 
 type Set<T> = Dispatch<SetStateAction<T>>;
 /** 화면의 상태 모양(GameScreen의 useState와 같다) */
-export interface MyHp { pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null }
+export interface MyHp { pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null; barrier?: number }
 export interface DeadState { by: string; waiting: boolean; hp?: boolean }
 export interface MyCombo { combo: number; flameAt: number; key: number; until: number | null }
 
@@ -49,6 +49,7 @@ export interface GameMessageContext {
   setMyBossDmg: Set<{ dmg: number; hits: number }>;
   setKicked: Set<string | null>;
   setMyHp: Set<MyHp>;
+  setSkillOn: Set<ReadonlySet<string>>; // 켜고 끄는 스킬(광폭화)이 지금 켜져 있는 코드들
   setDead: Set<DeadState | null>;
   setMyCombo: Set<MyCombo>;
   setHit: Set<{ text: string; key: number } | null>;
@@ -66,7 +67,7 @@ export interface GameMessageContext {
 const LOST_TITLE: Partial<Record<LossCause, string>> = { quake: 'gamescreen.quakeLostTitle', fireball: 'gamescreen.fireballLostTitle' };
 
 export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
-  const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setDead, setMyCombo, setHit, setDash, setSkillCd, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
+  const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
   switch (m.type) {
     case 'welcome':
       setDead(null); arena.setDead(false); // 처음 들어왔거나 리스폰했다
@@ -206,7 +207,7 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
     case 'hp': { // 내 체력(4.36)
       if (sess.myEntity !== -1 && m.e !== sess.myEntity) break; // hp는 본인에게만 온다. 접속 직후엔 welcome보다 먼저 와서 myEntity가 아직 -1이니 버리면 안 된다
       arena.setHp(m.e, m.pct);
-      setMyHp((h) => ({ pct: m.pct, flash: m.heal ? { kind: 'heal', key: performance.now() } : h.flash }));
+      setMyHp((h) => ({ pct: m.pct, flash: m.heal ? { kind: 'heal', key: performance.now() } : h.flash, barrier: h.barrier }));
       if (m.heal) arena.healPop(m.e);
       break;
     }
@@ -215,7 +216,7 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
       arena.hpPop(m.e, `-${Math.max(1, m.pct > 0 ? Math.min(99, Math.round(m.dmg)) : Math.round(m.dmg))}%`, m.e === sess.myEntity ? 'taken' : arena.isFlaming(m.by) ? 'crit' : 'other'); // 내가 입은 피해는 보라, 불꽃으로 때린 피해는 분홍 크리티컬, 나머지는 주황
       if (m.e === sess.myEntity) {
         arena.setHp(m.e, m.pct);
-        setMyHp({ pct: m.pct, flash: { kind: 'hit', key: performance.now() } });
+        setMyHp((h) => ({ pct: m.pct, flash: { kind: 'hit', key: performance.now() }, barrier: h.barrier }));
       }
       break;
     }
@@ -223,7 +224,7 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
       showReveal({ type: 'orbResult', status: 'GAINED', kill: m.target });
       break;
     }
-    case 'shield': arena.showShield(m.e, m.ms); break;
+    case 'invincibility': arena.showInvincible(m.e, m.ms); break;
     case 'knock': arena.applyKnock(m.dx, m.dy, m.ms); break;
     case 'levelFx': arena.showLevelFx(m.e, m.level); break; // 레벨업 이펙트(4.30)
     case 'dashFx': arena.showDashFx(m.e, m.ms); break; // 누군가 대시를 시작했다: 그 원에 강조 효과(4.27)
@@ -242,9 +243,19 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
       break;
     }
     case 'loadout': { const slots = m.slots.map(normalizeSkillCode); setSlots(slots); setCurrentSlots(slots); break; } // 장착한 스킬 4칸(4.33)
-    case 'skillFx': arena.showSkillFx(normalizeFxId(m)); break; // 누군가 스킬을 썼다: 그 연출(4.33)
+    case 'skillFx': { // 누군가 스킬을 썼다: 그 연출(4.33)
+      const fx = normalizeFxId(m);
+      arena.showSkillFx(fx);
+      // 내 쉴드는 내 체력 막대에도 롤처럼 흰 조각으로 붙는다(바깥 값은 최대 체력 대비 %)
+      if ((fx.id === 'barrier' || fx.id === 'barrierHit') && fx.e === sess.myEntity) setMyHp((h) => ({ ...h, barrier: fx.pct }));
+      else if (fx.id === 'barrierEnd' && fx.e === sess.myEntity) setMyHp((h) => ({ ...h, barrier: 0 }));
+      // 켜고 끄는 스킬: 내 광폭화가 켜지면 스킬 칸에 돌아가는 노란 빛을 띄운다
+      if (fx.id === 'berserk' && fx.e === sess.myEntity) setSkillOn((s) => (s.has('berserk') ? s : new Set(s).add('berserk')));
+      else if (fx.id === 'berserkEnd' && fx.e === sess.myEntity) setSkillOn((s) => { if (!s.has('berserk')) return s; const n = new Set(s); n.delete('berserk'); return n; });
+      break;
+    }
     // 내가 스킬에 걸렸거나 풀렸다, 스킬을 쓰지 못했다(4.33): 묶음은 selfStatusMessages가 처리한다
-    case 'skillFail': case 'dark': case 'darkEnd': case 'slow': case 'slowEnd': case 'stun': case 'stunEnd': case 'pull': case 'pullEnd':
+    case 'skillFail': case 'dark': case 'darkEnd': case 'slow': case 'slowEnd': case 'confuse': case 'confuseEnd': case 'stun': case 'stunEnd': case 'pull': case 'pullEnd':
       handleSelfStatus(m, arena, skillLock, showToast); break;
     case 'dash': {
       // 대시 시작(4.27): 예측을 같은 속도로 올리고 아래 표시줄에 남은 시간·쿨타임을 보여 준다

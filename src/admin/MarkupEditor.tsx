@@ -1,5 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { EMBED_NAMES } from '../ui/RichText';
+import { SKILL_DEFS } from '../game/skills';
+import { skillNameKo } from '../ui/skillMeta';
 
 interface Props {
   value: string;
@@ -115,6 +117,12 @@ export function MarkupEditor({ value, onChange, placeholder, rows = 14, embeds =
             {EMBED_NAMES.map((n) => <option key={n} value={n}>{n.slice(2, -2)}</option>)}
           </select>
         )}
+        {embeds && (
+          <select className="markup-embed" value="" aria-label="스킬 아이콘 넣기" onChange={(e) => { if (e.target.value) { const ta = ref.current; if (ta) replace(ta.selectionStart, ta.selectionEnd, `[[아이콘 ${e.target.value}]]`); } }}>
+            <option value="">🧩 스킬 아이콘 넣기</option>
+            {SKILL_DEFS.map((d) => <option key={d.code} value={d.code}>{skillNameKo(d.code)}</option>)}
+          </select>
+        )}
         <span className="markup-spacer" />
         <button type="button" className={help ? 'on' : undefined} onClick={() => setHelp((v) => !v)} aria-expanded={help} title="문법 도움말">?</button>
       </div>
@@ -124,6 +132,7 @@ export function MarkupEditor({ value, onChange, placeholder, rows = 14, embeds =
           <span><code>1. 항목</code> 번호 목록</span><span><code>**글**</code> 굵게</span><span><code>&gt; 글</code> 💡 팁 상자</span>
           <span><code>`M`</code> 키 모양</span><span><code>https://…</code> 자동 링크</span>
           {embeds && <span><code>[[이름]]</code> 게임 그림(한 문단에 하나만)</span>}
+          {embeds && <span><code>[[아이콘 코드]]</code> 글 속 스킬 아이콘(예: <code>[[아이콘 poison]]</code>)</span>}
         </div>
       )}
       <textarea ref={ref} id={id} value={value} rows={rows} placeholder={placeholder} spellCheck={false}

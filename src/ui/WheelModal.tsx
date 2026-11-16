@@ -64,6 +64,7 @@ export function WheelModal({ onClose, onChange, onSpun }: { onClose: () => void;
         <p className="wheel-lead">{t('wheel.lead')}</p>
         <div className={`wheel-stage${locked ? ' locked' : ''}`} role="img" aria-label={t('wheel.aria', { list: slices.join(', ') })}>
           <i className="wheel-pointer" aria-hidden="true" title={t('wheel.pointer')} />
+          <div className="wheel-clip">
           <div className="wheel-disc" style={{ transform: `rotate(${rot}deg)`, transition: spinning && !reduce ? `transform ${SPIN_MS}ms cubic-bezier(0.14, 0.62, 0.1, 1)` : 'none' }}>
             <svg viewBox={`-6 -6 ${SIZE + 12} ${SIZE + 12}`} aria-hidden="true">
               <circle cx={C} cy={C} r={R + 4} fill="#1a2233" stroke="#f2c14e" strokeWidth="4" />
@@ -78,6 +79,7 @@ export function WheelModal({ onClose, onChange, onSpun }: { onClose: () => void;
               {Array.from({ length: n * 2 }, (_, i) => { const [x, y] = pt((i * 360) / (n * 2), R + 1); return <circle key={i} cx={x} cy={y} r="2.6" fill="#fff4c2" />; })}
               <circle cx={C} cy={C} r="24" fill="#0b0f17" stroke="#f2c14e" strokeWidth="4" />
             </svg>
+          </div>
           </div>
           <span className="wheel-hub" aria-hidden="true">🔥</span>
         </div>

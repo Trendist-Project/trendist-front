@@ -67,7 +67,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [toast, setToast] = useState<string | null>(null);
   const [kicked, setKicked] = useState<string | null>(null); // 관리자가 내보냄(13.10)
-  const [myHp, setMyHp] = useState<{ pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null }>({ pct: -1, flash: null }); // 내 체력(4.36). -1은 서버에서 아직 못 받은 상태: 체력바를 숨겨 100에서 줄어드는 모션을 막는다
+  const [myHp, setMyHp] = useState<{ pct: number; flash: { kind: 'hit' | 'heal'; key: number } | null; barrier?: number }>({ pct: -1, flash: null }); // 내 체력(4.36). -1은 서버에서 아직 못 받은 상태: 체력바를 숨겨 100에서 줄어드는 모션을 막는다
   const [dead, setDead] = useState<{ by: string; waiting: boolean; hp?: boolean } | null>(null); // 죽음(4.31): 흑백 화면에 머물며 리스폰을 기다린다
   const myEntityRef = useRef(-1); // 내 원 번호(콤보 시간이 끝났을 때 불꽃을 지우는 데 쓴다)
   const [myCombo, setMyCombo] = useState<{ combo: number; flameAt: number; key: number; until: number | null }>({ combo: 0, flameAt: 5, key: 0, until: null }); // 4.25. until: 콤보가 사라질 시각(performance.now 기준 ms, 제한 없으면 null)
@@ -77,6 +77,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const sendEmoteRef = useRef<(code: string) => void>(() => {});
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
   const [dash, setDash] = useState<DashState | null>(null); // 대시 남은 시간·쿨타임(4.27)
+  const [skillOn, setSkillOn] = useState<ReadonlySet<string>>(new Set()); // 켜져 있는 켜고 끄는 스킬(광폭화)
   const [skillCd, setSkillCd] = useState<SkillCooldowns>({}); // 스킬마다 다시 쓸 수 있는 시각(4.33)
   const skills = useSkills(); // 스킬 목록·기본 키·쿨타임(DB, 4.33)
   const [hookedUntil, setHookedUntil] = useState<number | null>(null);
@@ -267,7 +268,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     connRef.current = conn;
     const ctx: GameMessageContext = {
       arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, applyEmergency,
-      setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setDead, setMyCombo, setHit, setDash, setSkillCd,
+      setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd,
       setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines,
     }; // 메시지는 연결이 열린 뒤에야 오므로 conn을 만든 다음에 묶어도 된다
     sendEmoteRef.current = (code: string) => { if (sess.ready) conn.send({ type: 'emote', code }); };
@@ -430,7 +431,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                       onDetail={() => { const e = targetCard; setInfoBot(arenaRef.current?.botInfo(e) ?? null); setInfoLook(arenaRef.current?.entityInfo(e)?.look ?? null); setInfoEntity(e); }}
                       onOpenKeyword={setOpenKeyword} />
         )}
-        <BottomBar me={player} hp={!dead && status === 'open' && myHp.pct >= 0 ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} dash={dash} lockedUntil={hookedUntil}
+        <BottomBar me={player} hp={!dead && status === 'open' && myHp.pct >= 0 ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} skillOn={skillOn} dash={dash} lockedUntil={hookedUntil}
                    onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
                    emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
                    onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />
@@ -564,7 +565,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
           )}
           {unlockAlert && (
             <div key={unlockAlert.key} className="title-alert unlock-alert" role="status" aria-live="polite">
-              <span className="title-alert-icon" aria-hidden="true"><SkillIcon code={unlockAlert.skills[0].code} icon={unlockAlert.skills[0].icon} /></span>
+              <span className="title-alert-icon" aria-hidden="true"><SkillIcon code={unlockAlert.skills[0].code} /></span>
               <div className="title-alert-text">
                 <span className="title-alert-kicker">{t('gamescreen.skillUnlockKicker', { n: unlockAlert.level })}</span>
                 <strong>{unlockAlert.skills.map((k) => tOr(`skills.${k.code}_name`, k.code)).join(', ')}</strong>

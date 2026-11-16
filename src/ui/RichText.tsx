@@ -4,6 +4,7 @@ import { LevelIconGallery } from './LevelText';
 import { ArenaLegend, Controls, KeywordStates, LevelExpTable, OrbOdds, SkillUnlockTable, StartSteps } from './GuideArt';
 import { SkillDemo } from './SkillDemo';
 import { GUIDE_DEMOS } from '../game/skills';
+import { skillText } from './SkillText';
 
 /** 본문에 넣을 수 있는 게임 그림. 이름이 틀리면 글자 그대로 보인다. */
 const EMBEDS: Record<string, () => ReactNode> = {
@@ -90,5 +91,5 @@ function inline(s: string): ReactNode[] {
 function links(s: string): ReactNode[] {
   return s.split(URL_RE).filter(Boolean).map((part, i) =>
     /^https?:\/\//.test(part) ? <a key={i} href={part} target="_blank" rel="noopener noreferrer nofollow">{part}</a>
-      : <Fragment key={i}>{part}</Fragment>);
+      : <Fragment key={i}>{skillText(part)}</Fragment>); // 스킬 이름 앞 이모지는 실제 스킬 아이콘으로
 }

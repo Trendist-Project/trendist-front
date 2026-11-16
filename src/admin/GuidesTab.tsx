@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adminApi, type AdminGuideArticle, type AdminGuideArticleInput, type AdminGuideCategory, type AdminGuideCategoryInput } from '../api/client';
 import { RichText } from '../ui/RichText';
+import { SkillText } from '../ui/SkillText';
 import { adminConfirm, errMsg, fmt } from './format';
 import { MarkupEditor } from './MarkupEditor';
 import { successToast } from '../ui/toast';
@@ -242,13 +243,13 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
             <div className="notice-preview-box">
               {category.displayType === 'FAQ' ? (
                 <div className="accordion guide-faq">
-                  <details open><summary><span className="faq-q" aria-hidden="true">Q</span><span className="summary-title">{form.title.trim() || '질문을 입력하세요'}</span></summary>
+                  <details open><summary><span className="faq-q" aria-hidden="true">Q</span><span className="summary-title">{form.title.trim() ? <SkillText text={form.title} title /> : '질문을 입력하세요'}</span></summary>
                     {form.body.trim() ? <RichText text={form.body} /> : <p className="muted small">답변을 쓰면 여기에 보여요</p>}
                   </details>
                 </div>
               ) : (
                 <article className="guide-card">
-                  <h4>{form.title.trim() || '제목을 입력하세요'}</h4>
+                  <h4>{form.title.trim() ? <SkillText text={form.title} title /> : '제목을 입력하세요'}</h4>
                   {form.body.trim() ? <RichText text={form.body} /> : <p className="muted small">본문을 쓰면 여기에 보여요</p>}
                 </article>
               )}
@@ -276,7 +277,7 @@ function Articles({ category, onCountChange, onMessage }: { category: AdminGuide
             </span>
             <div className="notice-row-main">
               {editing === a.id && <div className="notice-row-badges"><span className="notice-badge editing">수정 중</span></div>}
-              <strong className="notice-row-title">{category.displayType === 'FAQ' ? 'Q. ' : ''}{a.title}</strong>
+              <strong className="notice-row-title">{category.displayType === 'FAQ' ? 'Q. ' : ''}<SkillText text={a.title} title /></strong>
               <span className="muted small">수정 {fmt(a.updatedAt)}</span>
               <details className="notice-row-body"><summary>본문 보기</summary><RichText text={a.body} /></details>
             </div>

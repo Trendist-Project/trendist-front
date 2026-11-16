@@ -46,7 +46,7 @@ export function SpectateTab() {
           case 'orbSpawn': arena.addOrb(m.id, m.x, m.y, m.prize); break;
           case 'orbEaten': arena.eatOrb(m.id, m.e); break;
           case 'safeZones': arena.setSafeZones(m.center, m.zones); break;
-          case 'shield': arena.showShield(m.e, m.ms); break;
+          case 'invincibility': arena.showInvincible(m.e, m.ms); break;
           case 'emote': arena.showEmote(m.e, m.code); break;
           case 'combo': arena.setCombo(m.e, m.combo, m.flameAt); break;
           case 'levelFx': arena.showLevelFx(m.e, m.level); break;

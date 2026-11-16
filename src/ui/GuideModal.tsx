@@ -1,3 +1,4 @@
+import { SkillText } from './SkillText';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { GuideArticle, GuideCategory } from '../api/types';
@@ -109,7 +110,7 @@ export function GuideModal({ onClose, initialCategory }: Props) {
                       <li key={a.id}>
                         <button onClick={() => open(c.code, a.id)}>
                           <span className="muted small">{c.name}</span>
-                          <strong>{a.title}</strong>
+                          <strong><SkillText text={a.title} title /></strong>
                         </button>
                       </li>
                     ))}
@@ -124,7 +125,7 @@ export function GuideModal({ onClose, initialCategory }: Props) {
                   <div className="accordion guide-faq">
                     {articles.map((a) => (
                       <details key={a.id} data-article={a.id}>
-                        <summary><span className="faq-q" aria-hidden="true">Q</span><span className="summary-title">{a.title}</span></summary>
+                        <summary><span className="faq-q" aria-hidden="true">Q</span><span className="summary-title"><SkillText text={a.title} title /></span></summary>
                         <RichText text={a.body} />
                       </details>
                     ))}
@@ -133,14 +134,14 @@ export function GuideModal({ onClose, initialCategory }: Props) {
                   {articles.length > 1 && (
                     <nav className="guide-toc" aria-label={t('guide.toc')}>
                       {articles.map((a) => (
-                        <button key={a.id} className="chip" onClick={() => setJumpTo(a.id)}>{a.title}</button>
+                        <button key={a.id} className="chip" onClick={() => setJumpTo(a.id)}><SkillText text={a.title} title /></button>
                       ))}
                     </nav>
                   )}
                   <div className="articles">
                     {articles.map((a) => (
                       <article key={a.id} className="guide-card" data-article={a.id}>
-                        <h4>{a.title}</h4>
+                        <h4><SkillText text={a.title} title /></h4>
                         <RichText text={a.body} />
                       </article>
                     ))}

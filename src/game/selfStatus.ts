@@ -3,7 +3,7 @@
  * 종류 → {남은 초, 값} 하나의 표로 들고 있고, Arena가 내 위치 예측과 화면 가림에 쓴다. 남의 원에 걸린 상태 표시는 skillFx(skillfx/statuses)가 그린다.
  * 새 효과는 SelfKind에 더하고 걸기(start)·풀기(end)를 그대로 쓴다.
  */
-export type SelfKind = 'darkness' | 'slow' | 'stun';
+export type SelfKind = 'darkness' | 'slow' | 'stun' | 'confuse';
 interface SelfEffect { left: number; value: number }
 
 export class SelfStatus {

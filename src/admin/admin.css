@@ -862,3 +862,18 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .mn-pattern-bulk em { font-style: normal; color: #ffb347; }
 .mn-pattern-bulk button { padding: 5px 12px; font-size: 0.85rem; }
 .mn-pattern > header .mn-switch { margin-left: auto; }
+
+.sk-filter { margin: 4px 0 14px; }
+
+/* 스킬 모션 미리보기: 아이콘에 올리면 뜨는 팝업, 전체 스킬 카드 */
+.sk-view { margin: 4px 0 12px; }
+.sk-hover { display: inline-flex; cursor: help; border-radius: 12px; }
+.sk-hover:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
+.sk-pop { position: fixed; z-index: 10000; display: grid; gap: 6px; padding: 10px; border-radius: 14px; background: #0f1623; border: 1px solid #3a475c; box-shadow: 0 12px 36px rgba(0,0,0,0.6); pointer-events: none; color: #e6edf7; }
+.sk-pop strong { font-size: 0.95rem; }
+.sk-overview { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.sk-ov-card { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line, #2a3446); border-radius: 14px; background: rgba(255,255,255,0.03); justify-items: start; }
+.sk-ov-card.off { opacity: 0.55; }
+.sk-ov-head { display: flex; align-items: center; gap: 10px; width: 100%; }
+.sk-ov-head .sk-title { flex: 1; min-width: 0; }
+.sk-ov-card canvas { width: 100% !important; height: auto !important; max-width: 100%; }

@@ -19,7 +19,7 @@ const USER_BG = TURTLE_BASE, OTHER_BG = '#4f7fd8';
 interface Pt { x: number; y: number }
 interface Frame {
   user: Pt; other: Pt;
-  shield: number;                // 방패 남은 ms(0이면 없음)
+  invincible: number;                // 무적 남은 ms(0이면 없음)
   dash: boolean; dashAt: number; // 대시 중
   lostAt: number | null;         // 상대가 키워드를 잃는 순간(갈고리·독) ms
   note: 'a' | 'b' | 'c' | null;  // 화면 위 안내 문구 번호
@@ -33,10 +33,10 @@ interface Script {
 
 const ease = (x: number) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
-const base: Frame = { user: { x: 0, y: 75 }, other: { x: 0, y: 75 }, shield: 0, dash: false, dashAt: 0, lostAt: null, note: null };
+const base: Frame = { user: { x: 0, y: 75 }, other: { x: 0, y: 75 }, invincible: 0, dash: false, dashAt: 0, lostAt: null, note: null };
 
 // 독·암흑·정화는 아래에서 이어서 더한다(투사체 도우미가 필요해서)
-const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'repel' | 'stealth', Script> = {
+const BASE_SCRIPTS: Record<'dash' | 'invincibility' | 'hook' | 'repel' | 'stealth', Script> = {
   // 대시: 같은 속도로 걷다가 쓰면 2배 속도로 멀어진다. 쫓아가던 사람은 점점 뒤처진다
   dash: {
     total: 3600,
@@ -47,11 +47,11 @@ const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'repel' | 'stealth', Scr
       return { ...base, user: { x, y: 75 }, other: { x: 28 + 45 * (u / 1000), y: 75 }, dash: u >= 700 && u <= 1900, dashAt: 700, note: u > 700 && u < 3000 ? 'a' : null };
     },
   },
-  // 방패: 방패를 쓰면 다가오는 원이 부딪히지 않고 그대로 통과한다
-  shield: {
+  // 무적: 무적을 쓰면 다가오는 원이 부딪히지 않고 그대로 통과한다
+  invincibility: {
     total: 4600,
     events: [],
-    frame: (u) => ({ ...base, user: { x: 140, y: 75 }, other: { x: 20 + 70 * (u / 1000), y: 75 }, shield: u >= 600 ? clamp(3000 - (u - 600), 0, 3000) : 0, note: u > 1200 && u < 3300 ? 'a' : null }),
+    frame: (u) => ({ ...base, user: { x: 140, y: 75 }, other: { x: 20 + 70 * (u / 1000), y: 75 }, invincible: u >= 600 ? clamp(3000 - (u - 600), 0, 3000) : 0, note: u > 1200 && u < 3300 ? 'a' : null }),
   },
   // 갈고리: 겨눈 방향으로 던져 맞으면 키워드 1개를 잃고 끌려온다
   hook: {
@@ -90,7 +90,7 @@ const BASE_SCRIPTS: Record<'dash' | 'shield' | 'hook' | 'repel' | 'stealth', Scr
 
 // 독·암흑 투사체: 쓰는 사람(왼쪽)이 상대(오른쪽)에게 던진다. 투사체 위치는 시작점 + 속도 × 시간으로 그려져(실제 게임과 같다) 맞는 때에 맞춰 boltEnd를 보낸다
 const BOLT_FROM = 60 + R, BOLT_TO = 200 - R, BOLT_SPEED = 300, BOLT_HIT_MS = ((BOLT_TO - BOLT_FROM) / BOLT_SPEED) * 1000;
-const boltAt = (at: number, bid: number, kind: 'poison' | 'darkness' | 'slow' | 'stun') => ({
+const boltAt = (at: number, bid: number, kind: 'poison' | 'darkness' | 'slow' | 'stun' | 'root' | 'silence' | 'confuse') => ({
   at, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'bolt', kind, bid, e: 1, x: BOLT_FROM, y: 75, dx: 1, dy: 0, speed: BOLT_SPEED, range: 200, radius: 5 }, now),
 });
 const boltHit = (at: number, bid: number) => ({ at, run: (fx: SkillFxLayer, now: number) => fx.show({ id: 'boltEnd', bid, hit: 2, x: BOLT_TO, y: 75 }, now) });
@@ -183,9 +183,61 @@ const ABSORB_SCRIPT: Script = {
   },
 };
 
+// 새 스킬: 속박·침묵·혼란은 투사체를 던져 맞은 원에 걸리고, 공격 증폭·피해 감소·보호막·광폭화는 나에게 거는 버프다(연출은 game/skillfx/auras.ts)
+const HIT = 600 + BOLT_HIT_MS;
+const still = (u: number, from: number, to: number): Frame => ({ ...base, user: { x: 60, y: 75 }, other: { x: 200, y: 75 }, note: u > from && u < to ? 'a' : null });
+const ROOT_SCRIPT: Script = {
+  // 속박: 맞은 원은 쇠못과 쇠사슬에 묶여 2초 동안 한자리에서 못 움직인다(스킬은 쓸 수 있다)
+  total: 5800,
+  events: [boltAt(600, 1, 'root'), boltHit(HIT, 1), { at: HIT, run: (fx, now) => fx.show({ id: 'root', t: 2, ms: 2600 }, now) }, { at: HIT + 2700, run: (fx, now) => fx.show({ id: 'rootEnd', t: 2 }, now) }],
+  frame: (u) => still(u, 1100, 4400),
+};
+const SILENCE_SCRIPT: Script = {
+  // 침묵: 맞은 원은 3초 동안 스킬을 쓰지 못한다(걷는 건 된다). 머리 위에 자물쇠 채운 스킬 칸이 뜬다
+  total: 6000,
+  events: [boltAt(600, 1, 'silence'), boltHit(HIT, 1), { at: HIT, run: (fx, now) => fx.show({ id: 'silence', t: 2, ms: 3000 }, now) }, { at: HIT + 3100, run: (fx, now) => fx.show({ id: 'silenceEnd', t: 2 }, now) }],
+  frame: (u) => still(u, 1100, 4800),
+};
+const CONFUSE_SCRIPT: Script = {
+  // 혼란: 맞은 원은 3초 동안 조작 방향이 반대가 된다(왼쪽을 누르면 오른쪽으로 간다)
+  total: 6000,
+  events: [boltAt(600, 1, 'confuse'), boltHit(HIT, 1), { at: HIT, run: (fx, now) => fx.show({ id: 'confuse', t: 2, ms: 3000 }, now) }, { at: HIT + 3100, run: (fx, now) => fx.show({ id: 'confuseEnd', t: 2 }, now) }],
+  frame: (u) => still(u, 1100, 4800),
+};
+const selfBuff = (id: 'amplify' | 'fortify'): Script => ({
+  // 공격 증폭·피해 감소: 쓰면 10초 동안(그림에서는 짧게) 원 테두리에 표시가 붙는다. 다른 스킬과 함께 쓸 수 있다
+  total: 6200,
+  events: [{ at: 500, run: (fx, now) => fx.show({ id, e: 1, ms: 4200 }, now) }, { at: 4800, run: (fx, now) => fx.show({ id: id === 'amplify' ? 'amplifyEnd' : 'fortifyEnd', e: 1 }, now) }],
+  frame: (u) => ({ ...base, user: { x: 110, y: 75 }, other: { x: 190, y: 75 }, note: u > 1000 && u < 4600 ? 'a' : null }),
+});
+const BARRIER_SCRIPT: Script = {
+  // 보호막: 체력 위에 쉴드가 쌓여 피해를 먼저 받고, 다 닳으면 깨진다
+  total: 6000,
+  events: [
+    { at: 500, run: (fx, now) => fx.show({ id: 'barrier', e: 1, ms: 8000, pct: 50, max: 50 }, now) },
+    { at: 2000, run: (fx, now) => fx.show({ id: 'barrierHit', e: 1, pct: 30 }, now) },
+    { at: 3000, run: (fx, now) => fx.show({ id: 'barrierHit', e: 1, pct: 10 }, now) },
+    { at: 4000, run: (fx, now) => fx.show({ id: 'barrierEnd', e: 1, broken: true }, now) },
+  ],
+  frame: (u) => ({ ...base, user: { x: 110, y: 75 }, other: { x: 190, y: 75 }, note: u > 900 && u < 4800 ? 'a' : null }),
+};
+const BERSERK_SCRIPT: Script = {
+  // 광폭화: 켜 두면 체력이 닳는 대신 잃은 체력만큼 강해지고 빨라진다. 체력이 잃을수록 연기와 충격파가 거세진다
+  total: 6600,
+  events: [
+    { at: 500, run: (fx, now) => fx.show({ id: 'berserk', e: 1, pct: 10 }, now) },
+    { at: 1700, run: (fx, now) => fx.show({ id: 'berserk', e: 1, pct: 40 }, now) },
+    { at: 2900, run: (fx, now) => fx.show({ id: 'berserk', e: 1, pct: 70 }, now) },
+    { at: 4100, run: (fx, now) => fx.show({ id: 'berserk', e: 1, pct: 90 }, now) },
+    { at: 5000, run: (fx, now) => fx.show({ id: 'berserkEnd', e: 1 }, now) },
+  ],
+  frame: (u) => ({ ...base, user: { x: 110, y: 75 }, other: { x: 190, y: 75 }, note: u > 1000 && u < 5000 ? 'a' : null }),
+};
+
 const SCRIPTS: Record<DemoSkill, Script> = {
   ...BASE_SCRIPTS, poison: POISON_SCRIPT, darkness: DARKNESS_SCRIPT, cleanse: CLEANSE_SCRIPT,
   slow: SLOW_SCRIPT, stun: STUN_SCRIPT, fireball: FIREBALL_SCRIPT, quake: QUAKE_SCRIPT, absorb: ABSORB_SCRIPT,
+  root: ROOT_SCRIPT, silence: SILENCE_SCRIPT, confuse: CONFUSE_SCRIPT, amplify: selfBuff('amplify'), fortify: selfBuff('fortify'), barrier: BARRIER_SCRIPT, berserk: BERSERK_SCRIPT,
 };
 
 type View = 'mine' | 'theirs';
@@ -254,15 +306,15 @@ function drawScene(ctx: CanvasRenderingContext2D, view: View, skill: DemoSkill, 
   drawActor(ctx, f.other, OTHER_BG, 1, !userIsMe, otherLabel, 0);
   drawActor(ctx, f.user, USER_BG, userAlpha, userIsMe, userLabel, 0, userAlpha < 1 ? 0 : 1);
 
-  // 방패: 점선 고리와 남은 초
-  if (f.shield > 0) {
+  // 무적: 방벽 돔과 남은 초
+  if (f.invincible > 0) {
     ctx.save();
-    ctx.globalAlpha = Math.min(1, f.shield / 300) * 0.9;
-    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 5.5; ctx.setLineDash([12, 7]); ctx.lineDashOffset = -now / 40;
+    ctx.globalAlpha = Math.min(1, f.invincible / 300) * 0.9;
+    ctx.strokeStyle = '#ffc83a'; ctx.lineWidth = 5.5; ctx.setLineDash([12, 7]); ctx.lineDashOffset = -now / 40;
     ctx.beginPath(); ctx.arc(f.user.x, f.user.y, R + 6, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(74,222,128,0.12)'; ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,58,0.14)'; ctx.fill();
     ctx.globalAlpha = 1; ctx.font = '800 14px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; const lb = `🛡 ${Math.ceil(f.shield / 1000)}`;
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; const lb = `🛡 ${Math.ceil(f.invincible / 1000)}`;
     ctx.strokeText(lb, f.user.x, f.user.y - R - 8); ctx.fillStyle = '#fff'; ctx.fillText(lb, f.user.x, f.user.y - R - 8);
     ctx.restore();
   }

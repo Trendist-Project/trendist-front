@@ -8,6 +8,7 @@ import { FireballFx } from './skillfx/fireballs';
 import { AbsorbFx } from './skillfx/absorbs';
 import { StealthFx } from './skillfx/stealth';
 import { CleanseFx } from './skillfx/cleanse';
+import { AuraFx } from './skillfx/auras';
 
 export type { PosFn } from './skillfx/common';
 
@@ -24,16 +25,17 @@ export class SkillFxLayer {
   private readonly absorbs: AbsorbFx;
   private readonly stealth: StealthFx;
   private readonly cleanses: CleanseFx;
+  private readonly auras: AuraFx;
 
   constructor(reducedMotion: boolean) {
     this.shocks = new ShockFx(reducedMotion); this.hooks = new HookFx(reducedMotion); this.bolts = new BoltFx(reducedMotion);
     this.statuses = new StatusFx(reducedMotion); this.fireballs = new FireballFx(reducedMotion); this.absorbs = new AbsorbFx(reducedMotion);
-    this.stealth = new StealthFx(reducedMotion); this.cleanses = new CleanseFx(reducedMotion);
+    this.stealth = new StealthFx(reducedMotion); this.cleanses = new CleanseFx(reducedMotion); this.auras = new AuraFx(reducedMotion);
   }
 
   clear() {
     this.shocks.clear(); this.hooks.clear(); this.stealth.clear(); this.bolts.clear(); this.statuses.clear();
-    this.cleanses.clear(); this.fireballs.clear(); this.absorbs.clear();
+    this.cleanses.clear(); this.fireballs.clear(); this.absorbs.clear(); this.auras.clear();
   }
 
   show(fx: SkillFx, now: number) {
@@ -59,7 +61,23 @@ export class SkillFxLayer {
       case 'absorb': this.absorbs.add(fx, now); break;
       case 'absorbTick': this.absorbs.tick(fx, now); break;
       case 'absorbEnd': this.absorbs.end(fx); break;
+      case 'root': this.auras.apply('root', fx.t, now, fx.ms); break;
+      case 'rootEnd': this.auras.end('root', fx.t, now); break;
+      case 'amplify': this.auras.apply('amplify', fx.e, now, fx.ms); break;
+      case 'amplifyEnd': this.auras.end('amplify', fx.e, now); break;
+      case 'fortify': this.auras.apply('fortify', fx.e, now, fx.ms); break;
+      case 'fortifyEnd': this.auras.end('fortify', fx.e, now); break;
+      case 'silence': this.auras.apply('silence', fx.t, now, fx.ms); break;
+      case 'silenceEnd': this.auras.end('silence', fx.t, now); break;
+      case 'berserk': if (!this.auras.has('berserk', fx.e)) this.auras.apply('berserk', fx.e, now, 0, fx.pct / 100); else this.auras.setValue('berserk', fx.e, fx.pct / 100); break;
+      case 'berserkEnd': this.auras.end('berserk', fx.e, now); break;
+      case 'confuse': this.auras.apply('confuse', fx.t, now, fx.ms); break;
+      case 'confuseEnd': this.auras.end('confuse', fx.t, now); break;
+      case 'barrier': this.auras.apply('barrier', fx.e, now, fx.ms, fx.pct / Math.max(1, fx.max), fx.max); break;
+      case 'barrierHit': this.auras.barrierHit(fx.e, now, fx.pct / Math.max(1, this.auras.maxOf('barrier', fx.e))); break;
+      case 'barrierEnd': this.auras.end('barrier', fx.e, now, fx.broken === true); break;
       case 'cleanse':
+        this.auras.cleanse(fx.e);
         this.statuses.cleanse(fx.e);
         this.absorbs.cleanse(fx.e);
         this.cleanses.add(fx.e, now);
@@ -85,6 +103,7 @@ export class SkillFxLayer {
     this.fireballs.draw(ctx, now, z, pos);
     this.absorbs.drawAbsorbs(ctx, now, z, pos);
     this.statuses.draw(ctx, now, z, pos); // 독·슬로우·스턴·암흑
+    this.auras.draw(ctx, now, z, pos); // 속박·공격 증폭·피해 감소·침묵·광폭화·혼란·보호막
     this.cleanses.drawCleanses(ctx, now, z, pos);
     this.shocks.drawQuakeHits(ctx, now, z, pos);
   }

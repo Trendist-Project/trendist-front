@@ -1,18 +1,10 @@
 import type { SkillFx } from '../protocol';
 import { FX_CAP, seeded } from './common';
+import { BOLT_LOOKS, BURST_STYLE, type BoltKind, type BurstKind } from './boltLooks';
 
-/** 투사체(독·암흑·슬로우·스턴)와 맞은 자리의 파열(화염구가 맞은 자리도 같은 파열을 쓴다, 4.33) */
+/** 투사체(독·암흑·슬로우·스턴·속박·침묵·혼란)와 맞은 자리의 파열(화염구가 맞은 자리도 같은 파열을 쓴다, 4.33). 종류별 모양은 boltLooks.ts의 표에 있다 */
 
-type BoltKind = 'poison' | 'darkness' | 'slow' | 'stun';
-export type BurstKind = BoltKind | 'fireball';
-/** 투사체·맞은 자리 고리의 색(꼬리, 몸통, 테두리, 고리). 종류가 늘면 여기에 한 줄 */
-const BOLT_STYLE: Record<BurstKind, { tail: string; fill: string; edge: string; ring: string }> = {
-  poison: { tail: 'rgba(90,220,90,0.55)', fill: '#4cd964', edge: '#c9ffd0', ring: '90,220,90' },
-  darkness: { tail: 'rgba(120,70,200,0.5)', fill: '#14101c', edge: '#9b6cff', ring: '155,108,255' },
-  slow: { tail: 'rgba(120,200,255,0.55)', fill: '#8fd3ff', edge: '#eaf8ff', ring: '120,200,255' },
-  stun: { tail: 'rgba(255,225,80,0.55)', fill: '#ffe14d', edge: '#fff7c2', ring: '255,225,80' },
-  fireball: { tail: 'rgba(255,140,40,0.55)', fill: '#ff8c2a', edge: '#ffe2a0', ring: '255,140,40' },
-};
+export type { BurstKind } from './boltLooks';
 interface Bolt { kind: BoltKind; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number; at: number }
 interface Burst { x: number; y: number; kind: BurstKind; at: number }
 const BURST_MS = 450;
@@ -57,7 +49,7 @@ export class BoltFx {
       if (age > (b.range / b.speed) * 1000 + 400) { this.bolts.delete(id); continue; } // 끝 신호를 놓쳐도 사라진다
       const x = b.x + b.dx * traveled, y = b.y + b.dy * traveled, nx = -b.dy, ny = b.dx;
       const r = Math.max(b.radius, BOLT_MIN_SCREEN_RADIUS / z); // 판정은 월드 반지름 그대로이고, 줌아웃해도 화면에서 이만큼은 보이게 그린다
-      const st = BOLT_STYLE[b.kind], rm = this.reducedMotion;
+      const look = BOLT_LOOKS[b.kind], st = look.style, rm = this.reducedMotion;
       ctx.save();
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       // 빛
@@ -77,61 +69,18 @@ export class BoltFx {
           const ph = (age / 560 + rand()) % 1, off = (rand() - 0.5) * 2 * r * (0.5 + ph * 1.1), sz = r * (0.2 + rand() * 0.22) * (1 - ph * 0.7);
           const px = x - b.dx * ph * len + nx * off, py = y - b.dy * ph * len + ny * off;
           ctx.globalAlpha = (1 - ph) * 0.95;
-          if (b.kind === 'poison') { ctx.strokeStyle = '#c9ffd0'; ctx.lineWidth = Math.max(1 / z, sz * 0.35); ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI * 2); ctx.stroke(); }
-          else if (b.kind === 'darkness') { ctx.fillStyle = 'rgba(30,18,50,0.8)'; ctx.beginPath(); ctx.arc(px, py, sz * 1.5, 0, Math.PI * 2); ctx.fill(); }
-          else if (b.kind === 'slow') { ctx.strokeStyle = '#eaf8ff'; ctx.lineWidth = Math.max(1 / z, sz * 0.35); ctx.beginPath(); ctx.moveTo(px - sz, py); ctx.lineTo(px + sz, py); ctx.moveTo(px, py - sz); ctx.lineTo(px, py + sz); ctx.stroke(); }
-          else { ctx.fillStyle = '#fff7c2'; ctx.beginPath(); ctx.arc(px, py, sz * 0.8, 0, Math.PI * 2); ctx.fill(); }
+          look.particle({ ctx, px, py, sz, i, z, dx: b.dx, dy: b.dy });
         }
         ctx.globalAlpha = 1;
       }
       // 몸통
       const spin = rm ? 0 : age / 260;
-      if (b.kind === 'poison') {
-        const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
-        g.addColorStop(0, '#e6ffe8'); g.addColorStop(0.45, '#4cd964'); g.addColorStop(1, '#1b8a33');
-        ctx.fillStyle = g; ctx.strokeStyle = st.edge; ctx.lineWidth = Math.max(1.8 / z, r * 0.14);
-        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(x - r * 0.35, y - r * 0.4, r * 0.28, r * 0.17, -0.6, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(230,255,235,0.8)'; ctx.lineWidth = Math.max(1 / z, r * 0.07);
-        ctx.beginPath(); ctx.arc(x + r * 0.32, y + r * 0.22, r * 0.17, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(x - r * 0.1, y + r * 0.45, r * 0.1, 0, Math.PI * 2); ctx.stroke();
-      } else if (b.kind === 'darkness') {
-        const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r);
-        g.addColorStop(0, '#000'); g.addColorStop(0.7, '#150c25'); g.addColorStop(1, '#2a1650');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#9b6cff'; ctx.lineWidth = Math.max(2 / z, r * 0.16);
-        for (let i = 0; i < 3; i++) { const a0 = -spin * 1.4 + (i * Math.PI * 2) / 3; ctx.beginPath(); ctx.arc(x, y, r * 1.02, a0, a0 + 1.3); ctx.stroke(); }
-        ctx.strokeStyle = 'rgba(200,170,255,0.5)'; ctx.lineWidth = Math.max(1 / z, r * 0.06);
-        ctx.beginPath(); ctx.arc(x, y, r * 0.55, spin, spin + Math.PI); ctx.stroke();
-      } else if (b.kind === 'slow') {
-        const hex = (rad: number) => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = spin + (i * Math.PI) / 3; const px = x + Math.cos(a) * rad, py = y + Math.sin(a) * rad; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); };
-        const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r * 1.2);
-        g.addColorStop(0, '#f4fcff'); g.addColorStop(0.6, '#9bd8ff'); g.addColorStop(1, '#4aa8e8');
-        hex(r * 1.2); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = '#e8f8ff'; ctx.lineWidth = Math.max(1.8 / z, r * 0.14); ctx.stroke();
-        hex(r * 0.62); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = Math.max(1.2 / z, r * 0.08); ctx.stroke();
-        ctx.beginPath(); for (let i = 0; i < 3; i++) { const a = spin + (i * Math.PI) / 3; ctx.moveTo(x + Math.cos(a) * r * 1.0, y + Math.sin(a) * r * 1.0); ctx.lineTo(x - Math.cos(a) * r * 1.0, y - Math.sin(a) * r * 1.0); } ctx.stroke();
-      } else {
-        const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r);
-        g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#fff08a'); g.addColorStop(1, '#ffc800');
-        // 번개 줄기: 약 70ms마다 모양이 바뀌며 사방으로 뻗는다
-        const rand = seeded(Math.floor(rm ? 0 : now / 70) * 131 + id);
-        ctx.strokeStyle = '#fff7b0'; ctx.lineWidth = Math.max(1.6 / z, r * 0.14);
-        for (let k = 0; k < 5; k++) {
-          let a = rand() * Math.PI * 2, px = x + Math.cos(a) * r * 0.9, py = y + Math.sin(a) * r * 0.9;
-          ctx.beginPath(); ctx.moveTo(px, py);
-          for (let j = 0; j < 3; j++) { a += (rand() - 0.5) * 1.2; px += Math.cos(a) * r * 0.55; py += Math.sin(a) * r * 0.55; ctx.lineTo(px, py); }
-          ctx.stroke();
-        }
-        ctx.fillStyle = g; ctx.strokeStyle = '#fff7c2'; ctx.lineWidth = Math.max(1.8 / z, r * 0.14);
-        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = '#8a6200'; ctx.lineWidth = Math.max(1.8 / z, r * 0.16);
-        ctx.beginPath(); ctx.moveTo(x + r * 0.2, y - r * 0.65); ctx.lineTo(x - r * 0.3, y + r * 0.05); ctx.lineTo(x + r * 0.28, y + r * 0.05); ctx.lineTo(x - r * 0.2, y + r * 0.65); ctx.stroke();
-      }
+      look.body({ ctx, x, y, r, z, spin, dx: b.dx, dy: b.dy, now, id, rm, st });
       ctx.restore();
     }
     this.bursts = this.bursts.filter((u) => now - u.at < BURST_MS);
     for (const u of this.bursts) {
-      const t = (now - u.at) / BURST_MS, ring = BOLT_STYLE[u.kind].ring;
+      const t = (now - u.at) / BURST_MS, ring = BURST_STYLE[u.kind].ring;
       ctx.save(); ctx.lineCap = 'round';
       const R = Math.max(14, 16 / z);
       // 순간 번쩍임

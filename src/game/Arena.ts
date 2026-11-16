@@ -1,3 +1,4 @@
+import { paintInvincible } from './arena/invincible';
 import { t as tr } from '../i18n';
 import type { EntityState, MinimapEntry, RosterEntry, SkillFx, Snapshot, Tuning } from './protocol';
 import { SkillFxLayer } from './skillFx';
@@ -130,7 +131,7 @@ export class Arena {
   /** 체력바와 피해·회복 표시(4.36) */
   private hp = new HpLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   /** 키워드를 잃은 원의 무적 끝 시각(4.3). 둘레에 보호막과 남은 초를 그린다 */
-  private shields = new Map<number, number>();
+  private invincibles = new Map<number, number>();
   private levelFxs: LevelFx[] = []; // 레벨업 빛기둥(4.30)
   private dashFx = new Map<number, { at: number; ms: number }>(); // 대시 중인 원 번호 → 시작 시각, 지속 ms(4.27)
   /** 대시 중인 원이 지나온 경로(오래된 것 → 최근 것). 꼬리 빛이 이 경로를 따라 휘어지게 한다(4.27). at은 마지막으로 기록한 시각 */
@@ -222,6 +223,8 @@ export class Arena {
   /** 누군가 스킬을 썼다(4.33): 그 연출을 그린다. */
   showSkillFx(fx: SkillFx) {
     if (fx.id === 'heal') { if (fx.e !== this.me.e) this.healPop(fx.e); return; } // 남의 회복은 그 원에 + 표시(내 것은 hp 메시지가 띄운다)
+    if (fx.id === 'barrier' || fx.id === 'barrierHit') this.hp.setBarrier(fx.e, fx.pct); // 쉴드는 체력바에 롤처럼 흰 조각으로 붙는다
+    else if (fx.id === 'barrierEnd') this.hp.setBarrier(fx.e, 0);
     this.fx.show(fx, performance.now());
   }
   /** 내가 갈고리에 맞았다(4.33): ms 동안 byE에게 끌려온다. 서버처럼 목표와 튕김을 지우고 예측도 같이 끌려간다. */
@@ -236,6 +239,8 @@ export class Arena {
   /** 스턴에 맞았다: ms 동안 입력으로 움직이지 않는다. 목표와 속도를 지운다 */
   startStun(ms: number) { this.predictUntil(performance.now()); this.self.start('stun', ms); this.target = null; this.me.vx = 0; this.me.vy = 0; }
   endStun() { this.self.end('stun'); }
+  startConfuse(ms: number) { this.self.start('confuse', ms); }
+  endConfuse() { this.self.end('confuse'); }
   /** 새 원이다(리스폰): 스킬 상태와 연출을 비운다 */
   resetSkills() { this.self.reset(); this.fx.clear(); }
   /** 정화로 갈고리에서 풀렸다(4.33): 끌려오는 예측을 멈춘다 */
@@ -389,7 +394,7 @@ export class Arena {
       drawLevelUp(ctx, f, (now - f.at) / LEVELUP_MS, this.zoom);
     }
   }
-  showShield(e: number, ms: number) { this.shields.set(e, performance.now() + ms); }
+  showInvincible(e: number, ms: number) { this.invincibles.set(e, performance.now() + ms); }
 
   /** 내 원이 부딪혀 튕겼다. 서버처럼 목표를 지우고, 같은 거리를 같은 감속으로 예측에도 밀어 준다(크게 밀려도 화면이 순간 이동하지 않게). */
   applyKnock(dx: number, dy: number, ms: number) {
@@ -682,6 +687,7 @@ export class Arena {
       if (d < 4) this.target = null;
       else { const s = speed * Math.min(1, d / 120); wantX = (dx / d) * s; wantY = (dy / d) * s; }
     }
+    if (this.self.has('confuse')) { wantX = -wantX; wantY = -wantY; } // 혼란: 조작 방향이 반대다(서버 Room.advance와 같다)
     // 속도 차이가 지수로 줄어드는 식을 정확히 푼다. 서버와 같은 식이라 프레임 간격·틱 간격과 관계없이 같은 곳에 간다
     const e = Math.exp(-ACCEL_RATE * dt), moved = (1 - e) / ACCEL_RATE;
     this.me.x += wantX * dt + (this.me.vx - wantX) * moved; this.me.y += wantY * dt + (this.me.vy - wantY) * moved;
@@ -821,7 +827,7 @@ export class Arena {
     this.drawBubbles(ctx, now);
     this.drawEmotes(ctx, now);
     this.hp.drawPops(ctx, now, this.zoom, (e, t) => (this.camouflaged(e, t) ? null : this.entityPos(e, t)));
-    this.drawShields(ctx, now);
+    this.drawInvincibles(ctx, now);
     this.drawStealthTimer(ctx, now);
     this.drawHiddenWarning(ctx, now);
     this.drawFollowMark(ctx, now);
@@ -1311,24 +1317,17 @@ export class Arena {
     ctx.restore();
   }
 
-  private drawShields(ctx: CanvasRenderingContext2D, now: number) {
+  private drawInvincibles(ctx: CanvasRenderingContext2D, now: number) {
     const z = this.zoom;
-    for (const [e, until] of this.shields) {
+    for (const [e, until] of this.invincibles) {
       const left = until - now;
-      if (left <= 0) { this.shields.delete(e); continue; }
+      if (left <= 0) { this.invincibles.delete(e); continue; }
       const pos = this.entityPos(e, now);
       if (!pos || this.camouflaged(e, now)) continue;
       const r = pos.r + 6 / z;
       ctx.save();
       ctx.globalAlpha = Math.min(1, left / 300) * 0.9; // 끝날 때 살짝 옅어진다
-      ctx.strokeStyle = '#4ade80'; // 방패: 초록
-      ctx.lineWidth = 8 / z; // 굵은 테두리
-      ctx.setLineDash([16 / z, 9 / z]);
-      ctx.lineDashOffset = -now / 40 / z;
-      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(74,222,128,0.10)';
-      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
+      paintInvincible(ctx, pos.x, pos.y, r, now, z, this.reducedMotion); // 무적: 금색(아이콘과 같은 색)
       // 남은 초: 원 바로 위, 화면 기준 일정한 크기
       const fs = 20 / z;
       ctx.globalAlpha = 1;

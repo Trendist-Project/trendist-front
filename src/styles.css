@@ -1353,6 +1353,15 @@ button.link-back:hover { color: var(--text); }
 @media (orientation: landscape) and (max-height: 300px) and (pointer: coarse) { .main-screen { overflow-y: auto; } }
 
 /* 스킬 해금 레벨(4.33): 아직 레벨이 모자라면 흐리게 하고 🔒와 필요한 레벨을 보인다. 툴팁에는 필요 레벨과 지금 레벨이 나온다 */
+/* 켜고 끄는 스킬(광폭화)이 켜져 있을 때: 칸 테두리를 따라 도는 희미한 노란 빛. 꺼지면 다른 스킬과 같다 */
+@property --on-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.skill-btn.skill-on { border-color: rgba(255,214,102,0.55); box-shadow: 0 0 8px rgba(255,200,58,0.28), inset 0 0 6px rgba(255,200,58,0.16); }
+.skill-btn.skill-on::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; padding: 2px; pointer-events: none;
+  background: conic-gradient(from var(--on-ang), rgba(255,214,102,0) 0deg, rgba(255,214,102,0) 200deg, rgba(255,214,102,0.9) 300deg, rgba(255,240,170,0.95) 340deg, rgba(255,214,102,0) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: skill-on-spin 1.6s linear infinite; }
+@keyframes skill-on-spin { to { --on-ang: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .skill-btn.skill-on::after { animation: none; background: rgba(255,214,102,0.6); } }
 .skill-btn.locked { opacity: 0.5; filter: grayscale(0.85); cursor: not-allowed; }
 .skill-btn .skill-lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: inherit; background: rgba(0,0,0,0.55); font-size: 0.95rem; line-height: 1; gap: 1px; }
 .skill-btn .skill-lock b { font-size: 0.68rem; font-weight: 800; color: #ffd29a; }
@@ -1501,6 +1510,10 @@ button.link-back:hover { color: var(--text); }
 .sw-vsep { align-self: stretch; width: 2px; margin: 24px 4px 0; border-radius: 1px; background: #3a475c; flex: none; }
 .sw-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .sw-slot { position: relative; width: 60px; height: 60px; padding: 0; border-radius: 14px; border: 2px solid var(--cat, var(--line)); background: color-mix(in srgb, var(--cat, #94a3b8) 14%, #0b0f17); display: inline-flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.12s; }
+.sw-slotwrap { position: relative; }
+.sw-x { position: absolute; top: -7px; right: -7px; z-index: 2; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid #0b0f17; background: #e5484d; color: #fff; font-size: 1rem; font-weight: 900; line-height: 1; display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.55); animation: sw-x-in 0.14s ease-out; }
+.sw-x:hover { background: #ff6369; transform: scale(1.1); }
+@keyframes sw-x-in { from { transform: scale(0.4); opacity: 0; } }
 .sw-slot.empty { border: 2px dashed #3a475c; background: rgba(11,15,23,0.5); color: var(--muted); }
 .sw-slot.fixed { cursor: default; }
 .sw-slot.picked { border-color: #38bdf8; border-width: 4px; box-shadow: 0 0 0 3px rgba(56,189,248,0.35), 0 0 16px rgba(56,189,248,0.6); transform: scale(1.05); }
@@ -1698,7 +1711,9 @@ button.link-back:hover { color: var(--text); }
 .hp-hud .hp-track { position: relative; flex: 1; height: 18px; border-radius: 9px; background: #070a10; border: 1px solid rgba(255,255,255,0.2); overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.6); }
 .hp-hud .hp-track i { position: absolute; left: 0; top: 0; bottom: 0; }
 .hp-hud .hp-fill { background: linear-gradient(180deg, #ff7a7a, #d12f2f); transition: width 0.18s ease-out; } /* 체력은 항상 빨강(초록인 경험치 막대와 헷갈리지 않게). 남은 양은 숫자와 길이로, 위급함은 깜빡임으로 */
-.hp-hud.low .hp-fill { animation: hp-pulse 0.7s ease-in-out infinite alternate; }
+/* 쉴드(보호막): 롤처럼 체력 끝에 이어 붙는 흰 조각(위쪽이 더 밝고 체력과의 경계에 어두운 선) */
+.hp-hud .hp-barrier { background: linear-gradient(180deg, #ffffff 0%, #e6f6ff 45%, #aed6e8 100%); box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.5); transition: left 0.18s ease-out, width 0.18s ease-out; }
+.hp-hud .hp-barrier-sh { font-style: normal; color: #d8f6ff; }
 .hp-hud .hp-ghost { background: rgba(255,255,255,0.85); transition: width 0.5s ease-out 0.35s; }
 .hp-hud .hp-fill.heal { animation: hp-heal 0.6s ease-out; }
 .hp-hud .hp-hitflash { left: 0; right: 0; background: rgba(255, 70, 70, 0.6); animation: hp-hit 0.35s ease-out forwards; }
@@ -1729,11 +1744,6 @@ button.link-back:hover { color: var(--text); }
   .sw-bar-tools button { min-width: 0; padding: 8px 6px; font-size: 0.8rem; white-space: nowrap; }
 }
 
-/* 회복 스킬 아이콘: 굵은 초록 + (글자 크기에 맞춰 1em, 가로·세로 막대 두께 38%) */
-.heal-plus { display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em; border-radius: 3px;
-  background: linear-gradient(#34d058, #16a34a) center / 100% 38% no-repeat, linear-gradient(#34d058, #16a34a) center / 38% 100% no-repeat;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 3px rgba(52, 208, 88, 0.45)); }
-
 /* 반발·충격파 스킬 아이콘: 직접 그린 퍼지는 고리 SVG(글자 크기에 맞춰 1em) */
 .skill-svg { display: inline-block; width: 1em; height: 1em; vertical-align: -0.14em; overflow: visible;
   filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
@@ -1743,7 +1753,8 @@ button.link-back:hover { color: var(--text); }
 .wheel-wrap { display: grid; gap: 12px; justify-items: center; text-align: center; }
 .wheel-lead { margin: 0; color: var(--muted); font-size: 0.88rem; word-break: keep-all; }
 .wheel-stage { position: relative; width: min(320px, 78vw); aspect-ratio: 1; margin-top: 6px; }
-.wheel-disc { width: 100%; height: 100%; will-change: transform; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5)); }
+.wheel-clip { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5)); } /* 돌아가는 원판의 네모 모서리가 창 밖으로 삐져나가 스크롤바가 생겼다 사라지던 것을 막는다 */
+.wheel-disc { width: 100%; height: 100%; will-change: transform; }
 .wheel-disc svg { display: block; width: 100%; height: 100%; }
 .wheel-num { font-size: 30px; font-weight: 900; font-family: "Arial Black", Impact, system-ui, sans-serif; paint-order: stroke; stroke: rgba(0,0,0,0.45); stroke-width: 3px; stroke-linejoin: round; }
 .wheel-pointer { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 0; height: 0; z-index: 2; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 26px solid #ff4d4f; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)); }
@@ -1763,4 +1774,8 @@ button.link-back:hover { color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .wheel-result { animation: none; } }
 
 .wheel-locked { margin: 0; padding: 10px 18px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); font-weight: 700; }
-.wheel-stage.locked .wheel-disc { filter: grayscale(0.85) brightness(0.6) drop-shadow(0 6px 14px rgba(0,0,0,0.5)); }
+.wheel-stage.locked .wheel-disc { filter: grayscale(0.85) brightness(0.6); }
+
+/* 가이드 글 속 스킬 이름 앞의 실제 스킬 아이콘(글자 높이에 맞춘다) */
+.skill-inline { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: -0.25em; }
+.skill-inline .skill-svg { width: 100%; height: 100%; vertical-align: top; }

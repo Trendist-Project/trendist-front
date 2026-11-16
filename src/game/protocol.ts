@@ -84,7 +84,7 @@ export type SkillFx =
   | { id: 'hookEnd'; e: number }
   | { id: 'stealth'; e: number; ms: number }
   | { id: 'stealthEnd'; e: number }
-  | { id: 'bolt'; kind: 'poison' | 'darkness' | 'slow' | 'stun'; bid: number; e: number; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number } // 독·암흑 투사체가 날아간다
+  | { id: 'bolt'; kind: 'poison' | 'darkness' | 'slow' | 'stun' | 'root' | 'silence' | 'confuse'; bid: number; e: number; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number } // 독·암흑 투사체가 날아간다
   | { id: 'boltEnd'; bid: number; hit?: number; x?: number; y?: number } // 투사체가 원(hit)에 맞았거나 사거리 끝에서 사라졌다
   | { id: 'poison'; t: number; stacks: number; ms: number } // 원(t)이 독에 걸렸다(스택 수, 다 지나가는 데 걸리는 ms)
   | { id: 'poisonEnd'; t: number }
@@ -99,6 +99,21 @@ export type SkillFx =
   | { id: 'absorbTick'; e: number; t: number } // 키워드 1개를 빼앗는 순간(이은 순간, 1초 뒤, 2초 뒤)
   | { id: 'absorbEnd'; e: number; t?: number } // 선이 끊겼다
   | { id: 'cleanse'; e: number } // 정화를 썼다(초록 고리)
+  | { id: 'root'; t: number; ms: number } // 원(t)이 속박에 걸렸다(이동 불가). 정화는 cleanse 신호로 지운다
+  | { id: 'rootEnd'; t: number }
+  | { id: 'amplify'; e: number; ms: number } // 원 e의 주는 피해가 2배(공격 증폭)
+  | { id: 'amplifyEnd'; e: number }
+  | { id: 'fortify'; e: number; ms: number } // 원 e의 받는 피해가 절반(피해 감소)
+  | { id: 'fortifyEnd'; e: number }
+  | { id: 'silence'; t: number; ms: number } // 원(t)이 침묵에 걸렸다(스킬 불가, 이동 가능)
+  | { id: 'silenceEnd'; t: number }
+  | { id: 'berserk'; e: number; pct: number } // 광폭화 켜짐/갱신. pct는 잃은 체력 비율(0~100). 끌 때까지 이어진다
+  | { id: 'berserkEnd'; e: number }
+  | { id: 'confuse'; t: number; ms: number } // 원(t)이 혼란에 걸렸다(조작 반전)
+  | { id: 'confuseEnd'; t: number }
+  | { id: 'barrier'; e: number; ms: number; pct: number; max: number } // 원 e가 보호막(쉴드)을 둘렀다: 10초, 쉴드량은 최대 체력 대비 절대 %(pct 현재, max 처음 값, 기본 50). 체력과 별개로 위에 쌓인다
+  | { id: 'barrierHit'; e: number; pct: number } // 쉴드가 피해를 먼저 받았다(남은 쉴드량 pct, 최대 체력 대비 %)
+  | { id: 'barrierEnd'; e: number; broken?: boolean } // 쉴드가 사라졌다(broken: 다 닳아 깨졌다. 아니면 시간이 끝났다)
   | { id: 'heal'; e: number } // 회복을 썼다(그 원에 초록 + 표시. 내 것은 hp 메시지가 따로 띄우니 남의 것만 그린다)
 
 /** 몬스터(보스, 4.35) 메시지. 상태는 5Hz, 나머지는 사건이 있을 때 온다 */
@@ -126,12 +141,14 @@ export type ServerMessage =
   | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
   | { type: 'skill'; id: SkillId; cooldownMs: number } // 내가 스킬을 썼다(4.33): 다시 쓸 수 있을 때까지
   | { type: 'cooldowns'; skills: Record<string, number>; dashActiveMs: number; dashReadyMs: number; dashMult: number } // 다시 들어왔을 때 서버가 알려 주는 지금 쿨타임(남은 ms, 4.33)
-  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level' | 'unequipped' | 'hpFull' | 'noTarget'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
+  | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level' | 'unequipped' | 'hpFull' | 'noTarget' | 'silenced' | 'hpLow'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
   | { type: 'skillFx' } & SkillFx // 누군가 스킬을 썼다(4.33): 그 연출을 그린다
   | { type: 'loadout'; slots: (string | null)[] } // 장착한 스킬 4칸(4.33). 입장할 때와 바뀔 때마다 온다. 빈 칸은 null
   | { type: 'dark'; ms: number } // 내가 암흑에 맞았다(4.33): ms 동안 화면이 어두워진다
   | { type: 'darkEnd' } // 정화로 암흑이 풀렸다
-  | { type: 'slow'; ms: number; mult: number } // 내가 슬로우에 맞았다: ms 동안 이동 속도가 mult배(겹치면 더 작다)
+  | { type: 'confuse'; ms: number } // 내가 혼란에 걸렸다: ms 동안 조작 방향이 반대(예측도 같이 뒤집는다)
+  | { type: 'confuseEnd' } // 정화로 혼란이 풀렸다
+  | { type: 'slow'; ms: number; mult: number; quiet?: boolean } // 내가 슬로우에 맞았다: ms 동안 이동 속도가 mult배(겹치면 더 작다)
   | { type: 'slowEnd' } // 정화로 슬로우가 풀렸다
   | { type: 'stun'; ms: number } // 내가 스턴에 맞았다: ms 동안 이동·스킬 불가
   | { type: 'stunEnd' } // 정화로 스턴이 풀렸다
@@ -150,7 +167,7 @@ export type ServerMessage =
   // stolen ADDED = 내 보관함에 새로 들어감(gained = 늘어난 유행도), RENEWED = 이미 가진 키워드라 남은 시간만 24시간으로.
   // BOT = 봇을 이겨 🔥 키워드를 새로 얻음, BOT_RENEWED = 봇을 이겼는데 이미 가진 키워드라 남은 시간만 24시간으로
   | { type: 'hit'; cause: LossCause; target: string; count: number; score: number; keyword?: string; stolen?: 'ADDED' | 'RENEWED' | 'BOT' | 'BOT_RENEWED'; gained?: number } // 내가 상대에게서 잃게 함: stolen이 있으면 그 키워드를 가져왔다
-  | { type: 'shield'; e: number; ms: number }                         // 키워드를 잃은 원의 무적 시간(카운트다운)
+  | { type: 'invincibility'; e: number; ms: number }                         // 키워드를 잃은 원의 무적 시간(카운트다운)
   | { type: 'knock'; dx: number; dy: number; ms: number }             // 내 원이 튕김: 전체 밀려날 거리와 시간
   | { type: 'pong'; t: number }
   | { type: 'orbs'; orbs: [number, number, number, number?][] } // 마지막 값 1이면 ! 구슬

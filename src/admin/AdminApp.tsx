@@ -22,6 +22,7 @@ import { MarkupEditor } from './MarkupEditor';
 import { confirmToast, successToast } from '../ui/toast';
 import { adminConfirm, errMsg, fmt } from './format';
 import { SkillIcon } from '../ui/SkillIcon';
+import { SkillHover, SkillOverview } from './SkillMotionHover';
 
 /**
  * 관리자 페이지(13절, /admin/). 게임과 따로 열고, 로그인한 계정(갱신 토큰)으로 들어온다.
@@ -411,12 +412,24 @@ function SkillsTab() {
     const n = list.filter((s) => s.cooldownSeconds !== s.defaultCooldown || s.requiredLevel !== s.defaultRequiredLevel).length;
     successToast(n > 0 ? `기본값과 다른 스킬 ${n}개를 기본값으로 채웠어요. 확인하고 저장하세요` : '모든 스킬이 이미 기본값이에요');
   };
+  // 테스트용: 모든 스킬을 쿨타임 1초·해금 레벨 1로 채운다(기본값 버튼처럼 칸만 채우고, 확인한 뒤 [모두 저장]으로 저장한다)
+  const fillTest = () => {
+    const list = items ?? [];
+    setDraft(Object.fromEntries(list.map((s) => [s.code, { cd: '1', lv: '1' }])));
+    setMsg({});
+    const n = list.filter((s) => s.cooldownSeconds !== 1 || s.requiredLevel !== 1).length;
+    successToast(n > 0 ? `스킬 ${n}개를 쿨타임 1초·해금 레벨 1로 채웠어요. 확인하고 저장하세요` : '모든 스킬이 이미 쿨타임 1초·해금 레벨 1이에요');
+  };
   const toggle = async (s: AdminSkill, on: boolean) => {
     if (!on && !(await confirmToast(`${skillNameKo(s.code)} 스킬을 끌까요? 게임의 스킬 목록에서 빠지고 서버도 이 스킬을 받지 않아요.`))) return;
     if (await patch(s, { enabled: on })) successToast(`${skillNameKo(s.code)} 스킬을 ${on ? '켰어요' : '껐어요'}`);
   };
 
-  const sorted = [...(items ?? [])].sort((a, b) => a.requiredLevel - b.requiredLevel);
+  const [view, setView] = useState<'settings' | 'preview'>('settings'); // 설정 목록 / 전체 스킬 모션 미리보기
+  const [catFilter, setCatFilter] = useState<string>(''); // 종류 필터: '' = 전체, ATTACK·DEFENSE·CC·UTILITY
+  const cats = ['ATTACK', 'DEFENSE', 'CC', 'UTILITY'];
+  const countOf = (c: string) => (items ?? []).filter((s) => s.category === c).length;
+  const sorted = [...(items ?? [])].filter((s) => !catFilter || s.category === catFilter); // 서버가 준 정렬 순서(sort_order) 그대로 보여 준다
   return (
     <section className="admin-panel">
       <header className="ap-head">
@@ -426,19 +439,38 @@ function SkillsTab() {
         </div>
         {items && <span className="ap-total" role="status"><strong>{items.length}</strong>개</span>}
       </header>
+      <div className="admin-chip-filter sk-view" role="tablist" aria-label="스킬 화면">
+        <button type="button" role="tab" aria-selected={view === 'settings'} className={view === 'settings' ? 'on' : undefined} onClick={() => setView('settings')}>설정</button>
+        <button type="button" role="tab" aria-selected={view === 'preview'} className={view === 'preview' ? 'on' : undefined} onClick={() => setView('preview')}>전체 모션 미리보기</button>
+      </div>
+      {view === 'preview' ? <SkillOverview items={items} /> : (<>
       <div className="set-toolbar sk-toolbar">
         {dirty.length > 0
           ? <span className="set-dirty-note" role="status">저장하지 않은 변경 {dirty.length}개{blocked.length > 0 ? ` · 입력을 고쳐야 저장돼요(${blocked.length}개)` : ''}</span>
           : <span className="muted small">바꾸면 여기에 표시돼요</span>}
         <span className="sk-toolbar-actions">
           <button type="button" disabled={items === null || (atDefaults && dirty.length === 0) || busy} onClick={fillDefaults}>전체 기본값으로</button>
+          <button type="button" disabled={items === null || busy} onClick={fillTest} title="테스트용: 모든 스킬을 쿨타임 1초, 해금 레벨 1로 채워요(저장해야 적용돼요)">전체 테스트 값으로</button>
           <button type="button" disabled={dirty.length === 0 || busy} onClick={() => dirty.forEach((s) => revert(s.code))}>모두 되돌리기</button>
           <button type="button" className={dirty.length > 0 ? 'primary' : undefined} disabled={dirty.length === 0 || blocked.length > 0 || busy} onClick={saveAll}>
             {busy ? '저장 중…' : `모두 저장${dirty.length > 0 ? ` (${dirty.length})` : ''}`}
           </button>
         </span>
       </div>
-      {items === null ? <p className="muted">불러오는 중…</p> : (
+      {items !== null && (
+        <div className="admin-chip-filter sk-filter" role="group" aria-label="스킬 종류">
+          <span className="admin-chip-label">종류</span>
+          {['', ...cats].map((c) => {
+            const on = catFilter === c;
+            return (
+              <button key={c || 'all'} type="button" className={`sort-chip${on ? ' active' : ''}`} aria-pressed={on} onClick={() => setCatFilter(c)}>
+                {c ? categoryNameKo(c) : '전체'} <span className="chip-count">{c ? countOf(c) : items.length}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {items === null ? <p className="muted">불러오는 중…</p> : sorted.length === 0 ? <p className="muted">이 종류의 스킬이 없어요</p> : (
         <ul className="sk-list">
           {sorted.map((s) => {
             const v = valueOf(s), e = errorsOf(s), changed = changedOf(s);
@@ -446,10 +478,10 @@ function SkillsTab() {
             return (
               <li key={s.code} className={`sk-card${changed ? ' dirty' : ''}${s.enabled ? '' : ' off'}`}>
                 <div className="sk-head">
-                  <span className="sk-icon" aria-hidden="true"><SkillIcon code={s.code} icon={s.icon} /></span>
+                  <SkillHover code={s.code}><span className="sk-icon"><SkillIcon code={s.code} /></span></SkillHover>
                   <div className="sk-title">
                     <strong>{name}</strong>
-                    <span className="sk-sub"><code>{s.code}</code><span className={`sk-cat cat-${s.category.toLowerCase()}`}>{categoryNameKo(s.category)}</span><kbd>{keyLabel(s.defaultKey)}</kbd></span>
+                    <span className="sk-sub"><code>{s.code}</code><span className={`sk-cat cat-${s.category.toLowerCase()}`}>{categoryNameKo(s.category)}</span>{s.defaultKey && <kbd>{keyLabel(s.defaultKey)}</kbd>}</span>
                   </div>
                   <label className="sk-switch" title={s.enabled ? '사용 중 — 끄면 게임에서 빠져요' : '꺼짐 — 켜면 게임에 나와요'}>
                     <input type="checkbox" role="switch" checked={s.enabled} onChange={(ev) => void toggle(s, ev.target.checked)} aria-label={`${name} 사용`} />
@@ -501,6 +533,7 @@ function SkillsTab() {
           })}
         </ul>
       )}
+      </>)}
     </section>
   );
 }

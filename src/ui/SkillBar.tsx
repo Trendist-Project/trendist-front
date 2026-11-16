@@ -18,8 +18,8 @@ export interface DashState { until: number; readyAt: number }
  * 빈 칸을 누르면 스킬창이 열린다. 마우스를 올리거나 키보드로 포커스하면 툴팁 카드(이름·키·종류·쿨타임·설명·지금 상태)가 위로 뜬다.
  * 대시(dash)는 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
  */
-export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
-  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; dash: DashState | null; lockedUntil: number | null;
+export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
+  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; skillOn?: ReadonlySet<string>; dash: DashState | null; lockedUntil: number | null;
   onUse: (id: SkillId) => void; onDash: () => void; onOpenWindow: () => void;
 }) {
   // 지금 시각은 그리는 순간마다 새로 잰다. 상태로 들고 있으면 쿨타임이 없던 동안 낡은 값이 남아서, 쓴 직후에 30초가 31초로 보였다
@@ -67,11 +67,11 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
         const name = tOr(`skills.${s.code}_name`, s.code), desc = tOr(`skills.${s.code}_desc`, '');
         return (
           <div key={s.code} className="skill-slot">
-            <button type="button" className={`skill-btn cat-${cat}${isDash ? ' dash-btn' : ''}${locked ? ' locked' : hooked ? ' hooked' : active ? ' active' : left > 0 ? ' cooling' : ''}`}
+            <button type="button" className={`skill-btn cat-${cat}${isDash ? ' dash-btn' : ''}${locked ? ' locked' : hooked ? ' hooked' : active ? ' active' : left > 0 ? ' cooling' : ''}${!locked && skillOn?.has(s.code) ? ' skill-on' : ''}`}
                     aria-disabled={hooked || undefined}
                     aria-label={`${name}${key ? ` (${key})` : ''}. ${locked ? t('gamescreen.skillLockedAria', { n: s.requiredLevel }) + ' ' : ''}${desc}`}
                     onClick={(e) => { e.currentTarget.blur(); if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}>
-              <span className="skill-icon"><SkillIcon code={s.code} icon={s.icon} /></span>
+              <span className="skill-icon"><SkillIcon code={s.code} /></span>
               {veil > 0 && <span className="skill-veil-box" aria-hidden="true"><i className="skill-veil" style={{ height: `${veil}%` }} /></span>}
               {key && <kbd>{key}</kbd>}
               {hooked && !locked ? <span className="skill-hooked" aria-hidden="true">🪝</span>
@@ -80,7 +80,7 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, dash, lockedUn
             </button>
             <div className="skill-tip" role="tooltip">
               <div className="st-head">
-                <span className="st-icon" aria-hidden="true"><SkillIcon code={s.code} icon={s.icon} /></span>
+                <span className="st-icon" aria-hidden="true"><SkillIcon code={s.code} /></span>
                 <strong>{name}</strong>
                 {key && <kbd>{key}</kbd>}
               </div>

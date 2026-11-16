@@ -6,7 +6,7 @@ import { t } from '../i18n';
  * 내가 스킬에 걸렸을 때 서버가 나에게만 보내는 메시지(4.33): 암흑·슬로우·스턴·갈고리(끌려옴)와 그 해제, 스킬을 쓰지 못한 이유.
  * 게임 화면(GameScreen)의 메시지 처리에서 이 묶음만 떼어 둔 것이다. 아레나의 예측·가림을 바꾸고 안내를 띄우며, 스킬 버튼 잠금을 걸거나 푼다.
  */
-export type SelfStatusMessage = Extract<ServerMessage, { type: 'dark' | 'darkEnd' | 'slow' | 'slowEnd' | 'stun' | 'stunEnd' | 'pull' | 'pullEnd' | 'skillFail' }>;
+export type SelfStatusMessage = Extract<ServerMessage, { type: 'dark' | 'darkEnd' | 'slow' | 'slowEnd' | 'confuse' | 'confuseEnd' | 'stun' | 'stunEnd' | 'pull' | 'pullEnd' | 'skillFail' }>;
 
 /** 스킬 버튼 잠금: 끌려오거나 스턴인 동안 스킬 버튼을 못 쓰는 모양으로 바꾼다 */
 export interface SkillLock {
@@ -18,10 +18,12 @@ export interface SkillLock {
 
 export function handleSelfStatus(m: SelfStatusMessage, arena: Arena, lock: SkillLock, showToast: (msg: string) => void) {
   switch (m.type) {
-    case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : m.reason === 'noTarget' ? t('gamescreen.skillNoTarget') : t('gamescreen.skillSafe')); break;
+    case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : m.reason === 'noTarget' ? t('gamescreen.skillNoTarget') : m.reason === 'silenced' ? t('gamescreen.skillSilenced') : m.reason === 'hpLow' ? t('gamescreen.skillHpLow') : t('gamescreen.skillSafe')); break;
     case 'dark': arena.setDark(m.ms); showToast(t('gamescreen.darkened')); break; // 암흑에 맞았다(4.33)
     case 'darkEnd': arena.clearDark(); break; // 정화로 암흑이 풀렸다
-    case 'slow': arena.startSlow(m.ms, m.mult); showToast(t('gamescreen.slowed')); break; // 슬로우에 맞았다: 예측도 같이 느려진다
+    case 'slow': arena.startSlow(m.ms, m.mult); if (!m.quiet) showToast(t('gamescreen.slowed')); break; // 슬로우에 맞았다: 예측도 같이 느려진다(속박·광폭화로 배수만 바뀐 것은 조용히)
+    case 'confuse': arena.startConfuse(m.ms); showToast(t('gamescreen.confused')); break; // 혼란에 걸렸다: 조작 방향이 반대(예측도 같이 뒤집는다)
+    case 'confuseEnd': arena.endConfuse(); break; // 정화로 혼란이 풀렸다
     case 'slowEnd': arena.endSlow(); break; // 정화로 슬로우가 풀렸다
     case 'stun': // 스턴에 맞았다: 움직이지도 스킬을 쓰지도 못한다. 갈고리에 잡힌 때와 같이 스킬 버튼을 잠근다
       arena.startStun(m.ms); showToast(t('gamescreen.stunned'));

@@ -101,7 +101,7 @@ export function SkillUnlockTable() {
             const kk = effectiveKey(k);
             return (
               <tr key={k.code}>
-                <td><span aria-hidden="true"><SkillIcon code={k.code} icon={k.icon} /></span> <strong>{tOr(`skills.${k.code}_name`, k.code)}</strong></td>
+                <td><span aria-hidden="true"><SkillIcon code={k.code} /></span> <strong>{tOr(`skills.${k.code}_name`, k.code)}</strong></td>
                 <td>{k.requiredLevel > 1 ? t('guideArt.unlockLv', { n: k.requiredLevel }) : t('guideArt.unlockBasic')}</td>
                 <td>{k.requiredLevel > 1 ? (exp[String(k.requiredLevel)] !== undefined ? `${fmtNumber(exp[String(k.requiredLevel)])} EXP` : '…') : '–'}</td>
                 <td>{kk ? <kbd>{keyLabel(kk)}</kbd> : '–'}</td>
@@ -165,7 +165,7 @@ export function LevelExpTable() {
           <tbody>
             {g.map((r) => (
               <tr key={r.level}>
-                <th scope="row">{t('guideArt.unlockLv', { n: r.level })}{unlocks.has(r.level) && <span className="lv-unlock" title={t('guideArt.levelUnlocks')}> {unlocks.get(r.level)!.map((k) => <SkillIcon key={k.code} code={k.code} icon={k.icon} />)}</span>}</th>
+                <th scope="row">{t('guideArt.unlockLv', { n: r.level })}{unlocks.has(r.level) && <span className="lv-unlock" title={t('guideArt.levelUnlocks')}> {unlocks.get(r.level)!.map((k) => <SkillIcon key={k.code} code={k.code} />)}</span>}</th>
                 <td>{fmtNumber(r.requiredExp)}</td>
               </tr>
             ))}

@@ -140,7 +140,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
               <div className="sw-cell dash">
                 <span className="sw-target-arrow" aria-hidden="true">▼</span>
                 <span className="sw-slot cat-utility fixed" title={`${tOr('skills.dash_name', 'dash')} · ${t('gamescreen.skillAlways')}`}>
-                  <span className="sw-no" aria-hidden="true">⚡</span><span className="sw-ico"><SkillIcon code="dash" icon={dashInfo.icon} /></span>
+                  <span className="sw-no" aria-hidden="true">⚡</span><span className="sw-ico"><SkillIcon code="dash" /></span>
                 </span>
                 {keycap('dash', keys.dash)}
               </div>
@@ -154,13 +154,20 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
                      onDragLeave={() => setDragOver((v) => (v === i ? null : v))}
                      onDrop={(e) => { e.preventDefault(); setDragOver(null); const c = e.dataTransfer.getData(DRAG_TYPE); if (c) place(c, i); }}>
                   <span className={`sw-target-arrow${target ? ' on' : ''}`} aria-hidden="true">▼</span>
+                  <div className="sw-slotwrap">
                   <button type="button" className={`sw-slot${sk ? ` cat-${catOf(sk)}` : ' empty'}${target ? ' target' : ''}${replacing && target ? ' swap' : ''}${dragOver === i ? ' over' : ''}${sk && sk.code === picked ? ' picked' : ''}`}
                           onClick={() => onSlot(i)} draggable={!!sk} title={sk ? nameOf(sk) : t('gamescreen.skillEmptySlot')}
                           onDragStart={(e) => { if (sk) { e.dataTransfer.setData(DRAG_TYPE, sk.code); e.dataTransfer.effectAllowed = 'move'; } }}
+                          onDragEnd={(e) => { if (sk && e.dataTransfer.dropEffect === 'none' && (e.clientX !== 0 || e.clientY !== 0)) { unequip(i); setPicked(null); } }} /* 칸 밖으로 끌어 놓으면 해제된다(Esc로 취소하면 좌표가 0이라 건너뛴다) */
                           aria-label={sk ? `${i + 1}. ${nameOf(sk)}` : `${i + 1}. ${t('gamescreen.skillEmptySlot')}`}>
                     <span className="sw-no" aria-hidden="true">{i + 1}</span>
-                    <span className="sw-ico">{sk ? <SkillIcon code={sk.code} icon={sk.icon} /> : '＋'}</span>
+                    <span className="sw-ico">{sk ? <SkillIcon code={sk.code} /> : '＋'}</span>
                   </button>
+                  {sk && sk.code === picked && ( // 장착한 칸을 누르면 오른쪽 위에 X가 떠서 바로 해제할 수 있다(터치 기기도 된다)
+                    <button type="button" className="sw-x" onClick={(e) => { e.stopPropagation(); unequip(i); setPicked(null); }}
+                            aria-label={`${nameOf(sk)} ${t('gamescreen.skillUnequip')}`} title={t('gamescreen.skillUnequip')}>×</button>
+                  )}
+                  </div>
                   {keycap(i, keys.slots[i])}
                 </div>
               );
@@ -187,7 +194,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
                           onClick={() => { setPicked(sk.code); setReplacing(false); setMoving(null); setArmed(locked ? null : sk.code); }} aria-pressed={sk.code === picked} draggable={!locked} title={nameOf(sk)}
                           onDragStart={(e) => { if (!locked) { e.dataTransfer.setData(DRAG_TYPE, sk.code); e.dataTransfer.effectAllowed = 'move'; } }}
                           aria-label={`${nameOf(sk)}${locked ? `, ${t('gamescreen.skillLockedAria', { n: sk.requiredLevel })}` : slot >= 0 ? `, ${t('gamescreen.skillEquipped')} ${slot + 1}` : ''}`}>
-                    <span className="sw-ico"><SkillIcon code={sk.code} icon={sk.icon} /></span>
+                    <span className="sw-ico"><SkillIcon code={sk.code} /></span>
                     {slot >= 0 && <span className="sw-badge">{slot + 1}</span>}
                     {locked && <span className="sw-locked"><span aria-hidden="true">🔒</span><b>Lv.{sk.requiredLevel}</b></span>}
                   </button>
@@ -200,7 +207,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
           <section className={`sw-detail${sel ? '' : ' empty'}`} aria-label={t('gamescreen.skillDetail')}>
             {sel && (<>
               <div className="sw-d-head">
-                <span className={`sw-d-ico cat-${catOf(sel)}`}><SkillIcon code={sel.code} icon={sel.icon} /></span>
+                <span className={`sw-d-ico cat-${catOf(sel)}`}><SkillIcon code={sel.code} /></span>
                 <div className="sw-d-title">
                   <strong>{nameOf(sel)}</strong>
                   <div className="sw-d-chips">

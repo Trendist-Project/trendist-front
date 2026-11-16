@@ -168,4 +168,4 @@ export interface KeyInfo { code: string; label: string; category: string; reserv
 export interface KeybindingsResponse { bindings: KeyBindingInfo[]; keys: KeyInfo[] }
 
 /** aimed: 쓸 때 겨눈 지점을 함께 보내는 스킬(없으면 옛 서버라 클라이언트의 기본 목록 값을 쓴다) */
-export interface SkillInfo { code: string; icon: string | null; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; aimed?: boolean }
+export interface SkillInfo { code: string; category: string; defaultKey: string; cooldownSeconds: number; requiredLevel: number; aimed?: boolean }
