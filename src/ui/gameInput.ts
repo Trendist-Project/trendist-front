@@ -296,7 +296,7 @@ export function attachGameInput(d: GameInputDeps): { aimPoint: () => { x: number
       setEmoteOpen(false);
       return;
     }
-    // 스킬 키(4.33): 칸(1~4번)에 묶인 키를 눌러 그 칸에 장착한 스킬을 쓴다. 대시는 장착과 상관없이 대시 키로 쓴다. 키는 사용자가 바꾼 것이 있으면 그것이다.
+    // 스킬 키(4.33): 칸(1~5번)에 묶인 키를 눌러 그 칸에 장착한 스킬을 쓴다(대시도 칸에 장착한 스킬이다). 키는 사용자가 바꾼 것이 있으면 그것이다.
     // 이모트 창이 열려 있을 때의 숫자는 위에서 이모트로 처리했다. 한글 입력 상태에서도 되게 code로 보고, 숫자 줄의 키는 숫자패드로도 쓴다.
     // K는 스킬창을 열고 닫는다. 스페이스는 버튼이 눌리거나 화면이 내려가지 않게 막는다
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -306,12 +306,11 @@ export function attachGameInput(d: GameInputDeps): { aimPoint: () => { x: number
         if (e.code === 'Space') e.preventDefault();
         if (e.repeat) return;
         if (performance.now() < hookedUntilRef.current) return; // 갈고리에 잡혀 끌려오는 동안은 쓸 수 없다(정화는 서버가 따로 받는다)
-        if (target === 'dash') { sendDash(); return; }
         const code = slotsRef.current[target];
         if (!code) { showToast(t('gamescreen.skillEmptySlotTip')); return; }
         const sk = skillsRef.current.find((k) => k.code === code);
         if (sk && sk.requiredLevel > levelRef.current) { showToast(t('gamescreen.skillLockedToast', { n: sk.requiredLevel })); return; } // 해금 레벨이 안 됐다(서버도 막는다)
-        sendSkillRef.current(code);
+        if (code === 'dash') sendDash(); else sendSkillRef.current(code);
         return;
       }
     }

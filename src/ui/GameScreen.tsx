@@ -24,7 +24,7 @@ import { isAimed } from './skillMeta';
 import type { SkillLock } from './selfStatusMessages';
 import { handleGameMessage, type GameMessageContext, type GameSession } from './gameMessages';
 import { attachGameInput } from './gameInput';
-import { actionOf, cacheSlotKeys, defaultSlotKeys, keysFromBindings, legacyChanges, loadSlotKeys, markLegacySynced, type SlotKeys } from '../game/skillKeys';
+import { SLOT_COUNT, actionOf, cacheSlotKeys, defaultSlotKeys, keysFromBindings, legacyChanges, loadSlotKeys, markLegacySynced, type SlotKeys } from '../game/skillKeys';
 import { SkillWindow } from './SkillWindow';
 import { BottomBar } from './BottomBar';
 import { WheelModal } from './WheelModal';
@@ -90,7 +90,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   levelRef.current = player.level;
   const sendSkillRef = useRef<(id: string) => void>(() => {});
   // 장착한 스킬 4칸(서버가 알려 준다, 4.33)과 칸의 단축키(이 브라우저에 저장). 장착해야만 쓸 수 있다
-  const [slots, setSlots] = useState<(string | null)[]>([null, null, null, null]);
+  const [slots, setSlots] = useState<(string | null)[]>(Array(SLOT_COUNT).fill(null));
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
   const [slotKeys, setSlotKeys] = useState<SlotKeys>(loadSlotKeys);
@@ -110,9 +110,9 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     }).catch(() => { /* 서버에 못 닿으면 이 브라우저에 복사해 둔 키로 쓴다 */ });
     return () => { alive = false; };
   }, [applyKeys]);
-  const setKey = useCallback(async (target: number | 'dash', code: string) => {
+  const setKey = useCallback(async (target: number, code: string) => {
     const prev = loadSlotKeys();
-    const next: SlotKeys = target === 'dash' ? { ...prev, dash: code } : { ...prev, slots: prev.slots.map((k, i) => (i === target ? code : k)) };
+    const next: SlotKeys = { ...prev, slots: prev.slots.map((k, i) => (i === target ? code : k)) };
     cacheSlotKeys(next); setSlotKeys(next); // 바로 쓰이게 먼저 바꾼다
     try { applyKeys(await api.saveKeybindings([{ action: actionOf(target), key: code }])); }
     catch (e) {

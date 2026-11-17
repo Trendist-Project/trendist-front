@@ -17,7 +17,7 @@ interface Props {
   /** 장착 4칸을 서버에 보낸다(빈 칸은 null). 서버가 확인해서 {loadout}으로 돌려준다 */
   onChangeSlots(slots: (string | null)[]): void;
   /** 칸(번호 0부터)이나 대시의 키를 바꾼다. 서버에 저장하고 겹치면 거절한다(GameScreen이 안내한다) */
-  onSetKey(target: number | 'dash', code: string): void;
+  onSetKey(target: number, code: string): void;
   /** 키를 모두 기본값으로 되돌린다(서버에서 바꾼 연결을 지운다) */
   onResetKeys(): void;
   onNotice(text: string): void;
@@ -33,18 +33,17 @@ interface Props {
  * [장착]을 누르면 칸이 깜빡이고 원하는 칸을 눌러 고른다. 데스크톱은 끌어 놓기도 된다. 키는 칸 옆 키캡을 눌러 바꾼다.
  */
 export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots, onSetKey, onResetKeys, onNotice }: Props) {
-  const grid = skills.filter((s) => s.code !== 'dash')
+  const grid = [...skills]
     .sort((a, b) => (Number(a.requiredLevel > level) - Number(b.requiredLevel > level)) || a.requiredLevel - b.requiredLevel);
   const [picked, setPicked] = useState<string | null>(null); // 처음에는 아무것도 고르지 않는다(고른 스킬은 칸을 누르는 순간 그 칸에 들어간다)
   const [replacing, setReplacing] = useState(false); // [장착]으로 원하는 칸을 고르는 중(칸이 깜빡인다)
   const [armed, setArmed] = useState<string | null>(null); // 목록에서 고른 스킬을 칸에 놓는 중: 그 스킬이 있는 칸을 뺀 칸이 강조된다
   const [moving, setMoving] = useState<number | null>(null); // 장착한 칸을 눌러 자리를 옮기는 중: 그 칸을 뺀 칸이 강조된다
-  const [listening, setListening] = useState<number | 'dash' | null>(null);
+  const [listening, setListening] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const info = (code: string | null) => (code ? skills.find((s) => s.code === code) ?? null : null);
   const nameOf = (s: SkillInfo) => tOr(`skills.${s.code}_name`, s.code);
   const catOf = (s: SkillInfo) => categoryKey(s.category);
-  const dashInfo = skills.find((s) => s.code === 'dash');
   const sel = info(picked);
   const selSlot = sel ? slots.indexOf(sel.code) : -1;
   const selLocked = !!sel && sel.requiredLevel > level;
@@ -58,7 +57,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
       if (['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight'].includes(e.code)) return;
       const c = conflictOf(listening, e.code, keys);
       if (c === 'reserved') { onNotice(t('gamescreen.keyReserved')); return; }
-      if (c !== null) { onNotice(t('gamescreen.keyTaken', { name: c === 'dash' ? t('gamescreen.skillKeyDash') : t('gamescreen.skillKeySlot', { n: c + 1 }) })); return; }
+      if (c !== null) { onNotice(t('gamescreen.keyTaken', { name: t('gamescreen.skillKeySlot', { n: c + 1 }) })); return; }
       onSetKey(listening, e.code);
       setListening(null);
     };
@@ -86,9 +85,13 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
   };
   const unequip = (i: number) => { const next = [...slots]; next[i] = null; setReplacing(false); setArmed(null); setMoving(null); onChangeSlots(next); };
   const autoEquip = () => {
-    const best = grid.filter((s) => s.requiredLevel <= level).slice(0, SLOT_COUNT).map((s) => s.code);
+    // 기본 장착과 같게: 1번 칸은 대시, 2번 칸부터 해금된 스킬이 해금 순서대로 채운다
+    const open = grid.filter((s) => s.requiredLevel <= level);
+    const others = open.filter((s) => s.code !== 'dash').slice(0, SLOT_COUNT - 1).map((s) => s.code);
+    const next: (string | null)[] = Array.from({ length: SLOT_COUNT }, (_, i) => (i === 0 ? null : others[i - 1] ?? null));
+    if (open.some((s) => s.code === 'dash')) next[0] = 'dash';
     setReplacing(false); setArmed(null); setMoving(null);
-    onChangeSlots(Array.from({ length: SLOT_COUNT }, (_, i) => best[i] ?? null));
+    onChangeSlots(next);
   };
   const clearAll = () => { setReplacing(false); setArmed(null); setMoving(null); onChangeSlots(Array(SLOT_COUNT).fill(null)); };
   /**
@@ -112,7 +115,7 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
     if (here) { setPicked(here.code); setMoving(i); }
   };
 
-  const keycap = (target: number | 'dash', code: string) => (
+  const keycap = (target: number, code: string) => (
     <button type="button" className={`sw-keycap${listening === target ? ' listening' : ''}`} onClick={() => setListening(listening === target ? null : target)}
             aria-label={`${t('gamescreen.keyChange')} (${keyLabel(code)})`} title={t('gamescreen.keyChange')}>
       {listening === target ? '…' : keyLabel(code)}
@@ -135,17 +138,6 @@ export function SkillWindow({ skills, slots, keys, level, onClose, onChangeSlots
         <section className={`sw-left${placing ? ' has-pick' : ''}`} aria-label={t('gamescreen.skillSlots')}>
           <div className="sw-head"><h3>{t('gamescreen.skillSlots')}</h3><span className="sw-count">{t('gamescreen.skillSlotsCount', { n: slots.filter(Boolean).length, max: SLOT_COUNT })}</span></div>
           <div className="sw-bar-slots">
-            {dashInfo && (<>
-              {/* 대시는 늘 쓰는 스킬이라 맨 왼쪽에 두고, 세로 구분선으로 장착 칸 4개와 나눈다 */}
-              <div className="sw-cell dash">
-                <span className="sw-target-arrow" aria-hidden="true">▼</span>
-                <span className="sw-slot cat-utility fixed" title={`${tOr('skills.dash_name', 'dash')} · ${t('gamescreen.skillAlways')}`}>
-                  <span className="sw-no" aria-hidden="true">⚡</span><span className="sw-ico"><SkillIcon code="dash" /></span>
-                </span>
-                {keycap('dash', keys.dash)}
-              </div>
-              <span className="sw-vsep" aria-hidden="true" />
-            </>)}
             {Array.from({ length: SLOT_COUNT }, (_, i) => {
               const sk = info(slots[i] ?? null), target = armedSkill && armedSkill.requiredLevel <= level ? sk?.code !== armedSkill.code : moving !== null && moving !== i;
               return (

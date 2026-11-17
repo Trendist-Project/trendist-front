@@ -17,9 +17,9 @@ export interface DashState { until: number; readyAt: number }
 
 
 /**
- * 스킬 버튼 줄(4.33). 장착한 4칸(slots)과 대시를 보여 주고, 칸의 키(keys)는 사용자가 바꾼 것이 있으면 그것을 쓴다. 스킬 목록·아이콘·쿨타임은 DB에서 온다(useSkills).
+ * 스킬 버튼 줄(4.33). 장착한 5칸(slots, 대시도 한 칸)을 보여 주고, 칸의 키(keys)는 사용자가 바꾼 것이 있으면 그것을 쓴다. 스킬 목록·아이콘·쿨타임은 DB에서 온다(useSkills).
  * 빈 칸을 누르면 스킬창이 열린다. 마우스를 올리거나 키보드로 포커스하면 툴팁 카드(이름·키·종류·쿨타임·설명·지금 상태)가 위로 뜬다.
- * 대시(dash)는 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
+ * 대시(dash)가 든 칸은 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
  */
 export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dud, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
   skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; skillOn?: ReadonlySet<string>; dud?: SkillDud | null; dash: DashState | null; lockedUntil: number | null;
@@ -36,11 +36,9 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dud, 
     return () => window.clearInterval(id);
   }, [busy]);
   const seenTotal = useRef<Record<string, number>>({}); // 스킬마다 이번 쿨타임에서 처음 본 가장 큰 남은 시간(= 전체 쿨타임). 가림막 높이의 기준이다
-  const dashInfo = skills.find((k) => k.code === 'dash');
-  const entries: { skill: SkillInfo | null; key: string; slot: number | null }[] = [
-    ...slots.map((code, i) => ({ skill: (code && skills.find((k) => k.code === code)) || null, key: keys.slots[i], slot: i })),
-    ...(dashInfo ? [{ skill: dashInfo, key: keys.dash, slot: null }] : []),
-  ];
+  // 대시도 칸에 장착하는 스킬이라 다른 스킬과 같이 장착한 칸에 나온다(기본은 5번 칸)
+  const entries: { skill: SkillInfo | null; key: string; slot: number | null }[] =
+    slots.map((code, i) => ({ skill: (code && skills.find((k) => k.code === code)) || null, key: keys.slots[i], slot: i }));
   return (
     <div className="skill-row" role="group" aria-label={t('gamescreen.skills')}>
       {entries.map(({ skill: s, key: keyCode, slot }) => {

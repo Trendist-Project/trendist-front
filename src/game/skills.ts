@@ -27,7 +27,7 @@ interface SkillDef extends SkillInfo {
 }
 
 export const SKILL_DEFS: SkillDef[] = [
-  { code: 'dash', emoji: '⚡', category: 'UTILITY', defaultKey: 'Space', cooldownSeconds: 30, requiredLevel: 1, aimed: false, guideKo: '대시', guideEn: 'dash' },
+  { code: 'dash', emoji: '⚡', category: 'UTILITY', defaultKey: 'Space', cooldownSeconds: 10, requiredLevel: 1, aimed: false, guideKo: '대시', guideEn: 'dash' },
   { code: 'invincibility', emoji: '🛡', category: 'DEFENSE', defaultKey: 'Digit1', cooldownSeconds: 30, requiredLevel: 4, aimed: false, guideKo: '무적', guideEn: 'invincible' },
   { code: 'hook', emoji: '🪝', category: 'ATTACK', defaultKey: 'Digit2', cooldownSeconds: 30, requiredLevel: 7, aimed: true, guideKo: '쇠창살', guideEn: 'hook', demoLose: 1 },
   { code: 'slow', emoji: '🧊', category: 'CC', defaultKey: 'Digit3', cooldownSeconds: 30, requiredLevel: 10, aimed: true, guideKo: '슬로우', guideEn: 'slow' },
