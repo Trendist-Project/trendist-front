@@ -244,7 +244,8 @@ kbd { font: inherit; font-size: 0.75rem; border: 1px solid var(--line); border-r
 .ranking li { display: flex; align-items: center; gap: 6px; }
 /* 리더보드(4.14): 아레나 오른쪽 위 도구 버튼 바로 아래 */
 /* 게임 중에도 뒤의 아레나가 보이게 반투명. 글자는 그림자로 읽히게 하고, 마우스를 올리면 진해진다 */
-.leaderboard { width: min(260px, calc(100vw - 48px)); background: rgba(20, 27, 38, 0.42); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; font-size: 0.85rem; text-shadow: 0 1px 2px rgba(0,0,0,0.85); transition: background 0.2s; }
+/* 가로 길이는 화면 너비를 따라 늘고 줄어든다(좁은 화면에서도 화면 밖으로 나가지 않게 양옆 여백을 뺀 값을 넘지 않는다) */
+.leaderboard { width: min(clamp(170px, 14vw, 230px), calc(100vw - 48px)); background: rgba(20, 27, 38, 0.42); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; font-size: 0.85rem; text-shadow: 0 1px 2px rgba(0,0,0,0.85); transition: background 0.2s; }
 .leaderboard:hover { background: rgba(20, 27, 38, 0.85); }
 .leaderboard h3 { margin: 0 0 6px; font-size: 0.95rem; display: flex; align-items: baseline; gap: 6px; }
 .leaderboard p { margin: 0; }
@@ -440,7 +441,7 @@ button.primary.danger { background: #e35d5d; border-color: #e35d5d; color: #fff;
   .arena-tools .tool-row button { width: 30px; height: 30px; padding: 0; display: inline-grid; place-items: center; font-size: 0.85rem; flex: none; } /* 게스트는 9개, 한 줄에 들어가게 */
   .arena-tools .tool-row { gap: 3px; }
   .hud { top: 8px; left: 8px; padding: 5px 8px; font-size: 0.72rem; white-space: nowrap; flex-direction: column; align-items: flex-start; gap: 2px; }
-  .leaderboard { width: min(200px, calc(100vw - 24px)); padding: 8px 10px; font-size: 0.8rem; }
+  .leaderboard { width: min(clamp(150px, 40vw, 190px), calc(100vw - 24px)); padding: 8px 10px; font-size: 0.8rem; }
   .leaderboard h3 { font-size: 0.85rem; }
   .help-card { width: min(300px, calc(100vw - 24px)); font-size: 0.85rem; }
 
