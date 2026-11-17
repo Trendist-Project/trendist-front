@@ -9,6 +9,9 @@ import { categoryKey } from './skillMeta';
 /** readyAt: 스킬마다 다시 쓸 수 있는 시각(performance.now 기준 ms). 아직 안 썼으면 없다 */
 export type SkillCooldowns = Partial<Record<SkillId, number>>;
 
+/** 스킬을 눌렀지만 쓰이지 않았다(체력 가득·대상 없음·세이프존 등). n은 매번 올라가 같은 스킬이 연달아 실패해도 다시 깜빡인다 */
+export interface SkillDud { id: string; n: number }
+
 /** 대시 상태(4.27): until은 대시가 끝나는 시각, readyAt은 다시 쓸 수 있는 시각(둘 다 performance.now 기준 ms). 아직 안 썼으면 null */
 export interface DashState { until: number; readyAt: number }
 
@@ -18,8 +21,8 @@ export interface DashState { until: number; readyAt: number }
  * 빈 칸을 누르면 스킬창이 열린다. 마우스를 올리거나 키보드로 포커스하면 툴팁 카드(이름·키·종류·쿨타임·설명·지금 상태)가 위로 뜬다.
  * 대시(dash)는 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
  */
-export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
-  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; skillOn?: ReadonlySet<string>; dash: DashState | null; lockedUntil: number | null;
+export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dud, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
+  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; skillOn?: ReadonlySet<string>; dud?: SkillDud | null; dash: DashState | null; lockedUntil: number | null;
   onUse: (id: SkillId) => void; onDash: () => void; onOpenWindow: () => void;
 }) {
   // 지금 시각은 그리는 순간마다 새로 잰다. 상태로 들고 있으면 쿨타임이 없던 동안 낡은 값이 남아서, 쓴 직후에 30초가 31초로 보였다
@@ -72,6 +75,7 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dash,
                     aria-label={`${name}${key ? ` (${key})` : ''}. ${locked ? t('gamescreen.skillLockedAria', { n: s.requiredLevel }) + ' ' : ''}${desc}`}
                     onClick={(e) => { e.currentTarget.blur(); if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}>
               <span className="skill-icon"><SkillIcon code={s.code} /></span>
+              {dud?.id === s.code && <span key={dud.n} className="skill-dud" aria-hidden="true" />}
               {veil > 0 && <span className="skill-veil-box" aria-hidden="true"><i className="skill-veil" style={{ height: `${veil}%` }} /></span>}
               {key && <kbd>{key}</kbd>}
               {hooked && !locked ? <span className="skill-hooked" aria-hidden="true">🪝</span>

@@ -16,9 +16,9 @@ export interface SkillLock {
   release(): void;
 }
 
-export function handleSelfStatus(m: SelfStatusMessage, arena: Arena, lock: SkillLock, showToast: (msg: string) => void) {
+export function handleSelfStatus(m: SelfStatusMessage, arena: Arena, lock: SkillLock, showToast: (msg: string) => void, flashSkill: (id: string) => void) {
   switch (m.type) {
-    case 'skillFail': showToast(m.reason === 'level' ? t('gamescreen.skillLockedToast', { n: m.level ?? 0 }) : m.reason === 'unequipped' ? t('gamescreen.skillUnequippedToast') : m.reason === 'hpFull' ? t('gamescreen.skillHpFull') : m.reason === 'noTarget' ? t('gamescreen.skillNoTarget') : m.reason === 'silenced' ? t('gamescreen.skillSilenced') : m.reason === 'hpLow' ? t('gamescreen.skillHpLow') : t('gamescreen.skillSafe')); break;
+    case 'skillFail': flashSkill(m.id); break; // 쓰지 못했다: 안내 문구 없이 그 스킬 칸만 희미하게 깜빡인다
     case 'dark': arena.setDark(m.ms); showToast(t('gamescreen.darkened')); break; // 암흑에 맞았다(4.33)
     case 'darkEnd': arena.clearDark(); break; // 정화로 암흑이 풀렸다
     case 'slow': arena.startSlow(m.ms, m.mult); if (!m.quiet) showToast(t('gamescreen.slowed')); break; // 슬로우에 맞았다: 예측도 같이 느려진다(속박·광폭화로 배수만 바뀐 것은 조용히)

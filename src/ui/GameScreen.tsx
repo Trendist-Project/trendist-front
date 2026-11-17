@@ -17,7 +17,7 @@ import { SidePanel } from './SidePanel';
 import { ComboTimer } from './ComboTimer';
 import { TargetCard } from './TargetCard';
 import type { OrbLook } from '../game/skin';
-import type { DashState, SkillCooldowns } from './SkillBar';
+import type { DashState, SkillCooldowns, SkillDud } from './SkillBar';
 import type { KeybindingsResponse, SkillInfo } from '../api/types';
 import { FALLBACK, useSkills } from './useSkills';
 import { isAimed } from './skillMeta';
@@ -78,6 +78,8 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [hit, setHit] = useState<{ text: string; key: number } | null>(null);
   const [dash, setDash] = useState<DashState | null>(null); // 대시 남은 시간·쿨타임(4.27)
   const [skillOn, setSkillOn] = useState<ReadonlySet<string>>(new Set()); // 켜져 있는 켜고 끄는 스킬(광폭화)
+  const [skillDud, setSkillDud] = useState<SkillDud | null>(null); // 쓰려 했지만 쓰이지 않은 스킬(그 칸이 깜빡인다)
+  const flashSkill = useCallback((id: string) => setSkillDud((d) => ({ id, n: (d?.n ?? 0) + 1 })), []);
   const [skillCd, setSkillCd] = useState<SkillCooldowns>({}); // 스킬마다 다시 쓸 수 있는 시각(4.33)
   const skills = useSkills(); // 스킬 목록·기본 키·쿨타임(DB, 4.33)
   const [hookedUntil, setHookedUntil] = useState<number | null>(null);
@@ -267,7 +269,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     });
     connRef.current = conn;
     const ctx: GameMessageContext = {
-      arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, applyEmergency,
+      arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, flashSkill, applyEmergency,
       setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd,
       setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines,
     }; // 메시지는 연결이 열린 뒤에야 오므로 conn을 만든 다음에 묶어도 된다
@@ -431,7 +433,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
                       onDetail={() => { const e = targetCard; setInfoBot(arenaRef.current?.botInfo(e) ?? null); setInfoLook(arenaRef.current?.entityInfo(e)?.look ?? null); setInfoEntity(e); }}
                       onOpenKeyword={setOpenKeyword} />
         )}
-        <BottomBar me={player} hp={!dead && status === 'open' && myHp.pct >= 0 ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} skillOn={skillOn} dash={dash} lockedUntil={hookedUntil}
+        <BottomBar me={player} hp={!dead && status === 'open' && myHp.pct >= 0 ? myHp : null} skills={skills} slots={slots} keys={slotKeys} onOpenSkills={() => setPanel('skills')} readLook={readMeLook} cooldowns={skillCd} skillOn={skillOn} dud={skillDud} dash={dash} lockedUntil={hookedUntil}
                    onUse={(id) => sendSkillRef.current(id)} onDash={() => sendDashRef.current()} onProfile={() => setPanel('profile')}
                    emoteOpen={emoteOpen} onToggleEmote={() => setEmoteOpen((v) => !v)}
                    onEmote={(code) => { sendEmoteRef.current(code); setEmoteOpen(false); }} />

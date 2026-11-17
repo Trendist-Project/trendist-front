@@ -41,6 +41,7 @@ export interface GameMessageContext {
   showReveal: (r: RevealResult) => void;
   showTitleAlert: (titleId: number, name: string, description: string) => void;
   showToast: (msg: string) => void;
+  flashSkill: (id: string) => void; // 스킬을 쓰지 못했을 때 그 스킬 칸을 깜빡인다
   applyEmergency: (n: EmergencyNotice | null) => void;
   setPlayer: Set<PlayerSummary>;
   setOnline: Set<number>;
@@ -67,7 +68,7 @@ export interface GameMessageContext {
 const LOST_TITLE: Partial<Record<LossCause, string>> = { quake: 'gamescreen.quakeLostTitle', fireball: 'gamescreen.fireballLostTitle' };
 
 export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
-  const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
+  const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, flashSkill, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
   switch (m.type) {
     case 'welcome':
       setDead(null); arena.setDead(false); // 처음 들어왔거나 리스폰했다
@@ -256,7 +257,7 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
     }
     // 내가 스킬에 걸렸거나 풀렸다, 스킬을 쓰지 못했다(4.33): 묶음은 selfStatusMessages가 처리한다
     case 'skillFail': case 'dark': case 'darkEnd': case 'slow': case 'slowEnd': case 'confuse': case 'confuseEnd': case 'stun': case 'stunEnd': case 'pull': case 'pullEnd':
-      handleSelfStatus(m, arena, skillLock, showToast); break;
+      handleSelfStatus(m, arena, skillLock, showToast, flashSkill); break;
     case 'dash': {
       // 대시 시작(4.27): 예측을 같은 속도로 올리고 아래 표시줄에 남은 시간·쿨타임을 보여 준다
       arena.startDash(m.ms, m.mult);
