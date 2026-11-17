@@ -134,7 +134,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [showLeaderboard, setShowLeaderboard] = useState(loadLeaderboardPref);
   const [showHelp, setShowHelp] = useState(loadHelpPref);
   const [panel, setPanel] = useState<'notice' | 'guide' | 'profile' | 'skills' | 'wheel' | null>(null);
-  const [wheelReady, setWheelReady] = useState(false); // 오늘 돌림판을 아직 안 돌렸다(메뉴에 빨간 점)
+  const [wheelReady, setWheelReady] = useState(false); // 돌림판을 지금 돌릴 수 있다(메뉴에 빨간 점)
   const [orbReveal, setOrbReveal] = useState<{ result: RevealResult; key: number } | null>(null);
   // 키워드를 얻거나 잃은 결과 카드(구슬·빼앗기·빼앗김·봇)는 모두 이 한 곳으로 띄운다
   const showReveal = useCallback((result: RevealResult) => {
@@ -183,10 +183,10 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
   const [noticePopup, setNoticePopup] = useState<Notice[] | null>(null);
   const [noticeDot, setNoticeDot] = useState(false);
   const noticesRef = useRef<Notice[]>([]);
-  useEffect(() => { // 오늘 돌림판을 아직 안 돌렸으면 메뉴에 점을 띄운다(5분마다 다시 확인: 자정이 지나면 다시 돌릴 수 있다)
+  useEffect(() => { // 돌림판을 지금 돌릴 수 있으면 메뉴에 점을 띄운다(1분마다 다시 확인: 쿨타임 1시간이 지나면 다시 돌릴 수 있다)
     const load = () => api.wheelStatus().then((s) => setWheelReady(s.enabled && s.available)).catch(() => {});
     load();
-    const id = window.setInterval(load, 5 * 60_000);
+    const id = window.setInterval(load, 60_000);
     return () => window.clearInterval(id);
   }, []);
   useEffect(() => {

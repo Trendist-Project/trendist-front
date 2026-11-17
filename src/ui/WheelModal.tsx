@@ -17,7 +17,7 @@ const slicePath = (i: number, n: number) => {
 const fmtLeft = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 
 /**
- * 돌림판(하루 한 번): 칸에 적힌 숫자만큼 🔥 활성 키워드를 바로 받는다. 어느 칸에 멈출지는 서버가 확률(설정 wheel_weight_*)로 정하고, 화면은 그 칸에 맞춰 돈다.
+ * 돌림판(1시간에 한 번): 칸에 적힌 숫자만큼 🔥 활성 키워드를 바로 받는다. 어느 칸에 멈출지는 서버가 확률(설정 wheel_weight_*)로 정하고, 화면은 그 칸에 맞춰 돈다.
  * onChange는 돌릴 수 있는지가 바뀔 때, onSpun은 키워드를 받은 직후(보관함 새로고침용)에 부른다.
  */
 export function WheelModal({ onClose, onChange, onSpun }: { onClose: () => void; onChange: (available: boolean) => void; onSpun: () => void }) {
@@ -105,7 +105,7 @@ export function WheelModal({ onClose, onChange, onSpun }: { onClose: () => void;
             ? (
               <div className="wheel-wait">
                 <b>{t('wheel.done')}</b>
-                {status?.todayReward != null && <span>{t('wheel.doneDesc', { n: fmtNumber(status.todayReward) })}</span>}
+                {status?.lastReward != null && <span>{t('wheel.doneDesc', { n: fmtNumber(status.lastReward) })}</span>}
                 <span className="wheel-count">{t('wheel.next', { t: fmtLeft(left) })}</span>
               </div>
             )

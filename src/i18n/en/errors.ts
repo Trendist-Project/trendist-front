@@ -1,6 +1,6 @@
 /** Server error code -> message. Codes missing here fall back to the server's message */
 export default {
-  WHEEL_USED: 'You already spun today',
+  WHEEL_USED: 'You can’t spin yet',
   WHEEL_LEVEL: 'Your level is too low for the wheel',
   WHEEL_OFF: 'The wheel is unavailable right now',
   REQUEST_FAILED: 'Request failed',
