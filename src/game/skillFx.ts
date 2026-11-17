@@ -9,6 +9,7 @@ import { AbsorbFx } from './skillfx/absorbs';
 import { StealthFx } from './skillfx/stealth';
 import { CleanseFx } from './skillfx/cleanse';
 import { AuraFx } from './skillfx/auras';
+import { ZoneFx } from './skillfx/zones';
 
 export type { PosFn } from './skillfx/common';
 
@@ -26,16 +27,17 @@ export class SkillFxLayer {
   private readonly stealth: StealthFx;
   private readonly cleanses: CleanseFx;
   private readonly auras: AuraFx;
+  private readonly zones: ZoneFx;
 
   constructor(reducedMotion: boolean) {
     this.shocks = new ShockFx(reducedMotion); this.hooks = new HookFx(reducedMotion); this.bolts = new BoltFx(reducedMotion);
     this.statuses = new StatusFx(reducedMotion); this.fireballs = new FireballFx(reducedMotion); this.absorbs = new AbsorbFx(reducedMotion);
-    this.stealth = new StealthFx(reducedMotion); this.cleanses = new CleanseFx(reducedMotion); this.auras = new AuraFx(reducedMotion);
+    this.stealth = new StealthFx(reducedMotion); this.cleanses = new CleanseFx(reducedMotion); this.auras = new AuraFx(reducedMotion); this.zones = new ZoneFx(reducedMotion);
   }
 
   clear() {
     this.shocks.clear(); this.hooks.clear(); this.stealth.clear(); this.bolts.clear(); this.statuses.clear();
-    this.cleanses.clear(); this.fireballs.clear(); this.absorbs.clear(); this.auras.clear();
+    this.cleanses.clear(); this.fireballs.clear(); this.absorbs.clear(); this.auras.clear(); this.zones.clear();
   }
 
   show(fx: SkillFx, now: number) {
@@ -47,6 +49,10 @@ export class SkillFxLayer {
       case 'hookEnd': this.hooks.end(fx, now); break;
       case 'stealth': this.stealth.start(fx.e, now, fx.ms); break;
       case 'stealthEnd': this.stealth.endStealth(fx.e, now); break;
+      case 'zone': this.zones.addZone(fx, now); break;
+      case 'zoneEnd': this.zones.endZone(fx.e, now); break;
+      case 'burstFuse': this.zones.addFuse(fx.t, fx.ms, now); break;
+      case 'burstBoom': this.zones.removeFuse(fx.t); this.bolts.addBurst(fx.x, fx.y, 'burst', now); break;
       case 'bolt': this.bolts.add(fx, now); break;
       case 'boltEnd': this.bolts.end(fx, now); break;
       case 'poison': this.statuses.apply('poison', fx.t, now, fx.ms, fx.stacks); break;
@@ -96,6 +102,7 @@ export class SkillFxLayer {
 
   /** 반발·충격파·갈고리·투사체·상태 표시: 원 위에 그린다(순서가 겹치는 순서다) */
   drawActive(ctx: CanvasRenderingContext2D, now: number, z: number, pos: PosFn) {
+    this.zones.drawZones(ctx, now, z, pos);
     this.shocks.drawShocks(ctx, now, z);
     this.hooks.drawHooks(ctx, now, z, pos);
     this.stealth.drawPuffs(ctx, now, z, pos);
@@ -104,6 +111,7 @@ export class SkillFxLayer {
     this.absorbs.drawAbsorbs(ctx, now, z, pos);
     this.statuses.draw(ctx, now, z, pos); // 독·슬로우·스턴·암흑
     this.auras.draw(ctx, now, z, pos); // 속박·공격 증폭·피해 감소·침묵·광폭화·혼란·보호막
+    this.zones.drawFuses(ctx, now, z, pos);
     this.cleanses.drawCleanses(ctx, now, z, pos);
     this.shocks.drawQuakeHits(ctx, now, z, pos);
   }

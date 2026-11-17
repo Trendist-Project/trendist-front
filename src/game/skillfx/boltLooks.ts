@@ -1,4 +1,5 @@
 import { seeded } from './common';
+import { drawBullet } from './shapes';
 
 /**
  * 투사체 종류별 모양 표(4.33). 종류를 하나 더하려면 BOLT_LOOKS에 항목 하나만 넣으면 된다(bolts.ts의 그리는 순서·빛·꼬리 띠·파열은 모두 공통):
@@ -7,7 +8,7 @@ import { seeded } from './common';
  *  - body: 몸통을 그린다(x,y 중심, r 반지름, spin 도는 각도, dx,dy 날아가는 방향)
  */
 type Ctx = CanvasRenderingContext2D;
-export type BoltKind = 'poison' | 'darkness' | 'slow' | 'stun' | 'root' | 'silence' | 'confuse';
+export type BoltKind = 'poison' | 'darkness' | 'slow' | 'stun' | 'root' | 'silence' | 'confuse' | 'burst';
 export type BurstKind = BoltKind | 'fireball';
 export interface BoltStyle { tail: string; fill: string; edge: string; ring: string }
 export interface ParticleArgs { ctx: Ctx; px: number; py: number; sz: number; i: number; z: number; dx: number; dy: number }
@@ -124,6 +125,15 @@ export const BOLT_LOOKS: Record<BoltKind, BoltLook> = {
       orb(a, [[0, '#ffb3bd'], [0.55, '#e5384d'], [1, '#8a1426']], a.st.edge);
       ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1.6 / z, r * 0.16);
       ctx.beginPath(); ctx.arc(x, y, r * 0.58, 0, TAU); ctx.moveTo(x - r * 0.41, y + r * 0.41); ctx.lineTo(x + r * 0.41, y - r * 0.41); ctx.stroke();
+    },
+  },
+  // 터지는 총알: 날아가는 방향을 향한 탄환(황동 탄피 + 주황빛 탄두)과 뒤로 흩날리는 불똥. 곧 터질 것처럼 탄두가 달아올라 깜빡인다
+  burst: {
+    style: { tail: 'rgba(255,150,60,0.6)', fill: '#e0a23a', edge: '#fff0b8', ring: '255,150,60' },
+    particle: fillP('#ffd27a'),
+    body({ ctx, x, y, r, z, dx, dy, now, rm }) {
+      const len = r * 1.7, glow = rm ? 0.8 : 0.6 + 0.4 * Math.sin(now / 70); // 탄두가 달아올라 깜빡인다
+      drawBullet(ctx, x, y, Math.atan2(dy, dx), { back: -len * 0.9, neck: len * 0.1, tip: len * 1.15, w: r * 0.78 }, Math.max(1.4 / z, r * 0.12), glow, true);
     },
   },
   // 혼란: 분홍 구체 안에서 도는 나선

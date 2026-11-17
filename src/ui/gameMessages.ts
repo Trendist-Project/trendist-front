@@ -64,8 +64,9 @@ export interface GameMessageContext {
   setChatLines: Set<ChatLine[]>;
 }
 
-/** 아무도 가져가지 않고 여러 개를 잃을 수 있는 스킬의 결과 카드 제목(독은 카드의 기본 제목) */
-const LOST_TITLE: Partial<Record<LossCause, string>> = { quake: 'gamescreen.quakeLostTitle', fireball: 'gamescreen.fireballLostTitle' };
+/** 스킬에 맞아 키워드를 잃었을 때 결과 카드 제목: 스킬 이름만 바꿔 한 문장을 같이 쓴다(스킬이 늘어도 문구를 더하지 않는다) */
+const SKILL_LOSS: LossCause[] = ['poison', 'quake', 'fireball', 'slow', 'darkness', 'silence', 'stun', 'root', 'confuse', 'zone', 'burst'];
+const lostTitle = (cause: LossCause): string | undefined => SKILL_LOSS.includes(cause) ? t('gamescreen.skillLostTitle', { skill: t(`skills.${cause}_name`) }) : undefined;
 
 export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
   const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, flashSkill, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
@@ -167,7 +168,7 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
       // 어떤 키워드를 몇 점짜리로 잃었는지 보여 준다(4.3). 원인은 cause 하나로 고른다(서버 LossMessages)
       const who = m.by || undefined;
       if (isPartLoss(m.cause)) showReveal({ type: 'orbResult', status: 'LOST', wipe: m.count, who, lostLabel: t(m.cause === 'death' ? 'gamescreen.lostPartDeath' : 'gamescreen.lostPartFlame') }); // 일부를 잃었다(4.36)
-      else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.stolen ? 'STOLEN' : 'LOSE', who, lostCount: m.count, lostLabel: LOST_TITLE[m.cause] && t(LOST_TITLE[m.cause]!) }); // 아무도 가져가지 않은 것은 '뺏김'이 아니라 '잃음'
+      else showReveal({ type: 'orbResult', status: 'LOST', text: m.keyword ?? '', gained: m.score, kind: m.stolen ? 'STOLEN' : 'LOSE', who, lostCount: m.count, lostLabel: lostTitle(m.cause) }); // 아무도 가져가지 않은 것은 '뺏김'이 아니라 '잃음'
       if (m.score > 0) arena.floatText(`-${m.score}`, '#ff8a8a');
       setRefreshKey((k) => k + 1);
       break;

@@ -8,12 +8,12 @@ import type { SkillInfo } from '../api/types';
  * ③ 그림이 있으면 SkillIcon의 ICONS, SkillDemo의 각본, 연출이 있으면 skillfx/. SkillCode 타입이 넓어지므로 빠뜨린 곳은 타입 검사가 알려 준다.
  */
 export const SKILL_CODES = ['dash', 'invincibility', 'hook', 'slow', 'stealth', 'repel', 'cleanse', 'darkness', 'heal', 'poison', 'stun', 'quake', 'fireball', 'absorb',
-  'root', 'amplify', 'fortify', 'silence', 'berserk', 'confuse', 'barrier'] as const;
+  'root', 'amplify', 'fortify', 'silence', 'berserk', 'confuse', 'barrier', 'zone', 'burst'] as const;
 export type SkillCode = (typeof SKILL_CODES)[number];
 /** 아이콘 그림이 있는 스킬(모든 스킬) */
 export type IconSkillCode = SkillCode;
-/** 가이드에 움직이는 그림이 있는 스킬(회복은 그림이 없다) */
-export type DemoSkillCode = Exclude<SkillCode, 'heal'>;
+/** 가이드에 움직이는 그림이 있는 스킬(회복·장판·터지는 총알은 아직 그림이 없다) */
+export type DemoSkillCode = Exclude<SkillCode, 'heal' | 'zone' | 'burst'>;
 
 interface SkillDef extends SkillInfo {
   code: SkillCode;
@@ -46,9 +46,12 @@ export const SKILL_DEFS: SkillDef[] = [
   { code: 'amplify', emoji: '⚔️', category: 'ATTACK', defaultKey: '', cooldownSeconds: 30, requiredLevel: 55, aimed: false, guideKo: '공격 증폭', guideEn: 'amplify' },
   { code: 'fortify', emoji: '🔰', category: 'DEFENSE', defaultKey: 'Digit6', cooldownSeconds: 30, requiredLevel: 19, aimed: false, guideKo: '피해 감소', guideEn: 'damage reduction' },
   { code: 'silence', emoji: '🔇', category: 'CC', defaultKey: '', cooldownSeconds: 30, requiredLevel: 43, aimed: true, guideKo: '침묵', guideEn: 'silence' },
-  { code: 'berserk', emoji: '💢', category: 'ATTACK', defaultKey: '', cooldownSeconds: 1, requiredLevel: 61, aimed: false, guideKo: '광폭화', guideEn: 'berserk' },
+  { code: 'berserk', emoji: '💢', category: 'ATTACK', defaultKey: '', cooldownSeconds: 1, requiredLevel: 70, aimed: false, guideKo: '광폭화', guideEn: 'berserk' },
   { code: 'confuse', emoji: '😵‍💫', category: 'CC', defaultKey: '', cooldownSeconds: 30, requiredLevel: 49, aimed: true, guideKo: '혼란', guideEn: 'confuse' },
   { code: 'barrier', emoji: '🫧', category: 'DEFENSE', defaultKey: '', cooldownSeconds: 30, requiredLevel: 37, aimed: false, guideKo: '보호막', guideEn: 'barrier' },
+  // 장판·터지는 총알: 서버 규칙은 ZoneSkill·BoltSkill(burst). 가이드 그림은 아직 없다
+  { code: 'zone', emoji: '🔥', category: 'ATTACK', defaultKey: '', cooldownSeconds: 30, requiredLevel: 64, aimed: false },
+  { code: 'burst', emoji: '💣', category: 'ATTACK', defaultKey: '', cooldownSeconds: 30, requiredLevel: 67, aimed: true },
 ];
 
 /** 서버 목록을 못 받았을 때(오프라인·서버 오류) 쓰는 기본 목록(해금 순서) */
@@ -80,7 +83,7 @@ export function skillDef(code: string): SkillDef | undefined { return SKILL_DEFS
 export const GUIDE_DEMOS: Record<string, DemoSkillCode> = (() => {
   const m: Record<string, DemoSkillCode> = { '[[스킬 충격파]]': 'repel', '[[skill shockwave]]': 'repel', '[[skill flame]]': 'fireball', '[[스킬 갈고리]]': 'hook' }; // 쇠창살은 이름을 바꾸기 전(갈고리) 표기도 받는다
   for (const d of SKILL_DEFS) {
-    if (d.code === 'heal') continue;
+    if (d.code === 'heal' || d.code === 'zone' || d.code === 'burst') continue;
     if (d.guideKo) m[`[[스킬 ${d.guideKo}]]`] = d.code as DemoSkillCode;
     if (d.guideEn) m[`[[skill ${d.guideEn}]]`] = d.code as DemoSkillCode;
   }

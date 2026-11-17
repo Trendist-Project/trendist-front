@@ -295,6 +295,35 @@ const ICONS: Record<IconSkillCode, () => ReactNode> = {
       <text x="12" y="13.7" textAnchor="middle" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" fill="#fff" stroke={DARK} strokeWidth="1.1" paintOrder="stroke" strokeLinejoin="round">?</text>
     </Svg>
   ),
+  // 장판: 주황 불길이 일렁이는 점선 원 바닥과 가운데 불꽃
+  zone: () => (
+    <Svg>
+      <circle cx="12" cy="12" r="10" fill="#ff6a2a" fillOpacity="0.22" stroke={DARK} strokeWidth="2.4" />
+      <circle cx="12" cy="12" r="10" fill="none" stroke="#ff9a52" strokeWidth="1.4" strokeDasharray="3 2.2" />
+      <circle cx="12" cy="12" r="6" fill="#ff6a2a" fillOpacity="0.3" />
+      <path d="M12 5.6c.6 2.2 3 3.2 3 6a3 3 0 0 1-6 0c0-1.2.5-2 1.2-2.8.2 1 .8 1.5 1.3 1.6-.2-1.8-.2-3.4.5-4.8z" fill="#ffd27a" stroke={DARK} strokeWidth="0.9" strokeLinejoin="round" />
+    </Svg>
+  ),
+  // 터지는 총알: 터지는 불꽃(별 모양 폭발) 한가운데에 총알이 박혀 있고, 탄두 조각과 불똥이 사방으로 튄다
+  burst: () => (
+    <Svg>
+      <path d={star(10, 11.4, 6.6, 12, 12)} fill="#ff6a2a" stroke={DARK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d={star(10, 8.6, 4.9, 12, 12)} fill="#ffb347" />
+      <path d={star(8, 6.2, 3.4, 12, 12)} fill="#fff3b0" />
+      <g transform="rotate(-40 12 12)">
+        <rect x="5.6" y="9.7" width="6.6" height="4.6" rx="1" fill="#e0a23a" stroke={DARK} strokeWidth="1.2" />
+        <path d="M7.4 9.9v4.2" stroke={DARK} strokeWidth="0.8" strokeOpacity="0.7" />
+        <path d="M12.2 9.7c2.6 0 4.6 1.1 6.2 2.3-1.6 1.2-3.6 2.3-6.2 2.3z" fill="#ff7a35" stroke={DARK} strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M6.8 10.8h4.6" stroke="#fff" strokeWidth="0.9" strokeLinecap="round" strokeOpacity="0.85" />
+      </g>
+      <path d="M2.6 18.4l2.8-1.2.9 2-2.3 1.7z" fill="#c9ced8" stroke={DARK} strokeWidth="1" strokeLinejoin="round" />
+      <path d="M19.8 3.6l1.8 2.4-2.2 1.3z" fill="#c9ced8" stroke={DARK} strokeWidth="1" strokeLinejoin="round" />
+      <path d="M20.2 18l1.9 1.1-1.1 2-1.8-.9z" fill="#8f98a8" stroke={DARK} strokeWidth="1" strokeLinejoin="round" />
+      <circle cx="3.4" cy="6.6" r="0.95" fill="#ffd27a" />
+      <circle cx="12" cy="2.2" r="0.85" fill="#ffd27a" />
+      <circle cx="21.6" cy="12.2" r="0.85" fill="#ffd27a" />
+    </Svg>
+  ),
   // 보호막: 육각 격자가 비치는 청록 구체와 윗면 반사광
   barrier: () => (
     <Svg>

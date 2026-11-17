@@ -58,7 +58,7 @@ export function OrbReveal({ result }: { result: RevealResult }) {
   if (result.status === 'LOST' && (result.lostCount ?? 0) > 1) { // 독 스택으로 한 번에 여러 개를 잃었다: 개수만 크게 보여 준다(어떤 키워드인지는 보여 주지 않는다)
     return (
       <div className="orb-reveal muted-reveal miss-reveal" role="status" aria-live="polite">
-        <p className="orb-title"><Tag kind={result.kind} />{result.lostLabel ?? t('gamescreen.poisonLostTitle')}</p>
+        <p className="orb-title"><Tag kind={result.kind} />{result.lostLabel ?? t('gamescreen.lostTitle')}</p>
         <p className="orb-keyword"><strong>{t('gamescreen.wipeCount', { n: result.lostCount ?? 0 })}</strong></p>
         <p className="orb-meta">
           {result.who && <span className="orb-who">👤 {result.who}</span>}

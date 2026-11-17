@@ -73,7 +73,7 @@ export type SkillId = string; // DB(skills)의 스킬 코드. 동작이 있는 �
  * 키워드를 잃은 원인(서버 KeywordLoss.Cause.code). fight 몸싸움·hook 갈고리·absorb 흡수는 이긴 쪽이 가져가고,
  * poison 독·quake 충격파·fireball 화염구는 아무도 가져가지 않으며, flame 불꽃·death 체력 0은 가진 것의 일부를 잃는다
  */
-export type LossCause = 'fight' | 'hook' | 'absorb' | 'poison' | 'quake' | 'fireball' | 'flame' | 'death';
+export type LossCause = 'fight' | 'hook' | 'absorb' | 'poison' | 'quake' | 'fireball' | 'slow' | 'darkness' | 'silence' | 'stun' | 'root' | 'confuse' | 'zone' | 'burst' | 'flame' | 'death';
 /** 가진 것의 일부를 한꺼번에 잃는 원인(키워드 이름 없이 개수만 온다) */
 export const isPartLoss = (c: LossCause) => c === 'flame' || c === 'death';
 
@@ -86,7 +86,11 @@ export type SkillFx =
   | { id: 'hookEnd'; e: number }
   | { id: 'stealth'; e: number; ms: number }
   | { id: 'stealthEnd'; e: number }
-  | { id: 'bolt'; kind: 'poison' | 'darkness' | 'slow' | 'stun' | 'root' | 'silence' | 'confuse'; bid: number; e: number; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number } // 독·암흑 투사체가 날아간다
+  | { id: 'zone'; e: number; x: number; y: number; r: number; ms: number; tickMs: number } // 장판: 원 e를 중심으로 따라다니는 반지름 r의 장판을 ms 동안 깔았다((x, y)는 깔 때의 자리, 쓰자마자 0초부터 tickMs마다 피해)
+  | { id: 'zoneEnd'; e: number } // 시전자 e의 장판이 일찍 끝났다(시전자가 나감·죽음)
+  | { id: 'burstFuse'; t: number; ms: number } // 터지는 총알에 맞은 원(t)이 ms 뒤에 터진다
+  | { id: 'burstBoom'; t: number; x: number; y: number } // 터지는 총알이 (x, y)에서 터졌다
+  | { id: 'bolt'; kind: 'poison' | 'darkness' | 'slow' | 'stun' | 'root' | 'silence' | 'confuse' | 'burst'; bid: number; e: number; x: number; y: number; dx: number; dy: number; speed: number; range: number; radius: number } // 독·암흑 투사체가 날아간다
   | { id: 'boltEnd'; bid: number; hit?: number; x?: number; y?: number } // 투사체가 원(hit)에 맞았거나 사거리 끝에서 사라졌다
   | { id: 'poison'; t: number; stacks: number; ms: number } // 원(t)이 독에 걸렸다(스택 수, 다 지나가는 데 걸리는 ms)
   | { id: 'poisonEnd'; t: number }

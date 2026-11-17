@@ -52,6 +52,10 @@ export const MOTION_SCRIPTS: Record<string, Step[]> = {
   silence: bolt('silence', 200, [[0, { id: 'silence', t: 2, ms: 2400 }], [2500, { id: 'silenceEnd', t: 2 }]]),
   berserk: [[200, { id: 'berserk', e: 1, pct: 10 }], [1200, { id: 'berserk', e: 1, pct: 40 }], [2200, { id: 'berserk', e: 1, pct: 70 }], [3200, { id: 'berserk', e: 1, pct: 90 }], [3900, { id: 'berserkEnd', e: 1 }]],
   confuse: bolt('confuse', 200, [[0, { id: 'confuse', t: 2, ms: 2600 }], [2700, { id: 'confuseEnd', t: 2 }]]),
+  // 장판: 시전자를 따라다니는 장판이 깔리고 쓰자마자 0초부터 1초마다(0·1·2초) 번쩍이며 피해가 들어간다. 장판이 사라진 뒤 끝
+  zone: [[200, { id: 'zone', e: 1, x: A0, y: Y, r: 150, ms: 3000, tickMs: 1000 }]],
+  // 터지는 총알: 총알이 날아가 맞으면 도화선이 붙고, 2초 뒤 터지면서 상대가 무작위 방향(여기서는 오른쪽)으로 튕겨 나간다
+  burst: bolt('burst', 200, [[0, { id: 'burstFuse', t: 2, ms: 2000 }], [2000, { id: 'burstBoom', t: 2, x: B0, y: Y }], [2000, { op: 'pull', to: 272, ms: 350 }], [3200, { op: 'reset' }]]),
   barrier: [[200, { id: 'barrier', e: 1, ms: 10000, pct: 50, max: 50 }], [1100, { id: 'barrierHit', e: 1, pct: 38 }], [1900, { id: 'barrierHit', e: 1, pct: 22 }], [2700, { id: 'barrierHit', e: 1, pct: 8 }], [3300, { id: 'barrierEnd', e: 1, broken: true }]],
 };
 /** 겹쳐 쓰기(개발 미리보기 전용): 공격 증폭 + 피해 감소 + 광폭화가 한 원에 같이 걸린 모양 */
