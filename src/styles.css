@@ -1230,7 +1230,7 @@ button.link-back:hover { color: var(--text); }
 .notify-stack > .toast { text-align: left; padding: 9px 13px; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; overflow-wrap: anywhere;
   background: rgba(20, 27, 38, 0.96); border: 1px solid var(--line); border-left: 4px solid #ff7a7a; box-shadow: 0 6px 18px rgba(0,0,0,0.4); animation: ntf-in 0.22s ease-out; }
 .notify-stack > .toast.hit-toast { background: rgba(16, 34, 27, 0.96); border-left-color: var(--accent); font-weight: 700; animation: ntf-in 0.22s ease-out; }
-.notify-stack > .orb-reveal { padding: 10px 16px 13px; border-width: 1.5px; border-radius: 14px; box-shadow: 0 0 16px rgba(255,200,74,0.32); animation-name: orb-pop-stack; }
+.notify-stack > .orb-reveal { position: relative; /* 타이머 막대(.orb-timer)가 항상 카드 안에서 그려지게(static이면 transform 애니메이션이 없는 구간에 바깥 묶음 기준으로 카드보다 넓게 삐져나왔다) */ padding: 10px 16px 13px; border-width: 1.5px; border-radius: 14px; box-shadow: 0 0 16px rgba(255,200,74,0.32); animation-name: orb-pop-stack; }
 .notify-stack > .orb-reveal .orb-keyword strong { font-size: 1.25rem; }
 .notify-stack > .orb-reveal .orb-title { font-size: 0.85rem; }
 /* 구슬 결과 카드는 조금 작게: 내용만큼만 가운데에(최대 260px) */
