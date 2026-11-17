@@ -1555,9 +1555,12 @@ button.link-back:hover { color: var(--text); }
 .sw-arrow { color: #38bdf8; font-size: 1.1rem; animation: sw-bounce 0.9s ease-in-out infinite; }
 .sw-arrow.side { animation-name: sw-bounce-x; }
 @keyframes sw-bounce-x { 50% { transform: translateX(-4px); } }
-.sw-grid { list-style: none; margin: 0; padding: 10px 4px 2px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 12px; }
+.sw-right { container-type: inline-size; --tmax: 84px; --gx: 12px; --gy: 14px; --pt: 12px; --pb: 6px; --px: 10px; } /* 목록 크기 변수(화면이 작아지면 아래 미디어 쿼리가 바꾼다) */
+/* 스킬 목록은 두 줄까지만 보이고 나머지는 스크롤한다(스킬이 많아져도 아래 상세 칸이 밀리지 않게). 한 칸 크기 = min(최대 크기, 칸 폭), 높이 = 두 줄 + 줄 간격 + 위아래 여백 */
+.sw-grid { --tile: min(var(--tmax), calc((100cqw - 2 * var(--px) - 3 * var(--gx)) / 4)); list-style: none; margin: 0; padding: var(--pt) var(--px) var(--pb); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gy) var(--gx);
+  max-height: calc(2 * var(--tile) + var(--gy) + var(--pt) + var(--pb)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .sw-grid li { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
-.sw-tile { position: relative; width: 100%; max-width: 84px; aspect-ratio: 1; padding: 0; border-radius: 16px; border: 2px solid var(--cat, var(--line)); background: color-mix(in srgb, var(--cat, #94a3b8) 14%, #0b0f17); display: inline-flex; align-items: center; justify-content: center; transition: box-shadow 0.12s; }
+.sw-tile { position: relative; width: 100%; max-width: var(--tmax); aspect-ratio: 1; padding: 0; border-radius: 16px; border: 2px solid var(--cat, var(--line)); background: color-mix(in srgb, var(--cat, #94a3b8) 14%, #0b0f17); display: inline-flex; align-items: center; justify-content: center; transition: box-shadow 0.12s; }
 .sw-tile .sw-ico { font-size: 2.2rem; line-height: 1; }
 /* 마우스가 올라간 스킬: 위아래로 움직이지 않고 진한 노란 굵은 테두리로 위치를 또렷하게 보여 준다(선택한 스킬의 하늘색 빛무리는 그대로 남는다) */
 @media (hover: hover) { .sw-tile:hover { border-color: #facc15; border-width: 5px; border-style: solid; } .sw-tile.locked:hover { border-color: #facc15; } }
@@ -1611,8 +1614,8 @@ button.link-back:hover { color: var(--text); }
   .sw-vsep { margin: 17px 2px 0; }
   .sw-keycap { min-width: 34px; height: 24px; padding: 0 6px; font-size: 0.78rem; border-bottom-width: 2px; }
   .sw-bar-tools button { font-size: 0.78rem; padding: 5px 8px; }
-  .sw-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px; padding: 8px 2px 0; }
-  .sw-tile { max-width: 54px; border-radius: 12px; }
+  .sw-right { --tmax: 54px; --gx: 6px; --gy: 8px; }
+  .sw-tile { border-radius: 12px; }
   .sw-tile .sw-ico { font-size: 1.7rem; }
   .sw-tile.picked { border-width: 4px; }
   .sw-badge { top: -8px; right: -8px; min-width: 24px; height: 24px; font-size: 0.85rem; border-width: 2px; padding: 0 4px; }
@@ -1635,9 +1638,8 @@ button.link-back:hover { color: var(--text); }
 @media (orientation: landscape) and (max-height: 380px) {
   .skill-window .modal-body { padding: 6px 8px; gap: 6px; }
   .sw-slot { width: 42px; height: 42px; }
-  .sw-tile { max-width: 48px; }
+  .sw-right { --tmax: 48px; --gx: 5px; --gy: 6px; }
   .sw-tile .sw-ico { font-size: 1.5rem; }
-  .sw-grid { gap: 6px 5px; }
   .sw-detail { height: 98px; padding: 6px 8px; }
   .sw-d-ico { width: 32px; height: 32px; font-size: 1.15rem; }
   .sw-d-desc { font-size: 0.74rem; }
@@ -1647,7 +1649,7 @@ button.link-back:hover { color: var(--text); }
   .sw-slot .sw-ico { font-size: 1.1rem; }
   .sw-keycap { min-width: 28px; padding: 0 4px; }
   .sw-bar-slots { gap: 3px; }
-  .sw-tile { max-width: 44px; }
+  .sw-right { --tmax: 44px; }
 }
 
 /* ---------- 몬스터(보스, 4.35) ---------- */
