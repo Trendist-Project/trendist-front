@@ -21,15 +21,15 @@ export interface DashState { until: number; readyAt: number }
  * 빈 칸을 누르면 스킬창이 열린다. 마우스를 올리거나 키보드로 포커스하면 툴팁 카드(이름·키·종류·쿨타임·설명·지금 상태)가 위로 뜬다.
  * 대시(dash)가 든 칸은 대시 상태로, 나머지는 서버가 알려 준 쿨타임으로 보인다.
  */
-export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dud, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
-  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; skillOn?: ReadonlySet<string>; dud?: SkillDud | null; dash: DashState | null; lockedUntil: number | null;
+export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, skillActive, dud, dash, lockedUntil, onUse, onDash, onOpenWindow }: {
+  skills: SkillInfo[]; slots: (string | null)[]; keys: SlotKeys; level: number; cooldowns: SkillCooldowns; skillOn?: ReadonlySet<string>; skillActive?: SkillCooldowns; dud?: SkillDud | null; dash: DashState | null; lockedUntil: number | null;
   onUse: (id: SkillId) => void; onDash: () => void; onOpenWindow: () => void;
 }) {
   // 지금 시각은 그리는 순간마다 새로 잰다. 상태로 들고 있으면 쿨타임이 없던 동안 낡은 값이 남아서, 쓴 직후에 30초가 31초로 보였다
   const [, setTick] = useState(0);
   const now = performance.now();
   const hooked = lockedUntil !== null && now < lockedUntil; // 갈고리에 잡혀 끌려오는 동안은 모든 스킬이 잠깐 못 쓴다(4.33)
-  const busy = hooked || (dash !== null && dash.readyAt > now) || Object.values(cooldowns).some((r) => r !== undefined && r > now);
+  const busy = hooked || (dash !== null && dash.readyAt > now) || Object.values(cooldowns).some((r) => r !== undefined && r > now) || Object.values(skillActive ?? {}).some((r) => r !== undefined && r > now);
   useEffect(() => {
     if (!busy) return;
     const id = window.setInterval(() => setTick((n) => n + 1), 200);
@@ -56,10 +56,12 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dud, 
         }
         const isDash = s.code === 'dash';
         const locked = s.requiredLevel > level; // 아직 해금 레벨이 안 됐다(4.33)
-        const active = isDash && dash !== null && now < dash.until;
+        // 효과가 이어지는 동안(대시 중, 장판·무적 등이 켜져 있는 동안)은 칸에 그 남은 지속 시간이 카운트다운되고, 끝나면 쿨타임 숫자로 바뀐다
+        const activeUntil = isDash ? dash?.until ?? 0 : skillActive?.[s.code] ?? 0;
+        const active = activeUntil > now;
         const readyAt = isDash ? dash?.readyAt ?? 0 : cooldowns[s.code] ?? 0;
         const left = Math.max(0, readyAt - now);
-        const shown = active && dash ? dash.until - now : left;
+        const shown = active ? activeUntil - now : left;
         if (left <= 0) delete seenTotal.current[s.code]; else seenTotal.current[s.code] = Math.max(seenTotal.current[s.code] ?? 0, left);
         const listed = s.cooldownSeconds * 1000;
         const total = Math.max(seenTotal.current[s.code] ?? 0, left, left <= listed ? listed : 0);
@@ -68,7 +70,7 @@ export function SkillBar({ skills, slots, keys, level, cooldowns, skillOn, dud, 
         const name = tOr(`skills.${s.code}_name`, s.code), desc = tOr(`skills.${s.code}_desc`, '');
         return (
           <div key={s.code} className="skill-slot">
-            <button type="button" className={`skill-btn cat-${cat}${isDash ? ' dash-btn' : ''}${locked ? ' locked' : hooked ? ' hooked' : active ? ' active' : left > 0 ? ' cooling' : ''}${!locked && skillOn?.has(s.code) ? ' skill-on' : ''}`}
+            <button type="button" className={`skill-btn cat-${cat}${isDash ? ' dash-btn' : ''}${locked ? ' locked' : hooked ? ' hooked' : active ? ' active' : left > 0 ? ' cooling' : ''}${!locked && (active || skillOn?.has(s.code)) ? ' skill-on' : ''}`}
                     aria-disabled={hooked || undefined}
                     aria-label={`${name}${key ? ` (${key})` : ''}. ${locked ? t('gamescreen.skillLockedAria', { n: s.requiredLevel }) + ' ' : ''}${desc}`}
                     onClick={(e) => { e.currentTarget.blur(); if (hooked) return; if (isDash) onDash(); else onUse(s.code); }}>

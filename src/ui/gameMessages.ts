@@ -56,6 +56,7 @@ export interface GameMessageContext {
   setHit: Set<{ text: string; key: number } | null>;
   setDash: Set<DashState | null>;
   setSkillCd: Set<SkillCooldowns>;
+  setSkillActive: Set<SkillCooldowns>;
   setHookedUntil: Set<number | null>;
   setSlots: Set<(string | null)[]>;
   setRefreshKey: Set<number>;
@@ -69,12 +70,12 @@ const SKILL_LOSS: LossCause[] = ['poison', 'quake', 'fireball', 'slow', 'darknes
 const lostTitle = (cause: LossCause): string | undefined => SKILL_LOSS.includes(cause) ? t('gamescreen.skillLostTitle', { skill: t(`skills.${cause}_name`) }) : undefined;
 
 export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
-  const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, flashSkill, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
+  const { arena, conn, sess, skillLock, toLine, hookedUntilRef, myEntityRef, showReveal, showTitleAlert, showToast, flashSkill, applyEmergency, setPlayer, setOnline, setBots, setMonsterNote, setMyBossDmg, setKicked, setMyHp, setSkillOn, setDead, setMyCombo, setHit, setDash, setSkillCd, setSkillActive, setHookedUntil, setSlots, setRefreshKey, setOrbReveal, setPingMs, setChatLines } = c;
   switch (m.type) {
     case 'welcome':
       setDead(null); arena.setDead(false); // 처음 들어왔거나 리스폰했다
       setDash(null); arena.resetDash(); // 새 원이라 대시 남은 시간·쿨타임 표시도 지운다(서버는 이미 초기화)
-      setSkillCd({}); arena.resetSkills(); hookedUntilRef.current = 0; setHookedUntil(null); // 스킬 쿨타임과 연출도(4.33)
+      setSkillCd({}); setSkillActive({}); arena.resetSkills(); hookedUntilRef.current = 0; setHookedUntil(null); // 스킬 쿨타임과 연출도(4.33)
       arena.setMe(m.entityNo, m.x, m.y);
       arena.resendView(); // 다시 들어왔으니 보이는 범위를 서버에 다시 알린다
       sess.myEntity = m.entityNo;
@@ -231,8 +232,9 @@ export function handleGameMessage(m: ServerMessage, c: GameMessageContext) {
     case 'levelFx': arena.showLevelFx(m.e, m.level); break; // 레벨업 이펙트(4.30)
     case 'dashFx': arena.showDashFx(m.e, m.ms); break; // 누군가 대시를 시작했다: 그 원에 강조 효과(4.27)
     case 'skill': { // 내가 스킬을 썼다(4.33): 쿨타임 표시
-      const at = performance.now() + m.cooldownMs;
-      setSkillCd((c) => ({ ...c, [normalizeSkillCode(m.id)]: at }));
+      const at = performance.now() + m.cooldownMs, code = normalizeSkillCode(m.id);
+      setSkillCd((c) => ({ ...c, [code]: at }));
+      if ((m.activeMs ?? 0) > 0) setSkillActive((a) => ({ ...a, [code]: performance.now() + (m.activeMs ?? 0) })); // 효과가 이어지는 동안 칸에 켜져 있음 표시(광폭화와 같은 표시)
       break;
     }
     case 'cooldowns': { // 새로고침하고 다시 들어왔다: 서버가 들고 있는 스킬·대시 쿨타임을 다시 보여 준다(welcome 뒤에 온다)

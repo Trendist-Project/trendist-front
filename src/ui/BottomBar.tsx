@@ -15,13 +15,14 @@ export interface MeSummary { nickname: string; level: number; currentScore: numb
  * 채팅은 왼쪽 아래 끝, 미니맵은 오른쪽 아래에 있어서 서로 겹치지 않는다. 작은 화면(모바일)에서는 초상화·정보는 빼고(왼쪽 위 줄에 레벨·유행도를 둔다)
  * 스킬·이모트를 오른쪽 아래에 2줄로 모아, 왼쪽 엄지가 쓰는 조이스틱 자리를 비운다(CSS).
  */
-export function BottomBar({ me, hp, skills, slots, keys, onOpenSkills, readLook, cooldowns, skillOn, dud, dash, lockedUntil, onUse, onDash, onProfile, emoteOpen, onToggleEmote, onEmote }: {
+export function BottomBar({ me, hp, skills, slots, keys, onOpenSkills, readLook, cooldowns, skillOn, skillActive, dud, dash, lockedUntil, onUse, onDash, onProfile, emoteOpen, onToggleEmote, onEmote }: {
   me: MeSummary;
   /** 내 체력(%)과 맞음·회복 번쩍임(4.36). 스킬 줄 바로 아래 한 줄로 그린다. 죽었거나 연결 전이면 null(막대를 숨긴다) */
   hp: { pct: number; flash: HpFlash; barrier?: number } | null;
   skills: SkillInfo[];
   /** 켜져 있는 켜고 끄는 스킬 코드(광폭화). 그 칸에 돌아가는 노란 빛이 뜬다 */
   skillOn: ReadonlySet<string>;
+  skillActive: SkillCooldowns; // 효과가 이어지는 스킬마다 끝나는 시각(켜져 있음 표시)
   /** 쓰려 했지만 쓰이지 않은 스킬(n은 매번 올라가 같은 스킬도 다시 깜빡인다) */
   dud: SkillDud | null;
   slots: (string | null)[];
@@ -97,7 +98,7 @@ export function BottomBar({ me, hp, skills, slots, keys, onOpenSkills, readLook,
         </div>
       </div>
       <div className="bb-skills">
-        <SkillBar skills={skills} slots={slots} keys={keys} level={me.level} cooldowns={cooldowns} skillOn={skillOn} dud={dud} dash={dash} lockedUntil={lockedUntil} onUse={onUse} onDash={onDash} onOpenWindow={onOpenSkills} />
+        <SkillBar skills={skills} slots={slots} keys={keys} level={me.level} cooldowns={cooldowns} skillOn={skillOn} skillActive={skillActive} dud={dud} dash={dash} lockedUntil={lockedUntil} onUse={onUse} onDash={onDash} onOpenWindow={onOpenSkills} />
         <div className="bb-emote">
           {emoteOpen && (
             <div className="emote-palette" role="menu" aria-label={t('gamescreen.emote')}>

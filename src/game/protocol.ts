@@ -145,7 +145,7 @@ export type ServerMessage =
   | { type: 'levelFx'; e: number; level: number } // 레벨업 이펙트(4.30): 그 원에서 빛기둥이 솟는다
   | { type: 'dashFx'; e: number; ms: number } // 누군가 대시를 시작했다(4.27): 그 원에 강조 효과를 그린다
   | { type: 'dash'; ms: number; cooldownMs: number; mult: number } // 대시 시작(4.27): 지속 시간, 다시 쓸 수 있을 때까지, 속도 배수
-  | { type: 'skill'; id: SkillId; cooldownMs: number } // 내가 스킬을 썼다(4.33): 다시 쓸 수 있을 때까지
+  | { type: 'skill'; id: SkillId; cooldownMs: number; activeMs?: number } // 내가 스킬을 썼다(4.33): 다시 쓸 수 있을 때까지, activeMs는 효과가 이어지는 시간(칸에 "켜져 있음" 표시)
   | { type: 'cooldowns'; skills: Record<string, number>; dashActiveMs: number; dashReadyMs: number; dashMult: number } // 다시 들어왔을 때 서버가 알려 주는 지금 쿨타임(남은 ms, 4.33)
   | { type: 'skillFail'; id: SkillId; reason: 'safe' | 'level' | 'unequipped' | 'hpFull' | 'noTarget' | 'silenced' | 'hpLow'; level?: number } // 스킬을 쓸 수 없었다(세이프존 안의 공격 스킬)
   | { type: 'skillFx' } & SkillFx // 누군가 스킬을 썼다(4.33): 그 연출을 그린다
