@@ -1017,8 +1017,7 @@ button.link-back:hover { color: var(--text); }
 .skill-btn .skill-cd { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: transparent; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.9); font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) { .skill-btn { width: 44px; height: 44px; } .skill-btn kbd { display: none; } }
 
-/* 대시 버튼(4.27): 스킬 버튼 줄 맨 앞. 준비되면 노랗게 비치고, 대시 중에는 빛난다 */
-.skill-btn.dash-btn { border-color: rgba(255,224,138,0.5); background: rgba(255,200,74,0.14); }
+/* 대시 버튼(4.27): 대시도 다른 스킬처럼 장착 칸에 넣는 스킬이라 칸 모양(테두리·배경)은 다른 스킬과 똑같다. 대시 중일 때만 빛난다 */
 .skill-btn.dash-btn.active { background: linear-gradient(135deg, #ffd166, #ffae42); color: #1d1300; animation: dash-glow 0.6s ease-in-out infinite alternate; }
 @keyframes dash-glow { from { box-shadow: 0 0 0 rgba(255,200,74,0); } to { box-shadow: 0 0 10px rgba(255,200,74,0.8); } }
 @media (prefers-reduced-motion: reduce) { .skill-btn.dash-btn.active { animation: none; } }
@@ -1096,7 +1095,6 @@ button.link-back:hover { color: var(--text); }
 .bottom-bar .skill-btn { width: 52px; height: 52px; border-radius: 12px; font-size: 1.55rem; background: linear-gradient(180deg, #1b2434, #0d121b); border: 1px solid #34445d; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
 .bottom-bar .skill-btn:hover { border-color: #7a93b8; }
 .bottom-bar .skill-btn kbd { left: 50%; bottom: -9px; transform: translateX(-50%); padding: 0 6px; border-radius: 5px; background: #0b0f17; border: 1px solid #3a4a63; color: #dbe5f3; font-size: 0.68rem; line-height: 1.35; }
-.bottom-bar .skill-btn.dash-btn { border-color: rgba(255,224,138,0.55); }
 .bottom-bar .skill-btn .skill-cd { border-radius: 12px; font-size: 1.15rem; }
 .bottom-bar .emote-toggle { position: relative; width: 44px; height: 44px; font-size: 1.35rem; background: linear-gradient(180deg, #1b2434, #0d121b); border: 1px solid #34445d; }
 /* 이모트 키(E): 스킬 키캡과 같은 모양으로 버튼 아래에 */
@@ -1235,6 +1233,9 @@ button.link-back:hover { color: var(--text); }
 .notify-stack > .orb-reveal .orb-title { font-size: 0.85rem; }
 /* 구슬 결과 카드는 조금 작게: 내용만큼만 가운데에(최대 260px) */
 .notify-stack > .orb-reveal { align-self: center; width: fit-content; min-width: 170px; max-width: min(260px, 100%); padding: 7px 14px 10px; border-radius: 12px; }
+/* 묶음 안의 카드는 position: relative라서 기본 카드의 top·left(64px·50%)와 몬스터 HUD가 있을 때의 top(100px·146px)이 그대로 먹으면 카드가 오른쪽·아래로 밀린다.
+   위치는 묶음(.notify-stack)이 정하므로 카드의 offset은 항상 없앤다(몬스터 HUD 규칙보다 우선하도록 선택자를 겹쳐 쓴다) */
+.arena-wrap .notify-stack > .orb-reveal.orb-reveal { top: auto; left: auto; }
 .notify-stack > .orb-reveal .orb-keyword { margin: 3px 0 2px; }
 .notify-stack > .orb-reveal .orb-keyword strong { font-size: 1.05rem; }
 .notify-stack > .orb-reveal .orb-title { font-size: 0.78rem; }
