@@ -8,8 +8,9 @@ marketing/
 └─ instagram/
    ├─ plan.md                     런칭 기획서(캐러셀 4개 피드, 운영 캘린더, KPI, 리스크)
    ├─ feed1-launch/ … feed4-quiz/ 런칭용 캐러셀 이미지 16장
+   ├─ reels/                      릴스 영상 18편(mp4, 18.6초, 공통 BGM bgm-heartbeat.mp3, 후보 곡은 bgm-options) + reels.md(캡션·해시태그·UTM·다시 만들기)
    ├─ patch-notes/                ★ 패치노트 피드(사진 1장 + 캡션 1개가 한 피드). feeds.md에 캡션이 모여 있다
-   └─ _src/                       이미지를 만드는 소스(HTML·스크립트). patch.mjs가 패치노트 피드를 만든다
+   └─ _src/                       이미지·영상을 만드는 소스(HTML·스크립트). patch.mjs가 패치노트 피드, reels.mjs가 릴스를 만든다
 ```
 
 ## 1. 패치노트 피드 전략(2026-11-12 결정)
