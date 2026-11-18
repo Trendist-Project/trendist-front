@@ -6,11 +6,12 @@ import { adminConfirm, errMsg } from './format';
 import { Portrait } from './monster/MonsterVisuals';
 import { ScheduleSwitch, SchedulePanel } from './monster/ScheduleSwitch';
 import { HistoryPanel, OverviewPanel, PatternsPanel, SettingsPanel } from './monster/panels';
-import { kindLabel, mmss, num, settingMap } from './monster/meta';
+import { derivePatterns, kindLabel, mmss, num, settingMap } from './monster/meta';
 import { useSettingsEditor } from './monster/useSettingsEditor';
 
 const PHASES: Record<string, string> = {
   CHASE: '추적', DASH_WINDUP: '돌진 예고', DASHING: '돌진 중', RING_WINDUP: '충격고리 예고', RING: '충격고리 확산', RECOVER: '경직',
+  HOP_WINDUP: '깡충 예고', HOP: '깡충(점프·무방비)', MOCHI_WINDUP: '끈끈 떡 예고', MOCHI: '끈끈 떡', CARROT_WINDUP: '당근 부채 예고', CARROT: '당근 부채',
 };
 type Tab = 'overview' | 'patterns' | 'settings' | 'history';
 const TABS: { id: Tab; label: string }[] = [
@@ -107,7 +108,7 @@ export function MonstersTab() {
                   <dl className="mn-facts">
                     <div><dt>따라가는 사람</dt><dd>{l.target ?? '-'}</dd></div>
                     <div><dt>참여</dt><dd>{l.participants}명 / 접속 {l.roomHumans}명</dd></div>
-                    <div><dt>다음 패턴</dt><dd>돌진 {l.dashReadyIn}초 · 충격고리 {l.ringReadyIn}초</dd></div>
+                    <div><dt>다음 패턴</dt><dd>{derivePatterns(typeOf(l.code)?.settings ?? []).map((pt) => `${pt.name} ${l[`${pt.code}ReadyIn`] ?? 0}초`).join(' · ')}</dd></div>
                     <div><dt>등장 때 기준</dt><dd>{l.humans}명 · 평균 {num(l.avgScore)} · 1등 {num(l.topScore)}</dd></div>
                   </dl>
                   {l.top.length > 0 && (

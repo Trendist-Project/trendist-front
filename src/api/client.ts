@@ -14,7 +14,8 @@ export interface AdminMonsterType { code: string; name: string; nameEn: string |
 export interface AdminMonsterLive {
   id: number; spawnId: number; code: string; name: string; country: string; hp: number; maxHp: number; leftSeconds: number; phase: string; rage: boolean; flame: boolean;
   x: number; y: number; humans: number; avgScore: number; topScore: number; participants: number; target: string | null; roomHumans: number;
-  dashReadyIn: number; ringReadyIn: number; top: { playerId: number; nickname: string; damage: number; hits: number }[];
+  [patternReadyIn: `${string}ReadyIn`]: number | undefined; // 패턴마다 `<패턴 코드>ReadyIn`(다음에 쓸 수 있을 때까지 초): dash·ring·hop·mochi·carrot
+  top: { playerId: number; nickname: string; damage: number; hits: number }[];
 }
 export interface AdminMonsterSpawn {
   id: number; code: string; name: string; country: string; source: string; status: string; startedAt: string; endedAt: string | null;

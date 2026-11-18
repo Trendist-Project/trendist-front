@@ -21,6 +21,9 @@ export const settingMap = (items: AdminMonsterSetting[]): SettingMap => Object.f
 export const PATTERN_META: Record<string, { icon: string; diagram: 'line' | 'ring' | 'generic'; hint: string }> = {
   dash: { icon: '💨', diagram: 'line', hint: '대상을 향해 일직선으로 돌진' },
   ring: { icon: '🌊', diagram: 'ring', hint: '몸에서 맵 전체로 퍼지는 충격파' },
+  hop: { icon: '🐰', diagram: 'generic', hint: '대상 자리에 달 그림자가 뜨고 점프해 내려앉는다(착지 뒤 무방비)' },
+  mochi: { icon: '🍡', diagram: 'generic', hint: '맵 곳곳에 이동을 늦추는 달떡 장판을 던진다' },
+  carrot: { icon: '🥕', diagram: 'generic', hint: '대상 쪽으로 부채꼴로 당근을 쏜다' },
 };
 
 export interface Pattern { code: string; name: string; icon: string; diagram: 'line' | 'ring' | 'generic'; hint: string; settings: AdminMonsterSetting[] }
