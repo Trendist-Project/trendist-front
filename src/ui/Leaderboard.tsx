@@ -73,14 +73,12 @@ export function Leaderboard({ myPlayerId }: Props) {
             {shown.map((r) => (
               <li key={r.playerId} className={r.playerId === myPlayerId ? 'me' : undefined}>
                 <span className="rank">{r.rank}</span> <strong>{r.nickname}</strong>
-                <span className="muted small">{t('rank.level', { n: r.level })}</span>
                 <span className="score">{fmtNumber(Number(r.score))}</span>
               </li>
             ))}
             {showMine && (
               <li className="me my-rank" aria-label={t('rank.mine', { n: mine.rank })}>
                 <span className="rank">{mine.rank}</span> <strong>{mine.nickname}</strong>
-                <span className="muted small">{t('rank.level', { n: mine.level })}</span>
                 <span className="score">{fmtNumber(Number(mine.score))}</span>
               </li>
             )}
