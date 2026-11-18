@@ -153,7 +153,7 @@ input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px soli
   .orb-reveal .orb-gain { margin-top: 2px; font-size: 0.85rem; }
   .orb-reveal .orb-miss { font-size: 1.15rem; }
 }
-@media (prefers-reduced-motion: reduce) { .orb-reveal, .orb-reveal .orb-timer, .miss-reveal .orb-miss { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .orb-reveal, .miss-reveal .orb-miss { animation: none; } }
 
 /* 공지·가이드 창 */
 .profile-stats { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
