@@ -17,6 +17,7 @@ export interface AdminMonsterLive {
   [patternReadyIn: `${string}ReadyIn`]: number | undefined; // 패턴마다 `<패턴 코드>ReadyIn`(다음에 쓸 수 있을 때까지 초): dash·ring·hop·mochi·carrot
   top: { playerId: number; nickname: string; damage: number; hits: number }[];
 }
+export interface AdminMonsterSpawnPage { items: AdminMonsterSpawn[]; page: number; size: number; total: number; totalPages: number }
 export interface AdminMonsterSpawn {
   id: number; code: string; name: string; country: string; source: string; status: string; startedAt: string; endedAt: string | null;
   maxHp: number; finalHp: number; humans: number; avgScore: number; topScore: number; participants: number; topDamage: number;
@@ -350,6 +351,7 @@ export const adminApi = {
   monsterRooms: () => request<{ country: string; humans: number }[]>('GET', '/api/admin/monsters/rooms'),
   spawnMonster: (code: string, country: string) => request<{ ok: boolean }>('POST', `/api/admin/monsters/types/${code}/spawn?country=${country}`),
   endMonster: (id: number, country: string, reward: boolean) => request<{ ok: boolean }>('POST', `/api/admin/monsters/${id}/end?country=${country}&reward=${reward}`),
-  monsterSpawns: (limit = 30) => request<AdminMonsterSpawn[]>('GET', `/api/admin/monsters/spawns?limit=${limit}`),
+  /** 등장 기록(최신순, 페이지 단위). code를 주면 그 몬스터만 */
+  monsterSpawns: (code: string | null, page = 0, size = 10) => request<AdminMonsterSpawnPage>('GET', `/api/admin/monsters/spawns?${code ? `code=${encodeURIComponent(code)}&` : ''}page=${page}&size=${size}`),
   updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),
 };

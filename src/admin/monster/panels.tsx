@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import type { AdminMonsterSetting, AdminMonsterSpawn, AdminMonsterType } from '../../api/client';
+import { useEffect, useMemo, useState } from 'react';
+import { adminApi, type AdminMonsterSetting, type AdminMonsterSpawnPage, type AdminMonsterType } from '../../api/client';
 import { fmt } from '../format';
 import { PatternDiagram, SizeCompare, Timeline } from './MonsterVisuals';
 import { derivePatterns, fmtVal, mmss, num, previewHp, settingMap, timelineOf, type Pattern, type SettingMap } from './meta';
@@ -195,14 +195,29 @@ export function SettingsPanel({ ed }: { ed: SettingsEditor }) {
 }
 
 /** 이 몬스터의 등장 기록 */
-export function HistoryPanel({ type, history }: { type: AdminMonsterType; history: AdminMonsterSpawn[] }) {
-  const rows = history.filter((h) => h.code === type.code);
+const HISTORY_SIZE = 10; // 한 쪽에 보이는 기록 수
+
+export function HistoryPanel({ type, tick }: { type: AdminMonsterType; tick: number }) {
+  const [page, setPage] = useState(0);
+  const [data, setData] = useState<AdminMonsterSpawnPage | null>(null);
+  useEffect(() => {
+    let alive = true;
+    adminApi.monsterSpawns(type.code, page, HISTORY_SIZE).then((d) => {
+      if (!alive) return;
+      if (d.items.length === 0 && d.totalPages > 0 && page >= d.totalPages) setPage(d.totalPages - 1); // 기록이 줄어 지금 쪽이 비었으면 마지막 쪽으로
+      else setData(d);
+    }).catch(() => { /* 기록만 빠진다(다음 주기에 다시) */ });
+    return () => { alive = false; };
+  }, [type.code, page, tick]);
+  const rows = data?.items ?? [];
+  const pages = Math.max(1, data?.totalPages ?? 1);
   return (
+    <>
     <div className="admin-table-wrap">
       <table className="admin-table">
         <thead><tr><th>시작</th><th>나라</th><th>방식</th><th>결과</th><th className="num">체력</th><th className="num">남은 체력</th><th className="num">접속</th><th className="num">평균/1등 유행도</th><th className="num">참여</th><th className="num">피해 1위</th></tr></thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan={10} className="muted">아직 등장 기록이 없어요.</td></tr>}
+          {data && rows.length === 0 && <tr><td colSpan={10} className="muted">아직 등장 기록이 없어요.</td></tr>}
           {rows.map((h) => (
             <tr key={h.id}>
               <td>{fmt(h.startedAt)}</td><td>{h.country}</td><td>{h.source === 'ADMIN' ? '관리자' : '정각'}</td>
@@ -214,5 +229,11 @@ export function HistoryPanel({ type, history }: { type: AdminMonsterType; histor
         </tbody>
       </table>
     </div>
+    <div className="admin-pager" style={{ margin: '20px 0 8px' }}>
+      <button disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>‹ 이전</button>
+      <span>{page + 1} / {pages}{data ? ` · 전체 ${data.total}건` : ''}</span>
+      <button disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>다음 ›</button>
+    </div>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { adminApi, type AdminMonsterLive, type AdminMonsterSpawn, type AdminMonsterType } from '../api/client';
+import { adminApi, type AdminMonsterLive, type AdminMonsterType } from '../api/client';
 import { ADMIN_COUNTRIES, getAdminCountry, type AdminCountry } from '../api/adminCountry';
 import { successToast } from '../ui/toast';
 import { adminConfirm, errMsg } from './format';
@@ -27,7 +27,7 @@ export function MonstersTab() {
   const [types, setTypes] = useState<AdminMonsterType[] | null>(null);
   const [live, setLive] = useState<AdminMonsterLive[]>([]);
   const [rooms, setRooms] = useState<{ country: string; humans: number }[]>([]);
-  const [history, setHistory] = useState<AdminMonsterSpawn[]>([]);
+  const [historyTick, setHistoryTick] = useState(0); // 등장 기록 패널에 "다시 읽어라"를 알리는 번호(기록은 패널이 페이지 단위로 직접 읽는다)
   const [country, setCountry] = useState<AdminCountry>(getAdminCountry());
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
@@ -38,7 +38,7 @@ export function MonstersTab() {
     adminApi.monsterLive().then(setLive).catch(() => { /* 다음 주기에 다시 */ });
     adminApi.monsterRooms().then(setRooms).catch(() => { /* 안내만 빠진다 */ });
   }, []);
-  const loadHistory = useCallback(() => adminApi.monsterSpawns(60).then(setHistory).catch(() => { /* 기록만 빠진다 */ }), []);
+  const loadHistory = useCallback(() => setHistoryTick((t) => t + 1), []);
 
   useEffect(() => { loadTypes(); loadHistory(); }, [loadTypes, loadHistory]);
   useEffect(() => {
@@ -169,15 +169,15 @@ export function MonstersTab() {
         )}
       </section>
 
-      {type && <MonsterDetail key={type.code} type={type} tab={tab} onTab={setTab} history={history} onError={setError}
+      {type && <MonsterDetail key={type.code} type={type} tab={tab} onTab={setTab} historyTick={historyTick} onError={setError}
                               here={activeHere(type.code)} country={country} onSpawn={() => spawn(type)} onToggle={(on) => toggle(type, on)} />}
     </section>
   );
 }
 
 /** 고른 몬스터의 상세: 머리(그림·이름·소환) + 탭(개요·공격 패턴·설정 전체·등장 기록) + 저장하지 않은 변경이 있으면 아래에 붙는 저장 줄 */
-function MonsterDetail({ type, tab, onTab, history, onError, here, country, onSpawn, onToggle }: {
-  type: AdminMonsterType; tab: Tab; onTab: (t: Tab) => void; history: AdminMonsterSpawn[]; onError: (m: string) => void;
+function MonsterDetail({ type, tab, onTab, historyTick, onError, here, country, onSpawn, onToggle }: {
+  type: AdminMonsterType; tab: Tab; onTab: (t: Tab) => void; historyTick: number; onError: (m: string) => void;
   here: boolean; country: AdminCountry; onSpawn: () => void; onToggle: (on: boolean) => void;
 }) {
   const ed = useSettingsEditor(type, onError);
@@ -203,7 +203,7 @@ function MonsterDetail({ type, tab, onTab, history, onError, here, country, onSp
         {tab === 'overview' && <OverviewPanel ed={ed} />}
         {tab === 'patterns' && <PatternsPanel ed={ed} />}
         {tab === 'settings' && <SettingsPanel ed={ed} />}
-        {tab === 'history' && <HistoryPanel type={type} history={history} />}
+        {tab === 'history' && <HistoryPanel type={type} tick={historyTick} />}
       </div>
       {ed.dirty.length > 0 && (
         <div className="mn-savebar" role="status">
