@@ -97,6 +97,8 @@ export class Arena {
   private meScore = 0; // 마지막으로 그린 내 유행도(암흑 가림막에서 전투력 표시를 다시 그릴 때 쓴다)
   /** 미니맵 한 변(px). 바뀌면 부모에 CSS 변수 --minimap-size로 알려 이모트·도구 창이 피해 간다 */
   private minimapSize = 0;
+  /** 좁은 세로 화면에서 보스 체력 띠의 아래 끝(px, 없으면 0). MonsterHud가 띠 크기를 재서 알려 주고, 미니맵은 그 아래로 내려간다 */
+  private bossBottom = 0;
   /** 이모트(4.26): 원 위에 2.5초 뜨는 이모지 */
   private emotes = new Map<number, { code: string; at: number }>();
   /** 엔티티마다 머리 방향(라디안, 0 = 위)과 지난 프레임 위치 */
@@ -155,6 +157,7 @@ export class Arena {
   vanishMonster() { this.monsters.vanish(); }
   monsterFx(m: MonsterFxMsg) { this.monsters.fx(m); }
   monsterHit(m: MonsterHitMsg) { this.monsters.hit(m); }
+  setBossBottom(px: number) { this.bossBottom = px; }
   monsterHud(): MonsterHud | null { return this.monsters.hud(); }
   /** 스킬 연출(4.33): 충격파·갈고리·먹물·은신 */
   private fx = new SkillFxLayer(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
@@ -873,7 +876,8 @@ export class Arena {
     const size = big ? Math.round(Math.min(760, Math.min(w, h) * 0.82)) : small;
     const phone = window.matchMedia?.('(max-width: 760px) and (orientation: portrait), (orientation: landscape) and (max-height: 520px) and (pointer: coarse)').matches ?? false; // 모바일(세로·가로)은 왼쪽 위
     const x0 = big ? Math.round((w - size) / 2) : phone ? 8 : w - size - MINIMAP_MARGIN;
-    const y0 = big ? Math.round((h - size) / 2) : phone ? MINIMAP_TOP_PHONE : h - size - MINIMAP_MARGIN;
+    const portraitNarrow = window.matchMedia?.('(max-width: 760px) and (orientation: portrait)').matches ?? false; // 세로 좁은 화면에서만 보스 띠 아래로(가로는 띠가 작고 가운데라 겹치지 않는다)
+    const y0 = big ? Math.round((h - size) / 2) : phone ? Math.max(MINIMAP_TOP_PHONE, portraitNarrow && this.bossBottom > 0 ? Math.round(this.bossBottom) + 8 : 0) : h - size - MINIMAP_MARGIN;
     if (!big) this.minimapRect = { x0, y0, size };
     if (big) { ctx.fillStyle = 'rgba(0,0,0,0.58)'; ctx.fillRect(0, 0, w, h); } // 뒤를 어둡게
     const s = size / (this.half * 2);

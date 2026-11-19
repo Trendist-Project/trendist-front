@@ -346,6 +346,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
     const id = window.setTimeout(() => setUnlockAlert((a) => (a?.key === unlockAlert.key ? null : a)), 9000);
     return () => window.clearTimeout(id);
   }, [unlockAlert]);
+  const setBossBottom = useCallback((px: number) => arenaRef.current?.setBossBottom(px), []);
   const readMonster = useCallback(() => arenaRef.current?.monsterHud() ?? null, []);
   const readMeLook = useCallback(() => arenaRef.current?.meLook() ?? null, []);
   const readTarget = useCallback((e: number) => arenaRef.current?.entityInfo(e) ?? null, []);
@@ -414,7 +415,7 @@ function GameScreenInner({ initialPlayer, guest, onLogout, onWithdrawn }: Props)
             </div>
           </div>
         )}
-        <MonsterHud read={readMonster} mine={myBossDmg} />
+        <MonsterHud read={readMonster} mine={myBossDmg} onBottom={setBossBottom} />
         {monsterNote && <MonsterNoteCard note={monsterNote} onClose={() => setMonsterNote(null)} />}
         <div className="hud">
           {/* 모바일은 짧게(👥 3 · 🤖 7), PC는 글자로 */}

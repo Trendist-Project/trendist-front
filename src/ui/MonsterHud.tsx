@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fmtNumber, t } from '../i18n';
 import { getLang } from '../country';
 import type { MonsterHud as Hud } from '../game/monsterFx';
@@ -17,17 +17,31 @@ const nameOf = (name: string, en: string) => (getLang() === 'en' && en ? en : na
  * 보스 체력 막대(4.35): 화면 위 가운데. 이름·남은 시간·체력·분노·불꽃 상태와 내가 입힌 피해.
  * read는 Arena가 들고 있는 현재 상태를 읽는 함수이고, 5번/초 다시 읽는다. 보스가 없으면 아무것도 그리지 않는다.
  */
-export function MonsterHud({ read, mine }: { read: () => Hud | null; mine: { dmg: number; hits: number } }) {
+export function MonsterHud({ read, mine, onBottom }: { read: () => Hud | null; mine: { dmg: number; hits: number }; onBottom?: (px: number) => void }) {
   const [hud, setHud] = useState<Hud | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const id = window.setInterval(() => setHud(read()), 200);
     return () => window.clearInterval(id);
   }, [read]);
+  // 띠의 아래 끝(아레나 기준 px)을 재서 미니맵에 알린다(화면 크기·글자 크기가 바뀌어도 맞는다). 보스가 없으면 0
+  useEffect(() => {
+    if (!onBottom) return;
+    const el = box.current;
+    onBottom(el ? el.offsetTop + el.offsetHeight : 0);
+    return () => onBottom(0);
+  }, [hud === null, hud?.rage, hud?.flame, onBottom]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!onBottom) return;
+    const sync = () => { const el = box.current; if (el) onBottom(el.offsetTop + el.offsetHeight); };
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, [onBottom]);
   if (!hud) return null;
   const pct = hud.max > 0 ? Math.max(0, Math.min(100, (hud.hp / hud.max) * 100)) : 0;
   const name = nameOf(hud.name, hud.en);
   return (
-    <div className={`monster-hud${hud.rage ? ' rage' : ''}${hud.flame ? ' flame' : ''}`} role="status" aria-label={t('monster.hpAria', { name, pct: Math.round(pct) })}>
+    <div ref={box} className={`monster-hud${hud.rage ? ' rage' : ''}${hud.flame ? ' flame' : ''}`} role="status" aria-label={t('monster.hpAria', { name, pct: Math.round(pct) })}>
       <div className="mh-portrait" aria-hidden="true">
         {hud.img ? <img src={`/monsters/${hud.img}.svg`} alt="" draggable={false} /> : <span>🐢</span>}
       </div>

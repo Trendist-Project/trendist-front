@@ -1652,26 +1652,26 @@ button.link-back:hover { color: var(--text); }
 }
 
 /* ---------- 몬스터(보스, 4.35) ---------- */
-.monster-hud { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.82); border: 1px solid rgba(255, 190, 90, 0.5); border-radius: 12px; padding: 8px 12px 9px; pointer-events: none; z-index: 5; box-shadow: 0 4px 18px rgba(0,0,0,0.4); }
+.monster-hud { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.82); border: 1px solid rgba(255, 190, 90, 0.5); border-radius: 10px; padding: 6px 10px 7px; pointer-events: none; z-index: 5; box-shadow: 0 4px 18px rgba(0,0,0,0.4); }
 /* 보스 정보: 왼쪽에 보스 그림을 크게, 오른쪽에 이름·체력·피해 */
-.monster-hud { display: flex; align-items: stretch; gap: 12px; }
+.monster-hud { display: flex; align-items: stretch; gap: 9px; }
 .monster-hud .mh-main { flex: 1; min-width: 0; }
-.monster-hud .mh-portrait { flex: none; align-self: center; width: 72px; height: 72px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; font-size: 2.2rem;
+.monster-hud .mh-portrait { flex: none; align-self: center; width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; overflow: hidden; font-size: 1.5rem;
   background: radial-gradient(circle at 50% 40%, rgba(255,190,90,0.28), rgba(20,26,38,0.95) 72%); border: 2px solid rgba(255,190,90,0.6); box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.45); }
 .monster-hud .mh-portrait img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.55)); user-select: none; }
 .monster-hud.flame .mh-portrait { border-color: #ff9f1c; box-shadow: inset 0 0 12px rgba(255,120,20,0.45), 0 0 14px rgba(255,140,30,0.5); }
 .monster-hud.rage .mh-portrait { border-color: #ff4d3a; background: radial-gradient(circle at 50% 40%, rgba(255,70,50,0.38), rgba(30,14,16,0.95) 72%); box-shadow: inset 0 0 12px rgba(255,60,40,0.5), 0 0 16px rgba(255,70,50,0.55); }
 .monster-hud.rage { border-color: rgba(255, 80, 60, 0.85); box-shadow: 0 0 18px rgba(255, 70, 50, 0.45); }
-.monster-hud .mh-top { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.monster-hud .mh-top { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; }
 .monster-hud .mh-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .monster-hud .mh-time { font-variant-numeric: tabular-nums; font-weight: 700; }
-.monster-hud .mh-badge { font-size: 0.72rem; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+.monster-hud .mh-badge { font-size: 0.64rem; font-weight: 800; padding: 1px 6px; border-radius: 999px; }
 .monster-hud .mh-badge.rage { background: #ff4d3a; color: #fff; }
 .monster-hud .mh-badge.flame { background: #ff9f1c; color: #2b1500; }
-.monster-hud .mh-bar { margin-top: 6px; height: 14px; background: rgba(255,255,255,0.12); border-radius: 999px; overflow: hidden; }
+.monster-hud .mh-bar { margin-top: 4px; height: 9px; background: rgba(255,255,255,0.12); border-radius: 999px; overflow: hidden; }
 .monster-hud .mh-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff8a3d, #ffd166); border-radius: 999px; transition: width 0.25s ease-out; }
 .monster-hud.rage .mh-bar i { background: linear-gradient(90deg, #ff3b30, #ff8a3d); }
-.monster-hud .mh-bottom { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: 0.78rem; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); }
+.monster-hud .mh-bottom { display: flex; justify-content: space-between; gap: 10px; margin-top: 3px; font-size: 0.68rem; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); }
 .monster-hud .mh-bottom { flex-wrap: wrap; row-gap: 2px; }
 .monster-hud .mh-bottom b { font-weight: 600; color: rgba(255,255,255,0.6); margin-right: 2px; } /* 라벨은 흐리게, 값이 눈에 띄게 */
 .monster-hud .mh-bottom em { font-style: normal; color: rgba(255,255,255,0.6); }
@@ -1680,9 +1680,9 @@ button.link-back:hover { color: var(--text); }
 .monster-hud .mh-share { margin-left: 1px; padding: 0 6px; border-radius: 999px; background: rgba(255,209,102,0.18); color: #ffd166; font-weight: 800; font-size: 0.72rem; line-height: 1.6; } /* 전체 체력 대비 비율 알약 */
 .monster-hud .mh-mine i { font-style: normal; opacity: 0.5; }
 .monster-hud .mh-mine { font-weight: 700; }
-.monster-hud .mh-warn { margin-top: 5px; text-align: center; font-size: 0.78rem; font-weight: 700; color: #ffb347; }
-.monster-note { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.92); border: 1px solid rgba(255, 190, 90, 0.55); border-radius: 14px; padding: 14px 16px 14px; z-index: 6; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
-.monster-note.reward { border-color: rgba(120, 220, 160, 0.6); top: 96px; }
+.monster-hud .mh-warn { margin-top: 3px; text-align: center; font-size: 0.68rem; font-weight: 700; color: #ffb347; }
+.monster-note { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 24px)); background: rgba(11, 15, 23, 0.92); border: 1px solid rgba(255, 190, 90, 0.55); border-radius: 14px; padding: 14px 16px 14px; z-index: 6; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+.monster-note.reward { border-color: rgba(120, 220, 160, 0.6); top: 84px; }
 .monster-note .mn-close { position: absolute; top: 6px; right: 8px; background: none; border: 0; color: rgba(255,255,255,0.7); font-size: 1rem; cursor: pointer; }
 .monster-note .mn-title { margin: 0 0 6px; font-weight: 800; font-size: 1.02rem; padding-right: 22px; }
 .monster-note .mn-sub { margin: 0 0 6px; font-size: 0.82rem; color: rgba(255,255,255,0.65); }
@@ -1693,19 +1693,40 @@ button.link-back:hover { color: var(--text); }
 .monster-note .mn-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .monster-note .mn-dmg { font-variant-numeric: tabular-nums; font-weight: 700; }
 /* 보스 체력 막대는 PC에서 위쪽 가운데(도구는 ☰ 하나라 비어 있다). 보스가 있으면 그 아래 알림·카드는 한 칸씩 내려 겹치지 않게 한다 */
-.monster-note { top: 96px; }
-.arena-wrap:has(.monster-hud) :is(.toast, .orb-reveal, .title-alert, .notify-stack) { top: 100px; }
-.arena-wrap:has(.monster-hud) .target-card { top: 100px; }
+.monster-note { top: 84px; }
+.arena-wrap:has(.monster-hud) :is(.toast, .orb-reveal, .title-alert, .notify-stack) { top: 88px; }
+.arena-wrap:has(.monster-hud) .target-card { top: 88px; }
+/* 좁은 화면의 보스 체력 띠는 변수 두 개로 모든 자리를 정한다: --boss-top(띠 위쪽 자리), --boss-h(띠 높이).
+   초상화·글자·막대 두께는 화면 높이(dvh)에 비례하고(clamp로 하한·상한), 리더보드 여백·알림·카드 자리는 이 변수에서 계산한다.
+   미니맵(캔버스)은 MonsterHud가 잰 띠 아래 끝을 Arena.setBossBottom으로 받아 그 아래로 내려간다 */
 @media (max-width: 760px) {
-  .monster-hud { top: 64px; width: calc(100% - 16px); padding: 5px 10px 6px; gap: 9px; }
-  .monster-hud .mh-portrait { width: 52px; height: 52px; border-radius: 11px; font-size: 1.6rem; }
-  .monster-hud .mh-top { font-size: 0.82rem; }
-  .monster-hud .mh-bar { height: 9px; margin-top: 4px; }
-  .monster-hud .mh-bottom { font-size: 0.72rem; margin-top: 3px; }
+  .arena-wrap:has(.monster-hud) { --boss-top: 50px; --boss-h: clamp(44px, 6.6dvh, 52px); --boss-img: calc(var(--boss-h) - 12px); }
+  .monster-hud { top: var(--boss-top); width: calc(100% - 16px); height: var(--boss-h); box-sizing: border-box; overflow: hidden; padding: 4px 9px; gap: 8px; }
+  .monster-hud .mh-portrait { width: var(--boss-img); height: var(--boss-img); border-radius: 9px; font-size: calc(var(--boss-img) * 0.4); }
+  .monster-hud .mh-main { display: flex; flex-direction: column; justify-content: center; }
+  .monster-hud .mh-top { font-size: clamp(0.7rem, 1.9dvh, 0.78rem); }
+  .monster-hud .mh-bar { height: clamp(6px, 1dvh, 8px); margin-top: 3px; }
+  .monster-hud .mh-bottom { font-size: clamp(0.62rem, 1.7dvh, 0.7rem); margin-top: 2px; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+  .monster-hud .mh-top, .monster-hud .mh-bottom { line-height: 1.25; }
+  .monster-hud .mh-hp { flex: none; } /* 체력 숫자는 줄이지 않는다(축약 숫자라 짧다). 모자라면 내 피해 쪽이 줄어든다 */
+  .monster-hud .mh-hp b, .monster-hud .mh-hp em, .monster-hud .mh-mine b { display: none; } /* 라벨과 %는 막대가 보여 준다. 숫자는 줄이지 않고 전체를 보인다 */
+  .monster-hud .mh-mine { min-width: 0; flex-wrap: nowrap; overflow: hidden; }
   .monster-hud .mh-warn { display: none; } /* 불꽃 배지가 이미 보여 주니 모바일은 경고 줄을 뺀다 */
-  .monster-note { top: 146px; }
-  .arena-wrap:has(.monster-hud) :is(.toast, .orb-reveal, .title-alert, .notify-stack) { top: 146px; }
-  .arena-wrap:has(.monster-hud) .target-card { top: 120px; }
+  /* 리더보드는 ☰ 줄 아래(자연 위치 54px)에서 띠 아래 끝 + 8px까지 내려간다 */
+  .arena-wrap:has(.monster-hud) .arena-tools .leaderboard { margin-top: calc(var(--boss-top) + var(--boss-h) - 46px); }
+  .monster-note { top: calc(var(--boss-top) + var(--boss-h) + 8px); }
+  .arena-wrap:has(.monster-hud) :is(.toast, .orb-reveal, .title-alert, .notify-stack, .target-card) { top: calc(var(--boss-top) + var(--boss-h) + 8px); }
+}
+/* 가로로 누운 낮은 화면(높이 520px 이하, 터치 여부와 무관): 띠를 위 가운데에 작게. 접속 인원(왼쪽)·☰(오른쪽)과 가로로 겹치지 않아 미니맵·리더보드는 내리지 않는다 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .arena-wrap:has(.monster-hud) { --boss-top: 6px; --boss-h: clamp(36px, 11dvh, 44px); --boss-img: calc(var(--boss-h) - 10px); }
+  .monster-hud { width: min(300px, calc(100% - 300px)); padding: 3px 8px; gap: 8px; border-radius: 10px; }
+  .monster-hud .mh-portrait { border-radius: 8px; }
+  .monster-hud .mh-top { font-size: clamp(0.62rem, 3dvh, 0.7rem); gap: 5px; }
+  .monster-hud .mh-badge { font-size: 0.58rem; padding: 0 5px; }
+  .monster-hud .mh-bar { height: clamp(4px, 1.4dvh, 6px); margin-top: 2px; }
+  .monster-hud .mh-bottom { font-size: clamp(0.56rem, 2.7dvh, 0.64rem); margin-top: 1px; }
+  .arena-wrap:has(.monster-hud) .arena-tools .leaderboard { margin-top: 0; }
 }
 
 /* 체력(4.36): 명령 줄 안, 스킬 버튼 줄 바로 아래 한 줄(롤·메이플의 게이지처럼 스킬 가까이). 폭은 명령 줄 전체, 숫자는 막대 안 가운데(색과 숫자를 함께 쓴다).
