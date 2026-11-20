@@ -19,7 +19,9 @@ export interface AdminMonsterLive {
 }
 /** 시간별 출현표(4.35, 13.16): 정각마다 나라별 등장 기록(지난 시간)과 예정(앞으로). 미래가 위. status: ACTIVE·KILLED·TIMEOUT·REMOVED·SCHEDULED(예정) */
 export interface AdminMonsterTimelineEntry { code: string; name: string; nameEn: string | null; image: string | null; status: string; source: string; startedAt: string; participants: number; maxHp: number; finalHp: number }
-export interface AdminMonsterTimeline { now: string; countries: string[]; rows: { hour: string; cells: Record<string, AdminMonsterTimelineEntry[]> }[] }
+/** 이번 사이클(나라별): 켜진 보스 수만큼의 정각을 한 사이클로 보고 그 안에서 보스마다 최소 한 번씩 나온다. index는 지금이 몇 번째 칸인지(0부터) */
+export interface AdminMonsterCycle { size: number; index: number; items: { start: string; code: string; name: string; image: string | null }[] }
+export interface AdminMonsterTimeline { now: string; countries: string[]; rows: { hour: string; cells: Record<string, AdminMonsterTimelineEntry[]> }[]; cycles: Record<string, AdminMonsterCycle> }
 export interface AdminMonsterSpawnPage { items: AdminMonsterSpawn[]; page: number; size: number; total: number; totalPages: number }
 export interface AdminMonsterSpawn {
   id: number; code: string; name: string; country: string; source: string; status: string; startedAt: string; endedAt: string | null;
