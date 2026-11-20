@@ -17,6 +17,9 @@ export interface AdminMonsterLive {
   [patternReadyIn: `${string}ReadyIn`]: number | undefined; // 패턴마다 `<패턴 코드>ReadyIn`(다음에 쓸 수 있을 때까지 초): dash·ring·hop·mochi·carrot
   top: { playerId: number; nickname: string; damage: number; hits: number }[];
 }
+/** 시간별 출현표(4.35, 13.16): 정각마다 나라별 등장 기록(지난 시간)과 예정(앞으로). 미래가 위. status: ACTIVE·KILLED·TIMEOUT·REMOVED·SCHEDULED(예정) */
+export interface AdminMonsterTimelineEntry { code: string; name: string; nameEn: string | null; image: string | null; status: string; source: string; startedAt: string; participants: number; maxHp: number; finalHp: number }
+export interface AdminMonsterTimeline { now: string; countries: string[]; rows: { hour: string; cells: Record<string, AdminMonsterTimelineEntry[]> }[] }
 export interface AdminMonsterSpawnPage { items: AdminMonsterSpawn[]; page: number; size: number; total: number; totalPages: number }
 export interface AdminMonsterSpawn {
   id: number; code: string; name: string; country: string; source: string; status: string; startedAt: string; endedAt: string | null;
@@ -351,6 +354,8 @@ export const adminApi = {
   monsterRooms: () => request<{ country: string; humans: number }[]>('GET', '/api/admin/monsters/rooms'),
   spawnMonster: (code: string, country: string) => request<{ ok: boolean }>('POST', `/api/admin/monsters/types/${code}/spawn?country=${country}`),
   endMonster: (id: number, country: string, reward: boolean) => request<{ ok: boolean }>('POST', `/api/admin/monsters/${id}/end?country=${country}&reward=${reward}`),
+  /** 시간별 출현표: 지난 past시간의 등장과 앞으로 ahead시간의 예정 */
+  monsterTimeline: (past = 24, ahead = 12) => request<AdminMonsterTimeline>('GET', `/api/admin/monsters/timeline?past=${past}&ahead=${ahead}`),
   /** 등장 기록(최신순, 페이지 단위). code를 주면 그 몬스터만 */
   monsterSpawns: (code: string | null, page = 0, size = 10) => request<AdminMonsterSpawnPage>('GET', `/api/admin/monsters/spawns?${code ? `code=${encodeURIComponent(code)}&` : ''}page=${page}&size=${size}`),
   updateSetting: (name: string, value: string) => request<AdminSetting>('PATCH', `/api/admin/settings/${name}`, { value }),

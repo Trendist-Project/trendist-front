@@ -8,10 +8,16 @@ import { ScheduleSwitch, SchedulePanel } from './monster/ScheduleSwitch';
 import { HistoryPanel, OverviewPanel, PatternsPanel, SettingsPanel } from './monster/panels';
 import { derivePatterns, kindLabel, mmss, num, settingMap } from './monster/meta';
 import { useSettingsEditor } from './monster/useSettingsEditor';
+import { TimelinePanel } from './monster/Timeline';
 
 const PHASES: Record<string, string> = {
   CHASE: '추적', DASH_WINDUP: '돌진 예고', DASHING: '돌진 중', RING_WINDUP: '충격고리 예고', RING: '충격고리 확산', RECOVER: '경직',
   HOP_WINDUP: '깡충 예고', HOP: '깡충(점프·무방비)', MOCHI_WINDUP: '끈끈 떡 예고', MOCHI: '끈끈 떡', CARROT_WINDUP: '당근 부채 예고', CARROT: '당근 부채',
+  SWEEP_WINDUP: '촉수 휘두르기 예고', SWEEP: '촉수 휘두르기', INK_WINDUP: '먹물 예고', INK: '먹물', PULL_WINDUP: '빨판 끌기 예고', PULL: '빨판 끌기(끌어당김·무방비)',
+  LANE_WINDUP: '번개 줄기 예고', LANE: '번개 줄기', CHAIN_WINDUP: '감전 연쇄 예고', CHAIN: '감전 연쇄', STORM_WINDUP: '번개 폭풍 예고', STORM: '번개 폭풍',
+  INFLATE_WINDUP: '부풀기 예고', INFLATE: '부풀기(터짐·무방비)', SPIKE_WINDUP: '가시 발사 예고', SPIKE: '가시 발사', BUBBLE_WINDUP: '거품 추적 예고', BUBBLE: '거품 추적',
+  HUNT_WINDUP: '사냥 돌진 예고', HUNTING: '사냥 돌진 중', AMBUSH_WINDUP: '급습 예고', AMBUSH: '급습(잠수·무방비)', TAIL_WINDUP: '꼬리 치기 예고', TAIL: '꼬리 치기',
+  SPOUT_WINDUP: '물기둥 예고', SPOUT: '물기둥', WAVE_WINDUP: '거대 파도 예고', TIDAL: '거대 파도', SONG_WINDUP: '고래의 노래 예고', SONG: '고래의 노래',
 };
 type Tab = 'overview' | 'patterns' | 'settings' | 'history';
 const TABS: { id: Tab; label: string }[] = [
@@ -125,6 +131,11 @@ export function MonstersTab() {
             })}
           </div>
         )}
+      </section>
+
+      <section aria-labelledby="mn-tl-h">
+        <h3 id="mn-tl-h" className="mn-h">시간별 출현표 <span className="muted small">지난 24시간 · 앞으로 12시간</span></h3>
+        <TimelinePanel tick={historyTick} onPick={setSelected} onError={setError} />
       </section>
 
       <section aria-labelledby="mn-roster-h">

@@ -877,3 +877,36 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .sk-ov-head { display: flex; align-items: center; gap: 10px; width: 100%; }
 .sk-ov-head .sk-title { flex: 1; min-width: 0; }
 .sk-ov-card canvas { width: 100% !important; height: auto !important; max-width: 100%; }
+
+/* ---- 시간별 출현표(몬스터 탭): 미래가 위, 지금 시간 강조, 나라별 칸에 보스 칩 */
+.mn-tl-wrap { display: grid; gap: 10px; }
+.mn-tl-summary { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.mn-tl-summary button { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px; background: #1d2938; border: 1px solid #2f4056; color: #dbe8f6; font-size: 0.8rem; cursor: pointer; }
+.mn-tl-summary button:hover { border-color: #5b83b3; }
+.mn-tl-summary b { color: #ffd9a0; }
+.mn-tl-scroll { max-height: 440px; overflow: auto; border: 1px solid #2a3647; border-radius: 10px; background: #141c28; }
+.mn-tl { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.mn-tl thead th { position: sticky; top: 0; z-index: 1; background: #1b2635; padding: 7px 10px; text-align: left; color: #aebfd3; font-weight: 700; border-bottom: 1px solid #2a3647; }
+.mn-tl tbody th { width: 92px; padding: 6px 10px; text-align: left; vertical-align: top; color: #9fb3c9; font-weight: 600; white-space: nowrap; }
+.mn-tl tbody th small { display: block; color: #6f869f; font-size: 0.7rem; font-weight: 600; }
+.mn-tl tbody th em { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #1f6f4a; color: #d9ffe9; font-size: 0.68rem; font-style: normal; font-weight: 800; }
+.mn-tl td { padding: 5px 8px; vertical-align: top; border-top: 1px solid #202c3b; }
+.mn-tl tr.future td, .mn-tl tr.future th { background: rgba(120, 160, 255, 0.04); }
+.mn-tl tr.now td, .mn-tl tr.now th { background: rgba(63, 182, 139, 0.12); }
+.mn-tl-none { color: #566a82; padding-left: 6px; }
+.mn-tl-cell { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mn-tl-boss { display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 8px 3px 4px; border-radius: 8px; background: #1d2938; border: 1px solid #2f4056; color: #e6eef8; cursor: pointer; text-align: left; }
+.mn-tl-boss:hover { border-color: #6a93c5; }
+.mn-tl-boss .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.mn-tl-boss.scheduled { border-style: dashed; background: transparent; color: #b8c9dd; }
+.mn-tl-boss.killed { border-color: #2f7a55; }
+.mn-tl-boss.live { border-color: #3fb68b; }
+.mn-tl-badge { padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; background: #2a3647; color: #cfe0f3; white-space: nowrap; }
+.mn-tl-badge.killed { background: #1f6f4a; color: #d9ffe9; }
+.mn-tl-badge.live { background: #3fb68b; color: #06281c; }
+.mn-tl-badge.timeout { background: #4a3a1f; color: #ffe1a8; }
+.mn-tl-badge.removed { background: #4a2a2a; color: #ffc9c9; }
+.mn-tl-badge.scheduled { background: #263a5a; color: #bcd5ff; }
+.mn-tl-badge.admin { background: #3a2f55; color: #d9ccff; }
+.mn-tl-note { margin: 0; }
+@media (max-width: 760px) { .mn-tl tbody th { width: 70px; } .mn-tl-boss .mn-tl-badge.admin { display: none; } }
