@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminApi, type AdminMonsterLive, type AdminMonsterType } from '../api/client';
-import { ADMIN_COUNTRIES, getAdminCountry, type AdminCountry } from '../api/adminCountry';
+import { getAdminCountry, type AdminCountry } from '../api/adminCountry';
 import { successToast } from '../ui/toast';
 import { adminConfirm, errMsg } from './format';
 import { Portrait } from './monster/MonsterVisuals';
@@ -34,7 +34,7 @@ export function MonstersTab() {
   const [live, setLive] = useState<AdminMonsterLive[]>([]);
   const [rooms, setRooms] = useState<{ country: string; humans: number }[]>([]);
   const [historyTick, setHistoryTick] = useState(0); // 등장 기록 패널에 "다시 읽어라"를 알리는 번호(기록은 패널이 페이지 단위로 직접 읽는다)
-  const [country, setCountry] = useState<AdminCountry>(getAdminCountry());
+  const country: AdminCountry = getAdminCountry(); // 화면 오른쪽 위의 나라 선택을 따른다(바꾸면 페이지를 새로 읽는다). 이 탭에 따로 전환 버튼은 없다
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [error, setError] = useState<string | null>(null);
@@ -79,11 +79,6 @@ export function MonstersTab() {
         <div>
           <h2>몬스터</h2>
           <p>보스·일반 몬스터를 소환하고 지금 싸우는 모습을 지켜보고, 모습·공격 패턴·수치를 한곳에서 고쳐요.</p>
-        </div>
-        <div className="mon-country" role="group" aria-label="나라">
-          {ADMIN_COUNTRIES.map((c) => (
-            <button key={c} type="button" className={c === country ? 'on' : ''} onClick={() => setCountry(c)}>{c}<span> {humansOf(c)}명</span></button>
-          ))}
         </div>
       </header>
       {error && <p className="error" role="alert">{error} <button type="button" className="link" onClick={() => setError(null)}>닫기</button></p>}

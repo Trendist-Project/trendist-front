@@ -664,10 +664,6 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 }
 
 /* 몬스터 탭(13.16): 위에서 아래로 지금 싸우는 몬스터 → 목록 카드 → 상세(개요·공격 패턴·설정·기록). 색은 몬스터 = 주황·붉은 계열, 저장·선택 = 기존 강조색 */
-.mon-country { display: flex; gap: 6px; }
-.mon-country button { padding: 5px 12px; border-radius: 999px; font-size: 0.85rem; }
-.mon-country button span { opacity: 0.65; font-size: 0.78rem; }
-.mon-country button.on { background: var(--accent); border-color: var(--accent); color: #062014; font-weight: 700; }
 .mn { gap: 18px; }
 .mn-h { margin: 4px 0 10px; font-size: 1.05rem; display: flex; align-items: baseline; gap: 8px; }
 .mn-count { margin-left: auto; min-width: 22px; text-align: center; padding: 1px 8px; border-radius: 999px; background: #2a3647; color: #cfe0f3; font-size: 0.78rem; font-weight: 700; }
@@ -915,13 +911,13 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .tl-hour em { padding: 0 5px; border-radius: 999px; background: #1f8a58; color: #fff; font-size: 0.64rem; font-style: normal; font-weight: 800; }
 .tl-hour.now { background: #1c3a31; color: #fff; }
 .tl-hour.future { color: #8fb4e8; }
-.tl-country { position: sticky; left: 0; z-index: 2; display: grid; place-items: center; background: #172131; border-right: 1px solid #2a3647; border-top: 1px solid #202c3b; color: #fff; font-weight: 800; font-size: 0.78rem; }
-.tl-cell { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 2px; padding: 5px 2px; min-height: 84px; border-top: 1px solid #202c3b; }
+.tl-country { position: sticky; left: 0; z-index: 2; display: grid; place-items: center; background: #172131; border-right: 1px solid #2a3647; border-top: 1px solid #202c3b; color: #9fb3c9; font-weight: 800; font-size: 0.74rem; }
+.tl-cell { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 2px; padding: 5px 2px; min-height: 100px; border-top: 1px solid #202c3b; }
 .tl-cell.now, .tl-hour.now { box-shadow: inset 2px 0 0 #3fb68b, inset -2px 0 0 #3fb68b; }
 .tl-cell.now { background: rgba(63, 182, 139, 0.1); }
 .tl-cell.future { background: repeating-linear-gradient(135deg, rgba(120, 160, 255, 0.05) 0 8px, transparent 8px 16px); }
 .tl-cell.day, .tl-hour.day { border-left: 1px solid #3b4c63; }
-.tl-empty { align-self: center; color: #5b708a; font-size: 0.7rem; font-weight: 600; margin-top: 32px; white-space: nowrap; }
+.tl-empty { align-self: center; color: #5b708a; font-size: 0.7rem; font-weight: 600; margin-top: 4px; white-space: nowrap; }
 
 .tl-boss { display: grid; justify-items: center; gap: 1px; width: 80px; padding: 2px 2px 3px; border: 0; background: transparent; color: #e6eef8; cursor: pointer; border-radius: 8px; }
 .tl-boss:hover { background: rgba(255, 255, 255, 0.06); }
@@ -951,7 +947,7 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .tl-detail header em { font-style: normal; color: #ffd9a0; font-weight: 700; }
 .tl-detail header button { margin-left: auto; width: 26px; height: 26px; border-radius: 50%; border: 0; background: #2a3647; color: #e6eef8; cursor: pointer; }
 .tl-detail ul { list-style: none; margin: 0; padding: 4px; max-height: 220px; overflow-y: auto; display: grid; gap: 2px; scrollbar-width: thin; }
-.tl-detail li button { display: grid; grid-template-columns: 48px 30px minmax(90px, 1fr) 112px 56px 76px; align-items: center; gap: 8px; width: 100%; padding: 3px 8px; min-height: 36px; border: 0; border-radius: 8px; background: transparent; color: #e6eef8; font-size: 0.82rem; cursor: pointer; text-align: left; }
+.tl-detail li button { display: grid; grid-template-columns: 48px 34px 30px minmax(90px, 1fr) 112px 56px 76px; align-items: center; gap: 8px; width: 100%; padding: 3px 8px; min-height: 36px; border: 0; border-radius: 8px; background: transparent; color: #e6eef8; font-size: 0.82rem; cursor: pointer; text-align: left; }
 .tl-detail li button:hover { background: rgba(255, 255, 255, 0.06); }
 .tl-detail time { color: #9fb3c9; font-variant-numeric: tabular-nums; font-weight: 700; }
 .tl-dart { display: block; width: 30px; height: 30px; padding: 2px; border-radius: 50%; border: 2px solid var(--c); background: #0f1722; line-height: 0; }
@@ -964,4 +960,12 @@ label.notice-toggle, .notice-toggle-main { display: flex; gap: 10px; align-items
 .tl-src { color: #7d93ab; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
 .tl-src.by-admin { color: #c6b6ff; }
 .tl-part { color: #8aa0b8; font-size: 0.74rem; text-align: right; white-space: nowrap; }
-@media (max-width: 760px) { .tl-detail li button { grid-template-columns: 44px 28px minmax(60px, 1fr) 104px; } .tl-src, .tl-part { display: none; } }
+@media (max-width: 760px) { .tl-detail li button { grid-template-columns: 44px 30px 28px minmax(60px, 1fr) 104px; } .tl-src, .tl-part { display: none; } }
+
+/* 서버별 결과 칩: 두 서버의 결과가 다를 때만 보스 이름 아래에 붙는다(KR ✓ · GL ⏱) */
+.tl-ccs { display: inline-flex; gap: 3px; }
+.tl-cc { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 5px; border-radius: 999px; background: #2a3647; color: #cfe0f3; font-size: 0.62rem; font-weight: 800; line-height: 1.5; }
+.tl-cc i { display: inline-grid; place-items: center; width: 12px; height: 12px; border-radius: 50%; background: #3a4658; color: #fff; font-size: 0.55rem; font-style: normal; font-weight: 900; line-height: 1; }
+.tl-cc.killed i { background: #1f8a58; } .tl-cc.live i { background: #3fb68b; color: #06281c; } .tl-cc.timeout i { background: #b7791f; } .tl-cc.removed i { background: #b3414a; } .tl-cc.scheduled i { background: #3e6bb5; }
+.tl-cc.none { color: #7d93ab; }
+.tl-ctry { color: #9fb3c9; font-size: 0.72rem; font-weight: 800; }
