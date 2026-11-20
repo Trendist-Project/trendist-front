@@ -24,6 +24,21 @@ export const PATTERN_META: Record<string, { icon: string; diagram: 'line' | 'rin
   hop: { icon: '🐰', diagram: 'generic', hint: '대상 자리에 달 그림자가 뜨고 점프해 내려앉는다(착지 뒤 무방비)' },
   mochi: { icon: '🍡', diagram: 'generic', hint: '맵 곳곳에 이동을 늦추는 달떡 장판을 던진다' },
   carrot: { icon: '🥕', diagram: 'generic', hint: '대상 쪽으로 부채꼴로 당근을 쏜다' },
+  sweep: { icon: '🐙', diagram: 'generic', hint: '촉수 여럿이 쓸고 갈 부채꼴이 붉게 보인다(촉수 사이 빈 호로 피하기)' },
+  ink: { icon: '🦑', diagram: 'generic', hint: '먹물 장판을 던져 닿은 사람을 암흑(시야 좁아짐)에 빠뜨린다' },
+  pull: { icon: '🌀', diagram: 'generic', hint: '범위 안의 사람을 끌어당긴다(끝나면 보스가 무방비)' },
+  lane: { icon: '⚡', diagram: 'line', hint: '대상을 지나는 가로 번개 띠 여러 줄(맞으면 기절)' },
+  chain: { icon: '🔗', diagram: 'generic', hint: '표식 대상에 번개가 꽂히고 가까운 사람에게 튄다(흩어지기)' },
+  storm: { icon: '🌩', diagram: 'generic', hint: '여러 곳에 번개가 차례로 표시되고 떨어진다' },
+  inflate: { icon: '🐡', diagram: 'ring', hint: '풍선처럼 부풀었다 터진다(원 밖으로, 터진 뒤 무방비)' },
+  spike: { icon: '📍', diagram: 'generic', hint: '사방으로 가시를 쏜다(맞으면 독)' },
+  bubble: { icon: '🫧', diagram: 'generic', hint: '거품이 사람을 따라가 터진다' },
+  hunt: { icon: '🦈', diagram: 'line', hint: '체력이 가장 낮은 사람을 노려 연달아 돌진한다' },
+  ambush: { icon: '🌊', diagram: 'generic', hint: '물속에서 쫓다가 솟구쳐 문다(점선 원, 문 뒤 무방비)' },
+  tail: { icon: '🪝', diagram: 'generic', hint: '보스 뒤쪽 반원을 꼬리로 쓸어 친다(분노하면 전방위)' },
+  spout: { icon: '⛲', diagram: 'generic', hint: '대상 둘레 여러 곳에 물기둥이 솟는다' },
+  wave: { icon: '🌊', diagram: 'line', hint: '넓은 띠 모양 거대 파도가 밀려와 사람을 밀어낸다' },
+  song: { icon: '🎵', diagram: 'ring', hint: '범위 안의 사람을 혼란(방향 키 반대)에 빠뜨린다' },
 };
 
 export interface Pattern { code: string; name: string; icon: string; diagram: 'line' | 'ring' | 'generic'; hint: string; settings: AdminMonsterSetting[] }

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 600" width="512" height="600">
+<defs>
+<radialGradient id="body" cx="42%" cy="26%" r="90%"><stop offset="0" stop-color="#fff3b0"/><stop offset="0.55" stop-color="#fcd34d"/><stop offset="1" stop-color="#e8921a"/></radialGradient>
+<radialGradient id="belly" cx="50%" cy="30%" r="80%"><stop offset="0" stop-color="#fffdf2"/><stop offset="1" stop-color="#fde9b8"/></radialGradient>
+<linearGradient id="fin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#e8641a"/></linearGradient>
+<radialGradient id="eye" cx="45%" cy="40%" r="75%"><stop offset="0" stop-color="#6b4a3a"/><stop offset="1" stop-color="#1c0f08"/></radialGradient>
+<radialGradient id="blush" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff7f8f" stop-opacity="0.9"/><stop offset="1" stop-color="#ff7f8f" stop-opacity="0"/></radialGradient>
+<linearGradient id="crown" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3a8"/><stop offset="1" stop-color="#e0a21c"/></linearGradient>
+<g id="spike"><path d="M0 0 L-12 -34 L12 -34Z" fill="#c97a2a" stroke="#7a4210" stroke-width="3.5" stroke-linejoin="round"/></g>
+</defs>
+<ellipse cx="256" cy="548" rx="150" ry="20" fill="#7a4210" opacity="0.22"/>
+<g>
+<use href="#spike" transform="translate(256 142)"/><use href="#spike" transform="translate(180 158) rotate(-26)"/><use href="#spike" transform="translate(332 158) rotate(26)"/>
+<use href="#spike" transform="translate(120 206) rotate(-52)"/><use href="#spike" transform="translate(392 206) rotate(52)"/>
+<use href="#spike" transform="translate(76 290) rotate(-78)"/><use href="#spike" transform="translate(436 290) rotate(78)"/>
+<use href="#spike" transform="translate(78 392) rotate(-104)"/><use href="#spike" transform="translate(434 392) rotate(104)"/>
+<use href="#spike" transform="translate(130 470) rotate(-130)"/><use href="#spike" transform="translate(382 470) rotate(130)"/>
+<use href="#spike" transform="translate(196 516) rotate(-158)"/><use href="#spike" transform="translate(316 516) rotate(158)"/>
+</g>
+<path d="M74 340 C34 322 20 366 40 396 C58 404 78 392 90 372Z" fill="url(#fin)" stroke="#8a3d0e" stroke-width="6" stroke-linejoin="round"/>
+<path d="M438 340 C478 322 492 366 472 396 C454 404 434 392 422 372Z" fill="url(#fin)" stroke="#8a3d0e" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="256" cy="336" r="192" fill="url(#body)" stroke="#8a3d0e" stroke-width="7"/>
+<clipPath id="bc"><circle cx="256" cy="336" r="188"/></clipPath>
+<g clip-path="url(#bc)"><ellipse cx="256" cy="520" rx="170" ry="120" fill="url(#belly)"/><ellipse cx="190" cy="190" rx="70" ry="38" fill="#fff" opacity="0.35" transform="rotate(-24 190 190)"/></g>
+<g fill="#e29a2a" opacity="0.6"><circle cx="170" cy="250" r="9"/><circle cx="342" cy="244" r="8"/><circle cx="116" cy="340" r="7"/><circle cx="396" cy="346" r="7"/><circle cx="214" cy="200" r="6"/><circle cx="304" cy="198" r="6"/></g>
+<path d="M196 130 L206 78 L232 108 L256 64 L280 108 L306 78 L316 130 Z" fill="url(#crown)" stroke="#8a5a0a" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="206" cy="76" r="9" fill="#ff5d73" stroke="#8a5a0a" stroke-width="3"/><circle cx="256" cy="62" r="10" fill="#5cc8ff" stroke="#8a5a0a" stroke-width="3"/><circle cx="306" cy="76" r="9" fill="#ff5d73" stroke="#8a5a0a" stroke-width="3"/>
+<ellipse cx="182" cy="296" rx="46" ry="52" fill="#fff" stroke="#6a3510" stroke-width="6"/><ellipse cx="330" cy="296" rx="46" ry="52" fill="#fff" stroke="#6a3510" stroke-width="6"/>
+<ellipse cx="188" cy="304" rx="30" ry="36" fill="url(#eye)"/><ellipse cx="324" cy="304" rx="30" ry="36" fill="url(#eye)"/>
+<circle cx="176" cy="290" r="11" fill="#fff"/><circle cx="312" cy="290" r="11" fill="#fff"/><circle cx="200" cy="320" r="5.5" fill="#fff"/><circle cx="336" cy="320" r="5.5" fill="#fff"/>
+<path d="M136 262 Q182 236 228 262" fill="none" stroke="#6a3510" stroke-width="6" stroke-linecap="round"/><path d="M284 262 Q330 236 376 262" fill="none" stroke="#6a3510" stroke-width="6" stroke-linecap="round"/>
+<ellipse cx="116" cy="360" rx="36" ry="22" fill="url(#blush)"/><ellipse cx="396" cy="360" rx="36" ry="22" fill="url(#blush)"/>
+<ellipse cx="256" cy="388" rx="44" ry="34" fill="#f48a8a" stroke="#6a3510" stroke-width="6"/><ellipse cx="256" cy="396" rx="26" ry="15" fill="#c2455a"/><path d="M226 372 Q256 360 286 372" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+</svg>

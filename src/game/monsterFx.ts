@@ -1,5 +1,6 @@
 import { drawComboFlames } from './skin';
 import { drawDamage } from './damageText';
+import { SEA_KINDS, SeaFx, type SeaFxMsg, type SeaTele } from './seaFx';
 
 /** 서버가 10Hz(돌진 중에는 매 틱)로 보내는 몬스터 상태(4.35). vx·vy는 그때의 속도(px/초)다. ph: chase·dash_windup·dashing·ring_windup·ring·recover */
 export interface MonsterState {
@@ -8,9 +9,12 @@ export interface MonsterState {
   flame: boolean; rage: boolean; ph: string; tgt: number; vx?: number; vy?: number;
   /** 달토끼: air = 깡충 점프 중(몸 판정 없음), stun = 착지 뒤 무방비 */
   air?: boolean; stun?: boolean;
+  /** 대형 상어: 물속에 잠긴 동안(몸 판정 없음, 지느러미만 보인다) */
+  dive?: boolean;
   tele?: { k: 'dash'; dx: number; dy: number; len: number; ms: number; total: number } | { k: 'ring'; ms: number; total: number }
     | { k: 'hop'; x: number; y: number; r: number; ms: number; total: number }
-    | { k: 'mochi'; spots: MochiSpot[]; ms: number; total: number }
+    | { k: 'mochi'; spots: MochiSpot[]; ms: number; total: number; look?: string }
+    | SeaTele
     | { k: 'carrot'; x: number; y: number; dir: number; spread: number; range: number; ms: number; total: number };
 }
 export interface MochiSpot { x: number; y: number; r: number }
@@ -21,8 +25,9 @@ export type MonsterFxMsg =
   | { fx: 'hopMark'; id: number; x: number; y: number; r: number; ms: number }
   | { fx: 'hopJump'; id: number; x0: number; y0: number; x: number; y: number; r: number; ms: number }
   | { fx: 'hopLand'; id: number; x: number; y: number; r: number }
-  | { fx: 'mochi'; id: number; spots: MochiSpot[]; ms: number }
-  | { fx: 'carrot'; id: number; x: number; y: number; angles: number[]; speed: number; range: number; r: number };
+  | { fx: 'mochi'; id: number; spots: MochiSpot[]; ms: number; look?: string }
+  | { fx: 'carrot'; id: number; x: number; y: number; angles: number[]; speed: number; range: number; r: number; look?: string }
+  | SeaFxMsg;
 export interface MonsterHitMsg { id: number; e: number; dmg: number; flame: boolean; x: number; y: number; hp: number }
 /** 화면 위 보스 체력 막대에 쓰는 요약 */
 export interface MonsterHud { id: number; name: string; en: string; hp: number; max: number; leftMs: number; flame: boolean; rage: boolean; ph: string; img: string | null }
@@ -30,10 +35,11 @@ export interface MonsterHud { id: number; name: string; en: string; hp: number; 
 /** 그림 안에서 몸 중심과 반지름(elder-turtle.svg·moon-rabbit.svg 공통, viewBox 512×600 기준). 몸(등껍질·털 몸통) 반지름이 몬스터 몸 반지름(판정)과 같다 */
 const ART = { w: 512, h: 600, cx: 256, cy: 330, shell: 205 };
 /** 정면을 보고 서 있는 캐릭터 그림: 돌리거나 뒤집지 않고 항상 똑바로 세워 그린다(돌리면 아래로 갈 때 거꾸로 선다). 나머지 그림은 위쪽이 앞이라 가는 쪽으로 돌린다 */
-const UPRIGHT = new Set(['moon-rabbit']);
+const UPRIGHT = new Set(['moon-rabbit', 'deep-octopus', 'electric-eel', 'puffer-king', 'great-shark', 'great-whale']);
 const STATE_STALE_MS = 3000;
 /** 그림을 아직 못 받았을 때 대신 그리는 몸 색(그림 키별) */
-const fallbackColor = (img: string | null) => (img === 'moon-rabbit' ? '#e2dbf1' : '#5f8048');
+const FALLBACK: Record<string, string> = { 'moon-rabbit': '#e2dbf1', 'deep-octopus': '#7c3aed', 'electric-eel': '#22d3ee', 'puffer-king': '#fbbf24', 'great-shark': '#64748b', 'great-whale': '#3b82f6' };
+const fallbackColor = (img: string | null) => (img ? FALLBACK[img] : undefined) ?? '#5f8048';
 const rad = (deg: number) => deg * Math.PI / 180;
 /** 초승달 모양을 그린다(R = 바깥 원 반지름). 바깥 원 안에서 안쪽 원을 뺀 부분 */
 function crescent(ctx: CanvasRenderingContext2D, x: number, y: number, R: number) {
@@ -64,25 +70,27 @@ export class MonsterLayer {
   private carrots: { x: number; y: number; angles: number[]; speed: number; range: number; r: number; at: number }[] = [];
   private texts: { text: string; x: number; y: number; at: number; flame: boolean; mine: boolean }[] = [];
   private rageAt = -1e9;
+  /** 바다 보스 연출(seaFx.ts): 예고 모양·바닥 장판·번쩍임·파도·가시·거품 */
+  private sea: SeaFx;
   /** 쓰러진 보스: 몸이 천천히 흐려지며 김처럼 증발한다(vanish). 몸 그림·자리·크기만 남겨 두고 연기 알갱이는 시작할 때 한 번 정한다 */
   private dying: { x: number; y: number; r: number; heading: number; img: string | null; at: number; wisps: { a: number; d: number; delay: number; size: number; rise: number; drift: number }[] } | null = null;
   private images = new Map<string, HTMLImageElement>();
   private myE = -1;
-  constructor(private reduceMotion: boolean) {}
+  constructor(private reduceMotion: boolean) { this.sea = new SeaFx(reduceMotion); }
 
   setMe(e: number) { this.myE = e; }
 
   set(m: MonsterState) {
     const now = performance.now();
-    if (!this.mon || this.mon.id !== m.id) { this.mon = { ...m, sx: m.x, sy: m.y, heading: 0, at: now, dashDx: 0, dashDy: -1 }; this.rings = []; this.clearRabbit(); return; }
+    if (!this.mon || this.mon.id !== m.id) { this.mon = { ...m, sx: m.x, sy: m.y, heading: 0, at: now, dashDx: 0, dashDy: -1 }; this.rings = []; this.clearRabbit(); this.sea.clear(); return; }
     this.mon = { ...this.mon, ...m, tele: m.tele, at: now }; // 예고(tele)는 예고 중에만 오니 합치지 말고 매번 덮어쓴다(안 그러면 돌진이 끝나도 사거리 표시가 남는다)
   }
-  clear() { this.mon = null; this.rings = []; this.texts = []; this.clearRabbit(); }
+  clear() { this.mon = null; this.rings = []; this.texts = []; this.clearRabbit(); this.sea.clear(); }
   private clearRabbit() { this.hopMarks = []; this.hopJumps = []; this.hopLands = []; this.mochis = []; this.carrots = []; }
   /** 보스를 처치했다: 지우지 않고 그 자리에서 증발하는 연출로 넘긴다(피해 숫자는 그대로 남겨 끝까지 보인다) */
   vanish() {
     const m = this.mon;
-    this.mon = null; this.rings = []; this.clearRabbit();
+    this.mon = null; this.rings = []; this.clearRabbit(); this.sea.clear();
     if (!m) return;
     const wisps = Array.from({ length: this.reduceMotion ? 0 : 26 }, () => ({
       a: Math.random() * Math.PI * 2, d: Math.sqrt(Math.random()) * 0.85, delay: Math.random() * 0.45,
@@ -92,6 +100,9 @@ export class MonsterLayer {
   }
   fx(m: MonsterFxMsg) {
     const now = performance.now();
+    if (SEA_KINDS.has(m.fx)) { this.sea.fx(m as SeaFxMsg, now); return; }
+    if (m.fx === 'mochi' && m.look === 'ink') { this.sea.addZone(m.spots, m.ms, now); return; } // 먹물 장판(문어)
+    if (m.fx === 'carrot' && m.look === 'spike') { this.sea.addSpikes({ x: m.x, y: m.y, angles: m.angles, speed: m.speed, range: m.range, r: m.r }, now); return; } // 가시(복어)
     if (m.fx === 'ring') this.rings.push({ x: m.x, y: m.y, r0: m.r0, rMax: m.rMax, speed: m.speed, at: now });
     else if (m.fx === 'rage') this.rageAt = now;
     else if (m.fx === 'dash' && this.mon) { this.mon.dashDx = m.dx; this.mon.dashDy = m.dy; }
@@ -182,9 +193,12 @@ export class MonsterLayer {
       ctx.beginPath(); ctx.arc(m.sx, m.sy, m.r * (1.02 + 0.1 * prog), 0, Math.PI * 2); ctx.stroke();
     }
     this.drawRabbitGround(ctx, m, now, px);
+    if (m.tele && m.tele.k === 'sea') this.sea.drawTele(ctx, m.tele, now, px);
+    this.sea.drawGround(ctx, now, px);
+    if (m.dive) { this.sea.drawDive(ctx, m.sx, m.sy, m.r, now, px); return; } // 상어가 잠수 중: 몸 대신 지느러미와 물결
     // 몸(그림): 몸통을 판정 반지름에 맞춘다. 머리는 가는 쪽. 깡충 점프 중(air)에는 위로 떠올라 커지고 흐려지며 바닥에 그림자가 남는다
     const img = this.image(m.img);
-    let lift = 0, grow = 1, alpha = 1;
+    let lift = 0, grow = this.sea.swell(m.tele as SeaTele | undefined), alpha = 1; // 복어는 부풀고 문어는 움츠러든다(예고가 진행될수록)
     if (m.air) {
       const j = this.hopJumps.length ? this.hopJumps[this.hopJumps.length - 1] : null;
       const u = j ? Math.min(1, Math.max(0, (now - j.at) / Math.max(1, j.ms))) : 0.5, h = Math.sin(Math.PI * u);
@@ -375,6 +389,7 @@ export class MonsterLayer {
     }
     this.drawHopLands(ctx, now, px);
     this.drawCarrots(ctx, now, px);
+    this.sea.drawOver(ctx, now, px);
     const m = this.mon;
     if (m && now - this.rageAt < 700 && !this.reduceMotion) { // 분노: 몸 둘레가 한 번 번쩍인다
       const t = (now - this.rageAt) / 700;
